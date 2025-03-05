@@ -1,0 +1,87 @@
+import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+
+class FinanceView:
+    def __init__(self, root, controller):
+        self.root = root
+        self.controller = controller
+        self.root.title("Finance Tracker")
+        
+        # Create layout
+        self.frame = tk.Frame(self.root)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+
+        # top left panel for import and time filter
+        self.top_left_frame = tk.Frame(self.frame)
+        self.top_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+        # Left panel for account selection
+        self.account_frame = tk.Frame(self.frame)
+        self.account_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        self.account_subframe = tk.Frame(self.account_frame)
+        self.account_subframe.grid(row=5, column=0, pady=5)
+
+        # Right panel for graph
+        self.graph_frame = tk.Frame(self.frame)
+        self.graph_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+        # Bottom Left Panel
+        self.empty_frame = tk.Frame(self.frame)
+        self.empty_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+        #Bottom Right Panel
+        self.empty_frame2 = tk.Frame(self.frame)
+        self.empty_frame2.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+
+        # Import ODS Button
+        self.import_button = tk.Button(self.account_frame, text="Import ODS", command=self.controller.import_from_ods)
+        self.import_button.grid(row=0, column=0, pady=5)
+
+
+        # Time filter dropdown
+        self.time_filter_var = tk.StringVar(value="All Data")
+        self.time_filter_options = ["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month"]
+        tk.Label(self.account_frame, text="Select Timeframe:").grid(row=1, column=0, pady=5)
+        self.time_filter_menu = tk.OptionMenu(self.account_frame, self.time_filter_var, *self.time_filter_options, command=self.controller.plot_net_worth)
+        self.time_filter_menu.grid(row=2, column=0, pady=5)
+
+        # "Check/Uncheck All" Button
+        self.toggle_button = tk.Button(self.account_frame, text="Check/Uncheck All", command=self.controller.toggle_all_accounts)
+        self.toggle_button.grid(row=3, column=0, pady=5)
+
+        # Add a label
+        self.label = tk.Label(self.empty_frame, text="Account Overview")
+        self.label.grid(row=0, column=0, pady=5)
+
+        # Account checkboxes
+        self.account_check_vars = {}
+
+        # Resizing behavior
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_columnconfigure(1, weight=1)
+
+    def update_account_checkboxes(self, accounts):
+        """Updates the account checkboxes dynamically."""
+        for widget in self.account_subframe.winfo_children():
+            widget.destroy()
+
+        for idx, account in enumerate(accounts):
+            var = tk.BooleanVar(value=True)
+            self.account_check_vars[account] = var
+            tk.Checkbutton(self.account_subframe, text=account, variable=var, command=self.controller.plot_net_worth).grid(row=5 + idx, column=0, sticky="w")
+
+    def display_graph(self, fig):
+        """Displays the Matplotlib graph inside the Tkinter GUI."""
+        for widget in self.graph_frame.winfo_children():
+            widget.destroy()
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Resizable canvas
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
+        self.graph_frame.grid_rowconfigure(0, weight=1)
+        self.graph_frame.grid_columnconfigure(0, weight=1)
