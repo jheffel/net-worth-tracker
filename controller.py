@@ -12,11 +12,17 @@ class FinanceController:
     def __init__(self, root):
         self.model = FinanceModel()
         self.view = FinanceView(root, self)
+        #self.model.calculate_net_worth()
         self.update_checkboxes()
         self.plot_net_worth()
 
     def update_checkboxes(self):
         account_data = self.model.load_data()
+
+        #debugging
+        #for key, value in account_data.items():
+        #    print("account data: ", key, value)
+
         self.view.update_account_checkboxes(account_data.keys())
     '''
     def import_from_ods(self):
@@ -136,8 +142,14 @@ class FinanceController:
 
         for account in selected_accounts:
             if account in account_data:
-                dates, balances = account_data[account]
-                
+                dates = []
+                balances = []
+                #dates, balances = account_data[account]
+                for date, balance in account_data[account].items():
+
+                    dates.append(date)
+                    balances.append(balance)
+
                 if start_date:
                     filtered_dates = [d for d in dates if d >= start_date]
                     filtered_balances = [b for d, b in zip(dates, balances) if d >= start_date]
