@@ -1,11 +1,14 @@
 import sqlite3
 from datetime import datetime
-
+import os
 
 
 class FinanceModel:
     def __init__(self, db_file="db/finance.db"):
         self.db_file = db_file
+        
+        os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
+
         self._initialize_db()
     
     def _initialize_db(self):
