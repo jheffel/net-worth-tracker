@@ -3,7 +3,8 @@
 Net Worth Tracker is a simple application to help you track your net worth over time. It allows you to input your financial accounts and calculates your net worth, and "total" based on the provided data.
 
 ## Screenshot
-![Net Worth Tracker Screenshot](images/finance tracker.png)
+![Net Worth Tracker Screenshot](https://raw.githubusercontent.com/jheffel/net-worth-tracker/refs/heads/main/images/finance%20tracker.png)
+![alt text](<images/finance tracker.png>)
 
 ## Features
 - Add accounts from ods data
