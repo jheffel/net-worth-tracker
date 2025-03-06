@@ -4,6 +4,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 class FinanceView:
+    
+
+    
     def __init__(self, root, controller):
         self.root = root
         self.controller = controller
@@ -13,9 +16,19 @@ class FinanceView:
         self.frame = tk.Frame(self.root)
         self.frame.pack(fill=tk.BOTH, expand=True)
 
-        # top left panel for import and time filter
-        self.top_left_frame = tk.Frame(self.frame)
-        self.top_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        # Allow resizing of rows and columns in the main frame
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_rowconfigure(1, weight=1)
+        self.frame.grid_rowconfigure(2, weight=1)
+        self.frame.grid_columnconfigure(0, weight=1)
+        self.frame.grid_columnconfigure(1, weight=1)
+
+
+
+
+        ## top left panel for import and time filter
+        #self.top_left_frame = tk.Frame(self.frame)
+        #self.top_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         # Left panel for account selection
         self.account_frame = tk.Frame(self.frame)
@@ -49,18 +62,21 @@ class FinanceView:
 
         # Bottom Left Panel
         self.bottom_left_frame = tk.Frame(self.frame)
-        self.bottom_left_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+        self.bottom_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         #Bottom Right Panel
         self.overview_frame = tk.Frame(self.frame)
-        self.overview_frame.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+        self.overview_frame.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
         self.overview_frame.grid_rowconfigure(0, weight=1)
         self.overview_frame.grid_columnconfigure(0, weight=1)
         self.overview_frame.grid_columnconfigure(1, weight=1)
         self.overview_frame.grid_columnconfigure(2, weight=1)
 
         # Set the row height to take up 20% of the window
-        self.frame.grid_rowconfigure(2, weight=1, minsize=int(self.root.winfo_screenheight() * 0.1))
+        #self.frame.grid_rowconfigure(1, weight=1, minsize=int(self.root.winfo_screenheight() * 0.2))
+
+        # Set the row height to take up 80% of the window
+        #self.frame.grid_rowconfigure(0, weight=1, minsize=int(self.root.winfo_screenheight() * 0.8))
 
         #operating pie chart Panel
         self.operating_frame = tk.Frame(self.overview_frame)
