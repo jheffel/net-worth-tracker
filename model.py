@@ -88,10 +88,10 @@ class FinanceModel:
         all_dates = sorted(all_dates)
 
         for account_name in account_data:
-            print("account name:", account_name)
+            #print("account name:", account_name)
             for date in all_dates:
 
-                print("date:", date)
+                #print("date:", date)
 
                 if date not in account_data[account_name].keys():
                     
