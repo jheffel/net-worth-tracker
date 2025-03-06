@@ -8,6 +8,9 @@ class FinanceModel:
 
         #list of accounts to ignore when calculating total net worth
         self.ignoreForTotalList = self.loadIgnoreForTotalList()
+        self.operatingList = self.loadOperatingList()
+        self.investingList = self.loadInvestingList()
+        self.cryptoList = self.loadCryptoList()
 
         self.db_file = db_file
         
@@ -30,9 +33,45 @@ class FinanceModel:
         conn.commit()
         conn.close()
 
+    def loadOperatingList(self):
+        operatingList = []
+        with open("config/operating.txt", "r") as file:
+            for line in file:
+                operatingList.append(line.strip())
+
+        print("Operating accounts:")
+        for operating in operatingList:
+            print("\t", operating)
+
+        return operatingList
+
+    def loadInvestingList(self):
+        investingList = []
+        with open("config/investing.txt", "r") as file:
+            for line in file:
+                investingList.append(line.strip())
+
+        print("investing accounts:")
+        for investing in investingList:
+            print("\t", investing)
+
+        return investingList
+
+    def loadCryptoList(self):
+        cryptoList = []
+        with open("config/crypto.txt", "r") as file:
+            for line in file:
+                cryptoList.append(line.strip())
+        
+        print("crypto accounts:")
+        for crypto in cryptoList:  
+            print("\t", crypto)
+
+        return cryptoList
+
     def loadIgnoreForTotalList(self):
         ignoreForTotalList = []
-        with open("ignoreForTotal.txt", "r") as file:
+        with open("config/ignoreForTotal.txt", "r") as file:
             for line in file:
                 ignoreForTotalList.append(line.strip())
 
@@ -62,7 +101,12 @@ class FinanceModel:
         
         account_data = {}
         net_worth = {}
-        total = {}  
+        total = {}
+        operating = {}
+        investing = {}
+        crypto = {}
+        equity = {}
+
         for account_name, date_str, balance in data:
             date = datetime.strptime(date_str, "%Y-%m-%d")
             if account_name not in account_data:
@@ -114,7 +158,7 @@ class FinanceModel:
         for account_name in account_data:
             account_data[account_name] = dict(sorted(account_data[account_name].items()))
 
-        #calculate the net worth, total, and equity
+        #calculate the net worth, total, operating, total investing, crypto, and equity
         for account_name, data in account_data.items():
             for date, balance in data.items():
 
@@ -139,6 +183,39 @@ class FinanceModel:
                 else:
                     net_worth[netWorthAccount][date] += balance
 
+                #calculate the total of all operating accounts
+                if account_name in self.operatingList:
+                    operatingAccount = "operating"
+                    if operatingAccount not in operating:
+                        operating[operatingAccount] = {}
+
+                    if date not in operating[operatingAccount]:
+                        operating[operatingAccount][date] = balance
+                    else:
+                        operating[operatingAccount][date] += balance
+
+                #calculate the total of all investing accounts
+                if account_name in self.investingList:
+                    investingAccount = "investing"
+                    if investingAccount not in investing:
+                        investing[investingAccount] = {}
+
+                    if date not in investing[investingAccount]:
+                        investing[investingAccount][date] = balance
+                    else:
+                        investing[investingAccount][date] += balance
+
+                #calculate the total of all crypto accounts
+                if account_name in self.cryptoList:
+                    cryptoAccount = "crypto"
+                    if cryptoAccount not in crypto:
+                        crypto[cryptoAccount] = {}
+
+                    if date not in crypto[cryptoAccount]:
+                        crypto[cryptoAccount][date] = balance
+                    else:
+                        crypto[cryptoAccount][date] += balance
+
         # Sort the net worth dictionary by date
         for account_name in net_worth:
             net_worth[account_name] = dict(sorted(net_worth[account_name].items()))
@@ -147,8 +224,23 @@ class FinanceModel:
         for account_name in total:
             total[account_name] = dict(sorted(total[account_name].items()))
 
+        #sort the operating dictionary by date
+        for account_name in operating:
+            operating[account_name] = dict(sorted(operating[account_name].items()))
+
+        #sort the investing dictionary by date
+        for account_name in investing:
+            investing[account_name] = dict(sorted(investing[account_name].items()))
+
+        #sort the crypto dictionary by date
+        for account_name in crypto:
+            crypto[account_name] = dict(sorted(crypto[account_name].items()))
+
         account_data.update(net_worth)
         account_data.update(total)
+        account_data.update(operating)
+        account_data.update(investing)
+        account_data.update(crypto)
 
         return account_data
 
