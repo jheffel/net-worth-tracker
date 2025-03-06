@@ -48,12 +48,31 @@ class FinanceView:
         self.graph_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
         # Bottom Left Panel
-        self.empty_frame = tk.Frame(self.frame)
-        self.empty_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+        self.bottom_left_frame = tk.Frame(self.frame)
+        self.bottom_left_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
         #Bottom Right Panel
-        self.empty_frame2 = tk.Frame(self.frame)
-        self.empty_frame2.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+        self.overview_frame = tk.Frame(self.frame)
+        self.overview_frame.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+        self.overview_frame.grid_rowconfigure(0, weight=1)
+        self.overview_frame.grid_columnconfigure(0, weight=1)
+        self.overview_frame.grid_columnconfigure(1, weight=1)
+        self.overview_frame.grid_columnconfigure(2, weight=1)
+
+        # Set the row height to take up 20% of the window
+        self.frame.grid_rowconfigure(2, weight=1, minsize=int(self.root.winfo_screenheight() * 0.1))
+
+        #operating pie chart Panel
+        self.operating_frame = tk.Frame(self.overview_frame)
+        self.operating_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        #investing pie chart Panel
+        self.investing_frame = tk.Frame(self.overview_frame)
+        self.investing_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+        #crypto pie chart Panel
+        self.crypto_frame = tk.Frame(self.overview_frame)
+        self.crypto_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
         # Import ODS Button
         self.import_button = tk.Button(self.account_frame, text="Import ODS", command=self.controller.import_from_ods)
@@ -72,7 +91,7 @@ class FinanceView:
         self.toggle_button.grid(row=3, column=0, pady=5)
 
         # Add a label
-        self.label = tk.Label(self.empty_frame, text="Account Overview")
+        self.label = tk.Label(self.bottom_left_frame, text="Account Overview")
         self.label.grid(row=0, column=0, pady=5)
 
         # Account checkboxes
@@ -104,3 +123,46 @@ class FinanceView:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
         self.graph_frame.grid_rowconfigure(0, weight=1)
         self.graph_frame.grid_columnconfigure(0, weight=1)
+
+    def display_investing_graph(self, fig):
+        """Displays the Matplotlib graph inside the Tkinter GUI with a transparent background."""
+        for widget in self.investing_frame.winfo_children():
+            widget.destroy()
+        canvas = FigureCanvasTkAgg(fig, master=self.investing_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Set the background color of the canvas to be transparent
+        # canvas.get_tk_widget().configure(bg='systemTransparent')
+
+        # Resizable canvas
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
+        self.investing_frame.grid_rowconfigure(0, weight=1)
+        self.investing_frame.grid_columnconfigure(0, weight=1)
+
+
+    def display_crypto_graph(self, fig):
+        """Displays the Matplotlib graph inside the Tkinter GUI."""
+        for widget in self.crypto_frame.winfo_children():
+            widget.destroy()
+        canvas = FigureCanvasTkAgg(fig, master=self.crypto_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Resizable canvas
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
+        self.crypto_frame.grid_rowconfigure(0, weight=1)
+        self.crypto_frame.grid_columnconfigure(0, weight=1)
+
+    def display_operating_graph(self, fig):
+        """Displays the Matplotlib graph inside the Tkinter GUI."""
+        for widget in self.operating_frame.winfo_children():
+            widget.destroy()
+        canvas = FigureCanvasTkAgg(fig, master=self.operating_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Resizable canvas
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
+        self.operating_frame.grid_rowconfigure(0, weight=1)
+        self.operating_frame.grid_columnconfigure(0, weight=1)

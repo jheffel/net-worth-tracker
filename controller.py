@@ -12,9 +12,17 @@ class FinanceController:
     def __init__(self, root):
         self.model = FinanceModel()
         self.view = FinanceView(root, self)
-        #self.model.calculate_net_worth()
         self.update_checkboxes()
         self.plot_net_worth()
+
+        if self.model.investingList:
+            self.plot_investment_pie_chart()
+
+        if self.model.operatingList:
+            self.plot_operating_pie_chart()
+
+        if self.model.cryptoList:
+            self.plot_crypto_pie_chart()
 
     def update_checkboxes(self):
         account_data = self.model.load_data()
@@ -78,6 +86,94 @@ class FinanceController:
 
         # Refresh the graph after toggling checkboxes
         self.plot_net_worth()
+
+
+
+
+
+    def plot_crypto_pie_chart(self, *args):
+        """Plots a pie chart of the crypto accounts."""
+
+        account_balances = {}
+
+        account_data = self.model.load_data()
+        for account in self.model.cryptoList:
+            if account in account_data:
+                account_balances[account] = list(account_data[account].values())[-1]
+
+        #debug
+        for key, value in account_balances.items():
+            #print(key, value)
+            if value < 0:
+                #can't have negative values in pie chart
+                account_balances[key] = value * -1
+
+        labels = account_balances.keys()
+        sizes = account_balances.values()
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.set_title("Crypto Accounts Distribution")
+        self.view.display_crypto_graph(fig)
+
+        plt.close(fig)
+
+
+
+    def plot_operating_pie_chart(self, *args):
+        """Plots a pie chart of the operating accounts."""
+
+        account_balances = {}
+
+        account_data = self.model.load_data()
+        for account in self.model.operatingList:
+            if account in account_data:
+                account_balances[account] = list(account_data[account].values())[-1]
+
+        #debug
+        for key, value in account_balances.items():
+            if value < 0:
+                #can't have negative values in pie chart
+                account_balances[key] = value * -1
+
+            #print(key, value)
+
+        labels = account_balances.keys()
+        sizes = account_balances.values()
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.set_title("Operating Accounts Distribution")
+        self.view.display_operating_graph(fig)
+
+        plt.close(fig)
+
+    def plot_investment_pie_chart(self, *args):
+        """Plots a pie chart of the investment accounts."""
+
+        account_balances = {}
+
+        account_data = self.model.load_data()
+        for account in self.model.investingList:
+            if account in account_data:
+                account_balances[account] = list(account_data[account].values())[-1]
+
+        #debug
+        for key, value in account_balances.items():
+            if value < 0:
+                #can't have negative values in pie chart
+                account_balances[key] = value * -1
+            #print(key, value)
+
+        labels = account_balances.keys()
+        sizes = account_balances.values()
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.set_title("Investment Accounts Distribution")
+        self.view.display_investing_graph(fig)
+
+        plt.close(fig)
 
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
@@ -147,8 +243,10 @@ class FinanceController:
         plt.xticks(rotation=45)
 
 
-        # Close the figure to prevent memory issues
-        plt.close(fig)
+
 
         self.view.display_graph(fig)
+        
+        # Close the figure to prevent memory issues
+        plt.close(fig)
 
