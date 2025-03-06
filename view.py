@@ -21,8 +21,27 @@ class FinanceView:
         self.account_frame = tk.Frame(self.frame)
         self.account_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.account_subframe = tk.Frame(self.account_frame)
-        self.account_subframe.grid(row=5, column=0, pady=5)
+        # Create a canvas and a scrollbar for the account subframe
+        self.account_canvas = tk.Canvas(self.account_frame)
+        self.account_scrollbar = tk.Scrollbar(self.account_frame, orient="vertical", command=self.account_canvas.yview)
+        self.account_subframe = tk.Frame(self.account_canvas)
+
+        self.account_subframe.bind(
+            "<Configure>",
+            lambda e: self.account_canvas.configure(
+            scrollregion=self.account_canvas.bbox("all")
+            )
+        )
+
+        self.account_canvas.create_window((0, 0), window=self.account_subframe, anchor="nw")
+        self.account_canvas.configure(yscrollcommand=self.account_scrollbar.set)
+
+        self.account_canvas.grid(row=5, column=0, pady=5, sticky="nsew")
+        self.account_scrollbar.grid(row=5, column=1, pady=5, sticky="ns")
+
+        # Ensure the canvas and scrollbar resize properly
+        self.account_frame.grid_rowconfigure(5, weight=1)
+        self.account_frame.grid_columnconfigure(0, weight=1)
 
         # Right panel for graph
         self.graph_frame = tk.Frame(self.frame)
