@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime, timedelta
 import os
+import json
 
 
 class FinanceModel:
@@ -11,6 +12,7 @@ class FinanceModel:
         self.operatingList = self.loadOperatingList()
         self.investingList = self.loadInvestingList()
         self.cryptoList = self.loadCryptoList()
+        self.equityList = self.loadEquityList()
 
         self.db_file = db_file
         
@@ -33,53 +35,91 @@ class FinanceModel:
         conn.commit()
         conn.close()
 
+    def loadEquityList(self):
+        
+        fpath = "config/equity.txt"
+
+        if os.path.exists(fpath):
+            equityList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    equityList.append(line.strip())
+
+            print("Equity accounts:")
+            for equity in equityList:
+                print("\t", equity)
+
+            return equityList
+        else:
+            return False
+
     def loadOperatingList(self):
-        operatingList = []
-        with open("config/operating.txt", "r") as file:
-            for line in file:
-                operatingList.append(line.strip())
+        
+        fpath = "config/operating.txt"
+        
+        if os.path.exists(fpath):
+            operatingList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    operatingList.append(line.strip())
 
-        print("Operating accounts:")
-        for operating in operatingList:
-            print("\t", operating)
+            print("Operating accounts:")
+            for operating in operatingList:
+                print("\t", operating)
 
-        return operatingList
+            return operatingList
+        else:    
+            return False
 
     def loadInvestingList(self):
-        investingList = []
-        with open("config/investing.txt", "r") as file:
-            for line in file:
-                investingList.append(line.strip())
+        
+        fpath = "config/investing.txt"
+        
+        if os.path.exists(fpath):
+            investingList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    investingList.append(line.strip())
 
-        print("investing accounts:")
-        for investing in investingList:
-            print("\t", investing)
+            print("investing accounts:")
+            for investing in investingList:
+                print("\t", investing)
 
-        return investingList
+            return investingList
+        else:
+            return False
 
     def loadCryptoList(self):
-        cryptoList = []
-        with open("config/crypto.txt", "r") as file:
-            for line in file:
-                cryptoList.append(line.strip())
-        
-        print("crypto accounts:")
-        for crypto in cryptoList:  
-            print("\t", crypto)
+        fpath = "config/crypto.txt"
+        if os.path.exists(fpath):
+            cryptoList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    cryptoList.append(line.strip())
+            
+            print("crypto accounts:")
+            for crypto in cryptoList:  
+                print("\t", crypto)
 
-        return cryptoList
+            return cryptoList
+        else:
+            return False
 
     def loadIgnoreForTotalList(self):
-        ignoreForTotalList = []
-        with open("config/ignoreForTotal.txt", "r") as file:
-            for line in file:
-                ignoreForTotalList.append(line.strip())
+        fpath = "config/ignoreForTotal.txt"
+        if os.path.exists(fpath):
+            ignoreForTotalList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    ignoreForTotalList.append(line.strip())
 
-        print("Total will ignore:")
-        for ignore in ignoreForTotalList:
-            print("\t", ignore)
+            print("Total will ignore:")
+            for ignore in ignoreForTotalList:
+                print("\t", ignore)
 
-        return ignoreForTotalList
+            return ignoreForTotalList
+        else:
+            return False
 
     def add_balance(self, account_name, date, balance):
         conn = sqlite3.connect(self.db_file)
@@ -163,15 +203,16 @@ class FinanceModel:
             for date, balance in data.items():
 
                 #calculate the total of everything minus accounts in the ignore list
-                if account_name not in self.ignoreForTotalList:
-                    totalAccount = "total"
-                    if totalAccount not in total:
-                        total[totalAccount] = {}
-    
-                    if date not in total[totalAccount]:
-                        total[totalAccount][date] = balance
-                    else:
-                        total[totalAccount][date] += balance
+                if self.ignoreForTotalList:
+                    if account_name not in self.ignoreForTotalList:
+                        totalAccount = "total"
+                        if totalAccount not in total:
+                            total[totalAccount] = {}
+        
+                        if date not in total[totalAccount]:
+                            total[totalAccount][date] = balance
+                        else:
+                            total[totalAccount][date] += balance
                 
                 #calculate overall net worth with no exclusions
                 netWorthAccount = "net worth"
@@ -184,63 +225,96 @@ class FinanceModel:
                     net_worth[netWorthAccount][date] += balance
 
                 #calculate the total of all operating accounts
-                if account_name in self.operatingList:
-                    operatingAccount = "operating"
-                    if operatingAccount not in operating:
-                        operating[operatingAccount] = {}
+                if self.operatingList:
+                    if account_name in self.operatingList:
+                        operatingAccount = "operating"
+                        if operatingAccount not in operating:
+                            operating[operatingAccount] = {}
 
-                    if date not in operating[operatingAccount]:
-                        operating[operatingAccount][date] = balance
-                    else:
-                        operating[operatingAccount][date] += balance
+                        if date not in operating[operatingAccount]:
+                            operating[operatingAccount][date] = balance
+                        else:
+                            operating[operatingAccount][date] += balance
 
                 #calculate the total of all investing accounts
-                if account_name in self.investingList:
-                    investingAccount = "investing"
-                    if investingAccount not in investing:
-                        investing[investingAccount] = {}
+                if self.investingList:
+                    if account_name in self.investingList:
+                        investingAccount = "investing"
+                        if investingAccount not in investing:
+                            investing[investingAccount] = {}
 
-                    if date not in investing[investingAccount]:
-                        investing[investingAccount][date] = balance
-                    else:
-                        investing[investingAccount][date] += balance
+                        if date not in investing[investingAccount]:
+                            investing[investingAccount][date] = balance
+                        else:
+                            investing[investingAccount][date] += balance
 
                 #calculate the total of all crypto accounts
-                if account_name in self.cryptoList:
-                    cryptoAccount = "crypto"
-                    if cryptoAccount not in crypto:
-                        crypto[cryptoAccount] = {}
+                if self.cryptoList:
+                    if account_name in self.cryptoList:
+                        cryptoAccount = "crypto"
+                        if cryptoAccount not in crypto:
+                            crypto[cryptoAccount] = {}
 
-                    if date not in crypto[cryptoAccount]:
-                        crypto[cryptoAccount][date] = balance
-                    else:
-                        crypto[cryptoAccount][date] += balance
+                        if date not in crypto[cryptoAccount]:
+                            crypto[cryptoAccount][date] = balance
+                        else:
+                            crypto[cryptoAccount][date] += balance
 
-        # Sort the net worth dictionary by date
-        for account_name in net_worth:
-            net_worth[account_name] = dict(sorted(net_worth[account_name].items()))
+                #calculate the total of all equity accounts
+                if self.equityList:
+                    if account_name in self.equityList:
+                        equityAccount = "equity"
+                        if equityAccount not in equity:
+                            equity[equityAccount] = {}
 
-        #sort the total dictionary by date
-        for account_name in total:
-            total[account_name] = dict(sorted(total[account_name].items()))
+                        if date not in equity[equityAccount]:
+                            equity[equityAccount][date] = balance
+                        else:
+                            equity[equityAccount][date] += balance
 
-        #sort the operating dictionary by date
-        for account_name in operating:
-            operating[account_name] = dict(sorted(operating[account_name].items()))
 
-        #sort the investing dictionary by date
-        for account_name in investing:
-            investing[account_name] = dict(sorted(investing[account_name].items()))
+        if equity:
 
-        #sort the crypto dictionary by date
-        for account_name in crypto:
-            crypto[account_name] = dict(sorted(crypto[account_name].items()))
+            #sort the equity dictionary by date
+            for account_name in equity:
+                equity[account_name] = dict(sorted(equity[account_name].items()))
 
-        account_data.update(net_worth)
-        account_data.update(total)
-        account_data.update(operating)
-        account_data.update(investing)
-        account_data.update(crypto)
+            account_data.update(equity)
+
+        if net_worth:
+            # Sort the net worth dictionary by date
+            for account_name in net_worth:
+                net_worth[account_name] = dict(sorted(net_worth[account_name].items()))
+
+            account_data.update(net_worth)
+        
+        if total:
+            #sort the total dictionary by date
+            for account_name in total:
+                total[account_name] = dict(sorted(total[account_name].items()))
+
+            account_data.update(total)
+
+        if operating:
+            #sort the operating dictionary by date
+            for account_name in operating:
+                operating[account_name] = dict(sorted(operating[account_name].items()))
+
+            account_data.update(operating)
+
+        if investing:
+            #sort the investing dictionary by date
+            for account_name in investing:
+                investing[account_name] = dict(sorted(investing[account_name].items()))
+
+            account_data.update(investing)
+        
+        if crypto:
+            #sort the crypto dictionary by date
+            for account_name in crypto:
+                crypto[account_name] = dict(sorted(crypto[account_name].items()))
+
+            account_data.update(crypto)
 
         return account_data
 
