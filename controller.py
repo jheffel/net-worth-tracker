@@ -24,6 +24,9 @@ class FinanceController:
         if self.model.cryptoList:
             self.plot_crypto_pie_chart()
 
+        if self.model.equityList:
+            self.plot_equity_pie_chart()
+
     def update_checkboxes(self):
         account_data = self.model.load_data()
 
@@ -86,10 +89,6 @@ class FinanceController:
 
         # Refresh the graph after toggling checkboxes
         self.plot_net_worth()
-
-
-
-
 
     def plot_crypto_pie_chart(self, *args):
         """Plots a pie chart of the crypto accounts."""
@@ -172,6 +171,33 @@ class FinanceController:
         ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         ax.set_title("Investment Accounts Distribution")
         self.view.display_investing_graph(fig)
+
+        plt.close(fig)
+
+    def plot_equity_pie_chart(self, *args):
+        """Plots a pie chart of the equity accounts."""
+
+        account_balances = {}
+
+        account_data = self.model.load_data()
+        for account in self.model.equityList:
+            if account in account_data:
+                account_balances[account] = list(account_data[account].values())[-1]
+
+        #debug
+        for key, value in account_balances.items():
+            if value < 0:
+                #can't have negative values in pie chart
+                account_balances[key] = value * -1
+            #print(key, value)
+
+        labels = account_balances.keys()
+        sizes = account_balances.values()
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')
+        ax.set_title("Equity Accounts Distribution")
+        self.view.display_equity_graph(fig)
 
         plt.close(fig)
 

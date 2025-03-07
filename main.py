@@ -1,11 +1,10 @@
-import tkinter as tk
-#from view import FinanceView
 from controller import FinanceController
 
-
+import tkinter
 
 # Run the application
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = FinanceController(root)
-    root.mainloop()
+
+    window = tkinter.Tk()
+    app = FinanceController(window)
+    window.mainloop()

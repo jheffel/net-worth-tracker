@@ -1,19 +1,19 @@
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
+from ttkthemes import ThemedTk 
 
 
 class FinanceView:
     
-
-    
     def __init__(self, root, controller):
         self.root = root
+        #root.configure(bg='black')
         self.controller = controller
-        self.root.title("Finance Tracker")
+        self.root.title("Net Worth Tracker")
         
         # Create layout
         self.frame = tk.Frame(self.root)
+        #self.frame.background = 'black'
         self.frame.pack(fill=tk.BOTH, expand=True)
 
         # Allow resizing of rows and columns in the main frame
@@ -24,14 +24,13 @@ class FinanceView:
         self.frame.grid_columnconfigure(1, weight=1)
 
 
-
-
         ## top left panel for import and time filter
         #self.top_left_frame = tk.Frame(self.frame)
         #self.top_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         # Left panel for account selection
         self.account_frame = tk.Frame(self.frame)
+        #self.account_frame.configure(bg='black')
         self.account_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # Create a canvas and a scrollbar for the account subframe
@@ -63,6 +62,9 @@ class FinanceView:
         # Bottom Left Panel
         self.bottom_left_frame = tk.Frame(self.frame)
         self.bottom_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        # Ensure the bottom left frame resizes properly
+        self.bottom_left_frame.grid_rowconfigure(0, weight=1)
+        self.bottom_left_frame.grid_columnconfigure(0, weight=1)
 
         #Bottom Right Panel
         self.overview_frame = tk.Frame(self.frame)
@@ -90,6 +92,10 @@ class FinanceView:
         self.crypto_frame = tk.Frame(self.overview_frame)
         self.crypto_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
+        #equity pie chart Panel
+        self.equity_frame = tk.Frame(self.bottom_left_frame)
+        self.equity_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
         # Import ODS Button
         self.import_button = tk.Button(self.account_frame, text="Import ODS", command=self.controller.import_from_ods)
         self.import_button.grid(row=0, column=0, pady=5)
@@ -107,8 +113,8 @@ class FinanceView:
         self.toggle_button.grid(row=3, column=0, pady=5)
 
         # Add a label
-        self.label = tk.Label(self.bottom_left_frame, text="Account Overview")
-        self.label.grid(row=0, column=0, pady=5)
+        #self.label = tk.Label(self.bottom_left_frame, text="Account Overview")
+        #self.label.grid(row=0, column=0, pady=5)
 
         # Account checkboxes
         self.account_check_vars = {}
@@ -129,6 +135,7 @@ class FinanceView:
 
     def display_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
+        fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
         for widget in self.graph_frame.winfo_children():
             widget.destroy()
         canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
@@ -142,14 +149,12 @@ class FinanceView:
 
     def display_investing_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI with a transparent background."""
+        fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
         for widget in self.investing_frame.winfo_children():
             widget.destroy()
         canvas = FigureCanvasTkAgg(fig, master=self.investing_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Set the background color of the canvas to be transparent
-        # canvas.get_tk_widget().configure(bg='systemTransparent')
 
         # Resizable canvas
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
@@ -159,6 +164,7 @@ class FinanceView:
 
     def display_crypto_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
+        fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
         for widget in self.crypto_frame.winfo_children():
             widget.destroy()
         canvas = FigureCanvasTkAgg(fig, master=self.crypto_frame)
@@ -172,6 +178,7 @@ class FinanceView:
 
     def display_operating_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
+        fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
         for widget in self.operating_frame.winfo_children():
             widget.destroy()
         canvas = FigureCanvasTkAgg(fig, master=self.operating_frame)
@@ -182,3 +189,20 @@ class FinanceView:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
         self.operating_frame.grid_rowconfigure(0, weight=1)
         self.operating_frame.grid_columnconfigure(0, weight=1)
+
+    def display_equity_graph(self, fig):
+        """Displays the Matplotlib graph inside the Tkinter GUI."""
+        fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
+        for widget in self.equity_frame.winfo_children():
+            widget.destroy()
+        canvas = FigureCanvasTkAgg(fig, master=self.equity_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Resizable canvas
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.equity_frame.grid_rowconfigure(0, weight=1)
+        self.equity_frame.grid_columnconfigure(0, weight=1)
+
+        # Ensure the canvas resizes properly
+        self.equity_frame.bind("<Configure>", lambda event: canvas.get_tk_widget().configure(width=event.width, height=event.height))
