@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from ttkthemes import ThemedTk 
 
@@ -12,31 +13,35 @@ class FinanceView:
         self.root.title("Net Worth Tracker")
         
         # Create layout
-        self.frame = tk.Frame(self.root)
-        #self.frame.background = 'black'
-        self.frame.pack(fill=tk.BOTH, expand=True)
+        self.panedwindow = ttk.Panedwindow(self.root, orient=tk.VERTICAL)
+        self.panedwindow.pack(fill=tk.BOTH, expand=True)
 
-        # Allow resizing of rows and columns in the main frame
-        self.frame.grid_rowconfigure(0, weight=1)
-        self.frame.grid_rowconfigure(1, weight=1)
-        self.frame.grid_rowconfigure(2, weight=1)
-        self.frame.grid_columnconfigure(0, weight=1)
-        self.frame.grid_columnconfigure(1, weight=1)
+        #top frame
+        self.frame = ttk.Frame(self.panedwindow)
 
+        #top paned window
+        self.panedTopWindow = ttk.Panedwindow(self.frame, orient=tk.HORIZONTAL)
+        self.panedTopWindow.pack(fill=tk.BOTH, expand=True)
 
-        ## top left panel for import and time filter
-        #self.top_left_frame = tk.Frame(self.frame)
-        #self.top_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        #bottom frame
+        self.frameBottom = ttk.Frame(self.panedwindow)
+        self.frameBottom.grid_rowconfigure(0, weight=1)
+        self.frameBottom.grid_columnconfigure(0, weight=1)
+        self.frameBottom.grid_columnconfigure(1, weight=1)
+        self.frameBottom.grid_columnconfigure(2, weight=1)
+        self.frameBottom.grid_columnconfigure(3, weight=1)
+        
+
 
         # Left panel for account selection
-        self.account_frame = tk.Frame(self.frame)
-        #self.account_frame.configure(bg='black')
+        self.account_frame = ttk.Frame(self.panedTopWindow)
+
         self.account_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # Create a canvas and a scrollbar for the account subframe
         self.account_canvas = tk.Canvas(self.account_frame)
-        self.account_scrollbar = tk.Scrollbar(self.account_frame, orient="vertical", command=self.account_canvas.yview)
-        self.account_subframe = tk.Frame(self.account_canvas)
+        self.account_scrollbar = ttk.Scrollbar(self.account_frame, orient="vertical", command=self.account_canvas.yview)
+        self.account_subframe = ttk.Frame(self.account_canvas)
 
         self.account_subframe.bind(
             "<Configure>",
@@ -55,73 +60,78 @@ class FinanceView:
         self.account_frame.grid_rowconfigure(5, weight=1)
         self.account_frame.grid_columnconfigure(0, weight=1)
 
-        # Right panel for graph
-        self.graph_frame = tk.Frame(self.frame)
-        self.graph_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-
-        # Bottom Left Panel
-        self.bottom_left_frame = tk.Frame(self.frame)
-        self.bottom_left_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-        # Ensure the bottom left frame resizes properly
-        self.bottom_left_frame.grid_rowconfigure(0, weight=1)
-        self.bottom_left_frame.grid_columnconfigure(0, weight=1)
-
-        #Bottom Right Panel
-        self.overview_frame = tk.Frame(self.frame)
-        self.overview_frame.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
-        self.overview_frame.grid_rowconfigure(0, weight=1)
-        self.overview_frame.grid_columnconfigure(0, weight=1)
-        self.overview_frame.grid_columnconfigure(1, weight=1)
-        self.overview_frame.grid_columnconfigure(2, weight=1)
-
-        # Set the row height to take up 20% of the window
-        #self.frame.grid_rowconfigure(1, weight=1, minsize=int(self.root.winfo_screenheight() * 0.2))
-
-        # Set the row height to take up 80% of the window
-        #self.frame.grid_rowconfigure(0, weight=1, minsize=int(self.root.winfo_screenheight() * 0.8))
-
-        #operating pie chart Panel
-        self.operating_frame = tk.Frame(self.overview_frame)
-        self.operating_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-
-        #investing pie chart Panel
-        self.investing_frame = tk.Frame(self.overview_frame)
-        self.investing_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-
-        #crypto pie chart Panel
-        self.crypto_frame = tk.Frame(self.overview_frame)
-        self.crypto_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
-
-        #equity pie chart Panel
-        self.equity_frame = tk.Frame(self.bottom_left_frame)
-        self.equity_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-
-        # Import ODS Button
-        self.import_button = tk.Button(self.account_frame, text="Import ODS", command=self.controller.import_from_ods)
-        self.import_button.grid(row=0, column=0, pady=5)
-
-
         # Time filter dropdown
         self.time_filter_var = tk.StringVar(value="All Data")
         self.time_filter_options = ["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month"]
-        tk.Label(self.account_frame, text="Select Timeframe:").grid(row=1, column=0, pady=5)
-        self.time_filter_menu = tk.OptionMenu(self.account_frame, self.time_filter_var, *self.time_filter_options, command=self.controller.plot_net_worth)
+        ttk.Label(self.account_frame, text="Select Timeframe:").grid(row=1, column=0, pady=5)
+        self.time_filter_menu = ttk.OptionMenu(self.account_frame, self.time_filter_var, *self.time_filter_options, command=self.controller.plot_net_worth)
         self.time_filter_menu.grid(row=2, column=0, pady=5)
 
         # "Check/Uncheck All" Button
         self.toggle_button = tk.Button(self.account_frame, text="Check/Uncheck All", command=self.controller.toggle_all_accounts)
         self.toggle_button.grid(row=3, column=0, pady=5)
 
-        # Add a label
-        #self.label = tk.Label(self.bottom_left_frame, text="Account Overview")
-        #self.label.grid(row=0, column=0, pady=5)
+        # Import ODS Button
+        self.import_button = ttk.Button(self.account_frame, text="Import ODS", command=self.controller.import_from_ods)
+        self.import_button.grid(row=0, column=0, pady=5)
+
 
         # Account checkboxes
         self.account_check_vars = {}
 
-        # Resizing behavior
-        self.frame.grid_rowconfigure(0, weight=1)
-        self.frame.grid_columnconfigure(1, weight=1)
+
+
+
+
+
+        # Right panel for graph
+        self.graph_frame = ttk.Frame(self.panedTopWindow)
+        #self.graph_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+
+
+
+
+
+
+        #Bottom panel for pie charts
+        self.overview_frame = ttk.Frame(self.frameBottom)
+        self.overview_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.overview_frame.grid_rowconfigure(0, weight=1)
+        self.overview_frame.grid_columnconfigure(0, weight=1)
+        self.overview_frame.grid_columnconfigure(1, weight=1)
+        self.overview_frame.grid_columnconfigure(2, weight=1)
+        self.overview_frame.grid_columnconfigure(3, weight=1)
+        
+
+
+
+        #operating pie chart Panel
+        self.operating_frame = ttk.Frame(self.overview_frame)
+        self.operating_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        #investing pie chart Panel
+        self.investing_frame = ttk.Frame(self.overview_frame)
+        self.investing_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+        #crypto pie chart Panel
+        self.crypto_frame = ttk.Frame(self.overview_frame)
+        self.crypto_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+        #equity pie chart Panel
+        self.equity_frame = ttk.Frame(self.overview_frame)
+        self.equity_frame.grid(row=0, column=3, padx=10, pady=10, sticky="nsew")
+
+
+
+        # Add the frames to the paned windows
+        self.panedTopWindow.add(self.account_frame)
+        self.panedTopWindow.add(self.graph_frame)
+        
+        self.panedwindow.add(self.frame)
+        self.panedwindow.add(self.frameBottom)
+
+
 
     def update_account_checkboxes(self, accounts):
         """Updates the account checkboxes dynamically."""
@@ -131,7 +141,7 @@ class FinanceView:
         for idx, account in enumerate(accounts):
             var = tk.BooleanVar(value=True)
             self.account_check_vars[account] = var
-            tk.Checkbutton(self.account_subframe, text=account, variable=var, command=self.controller.plot_net_worth).grid(row=5 + idx, column=0, sticky="w")
+            ttk.Checkbutton(self.account_subframe, text=account, variable=var, command=self.controller.plot_net_worth).grid(row=5 + idx, column=0, sticky="w")
 
     def display_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
@@ -142,11 +152,6 @@ class FinanceView:
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Resizable canvas
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
-        self.graph_frame.grid_rowconfigure(0, weight=1)
-        self.graph_frame.grid_columnconfigure(0, weight=1)
-
     def display_investing_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI with a transparent background."""
         fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
@@ -155,12 +160,6 @@ class FinanceView:
         canvas = FigureCanvasTkAgg(fig, master=self.investing_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Resizable canvas
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
-        self.investing_frame.grid_rowconfigure(0, weight=1)
-        self.investing_frame.grid_columnconfigure(0, weight=1)
-
 
     def display_crypto_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
@@ -171,11 +170,6 @@ class FinanceView:
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Resizable canvas
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
-        self.crypto_frame.grid_rowconfigure(0, weight=1)
-        self.crypto_frame.grid_columnconfigure(0, weight=1)
-
     def display_operating_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
         fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
@@ -185,11 +179,6 @@ class FinanceView:
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Resizable canvas
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure canvas is resizable
-        self.operating_frame.grid_rowconfigure(0, weight=1)
-        self.operating_frame.grid_columnconfigure(0, weight=1)
-
     def display_equity_graph(self, fig):
         """Displays the Matplotlib graph inside the Tkinter GUI."""
         fig.patch.set_facecolor('darkgrey')  # Set the background color of the figure
@@ -198,11 +187,3 @@ class FinanceView:
         canvas = FigureCanvasTkAgg(fig, master=self.equity_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        # Resizable canvas
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self.equity_frame.grid_rowconfigure(0, weight=1)
-        self.equity_frame.grid_columnconfigure(0, weight=1)
-
-        # Ensure the canvas resizes properly
-        self.equity_frame.bind("<Configure>", lambda event: canvas.get_tk_widget().configure(width=event.width, height=event.height))
