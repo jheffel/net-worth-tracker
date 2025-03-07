@@ -25,7 +25,7 @@ Net Worth Tracker is a simple application to help you track your net worth over 
     ```bash
     python main.py
     ```
-
+3. click the "Import ODS" button to load the test data at [example data](example_data/example_data.ods)
 ## Config
 
 Text files in the config folder allow you to designate desired accounts into some different categories. They are populated by default for the test data, modify them with your own accounts as desired.  Removing any of the .txt's in the config folder will cause them not to be calculated or displayed in the app. They include:
