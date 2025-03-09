@@ -62,7 +62,7 @@ class FinanceView:
 
         # Time filter dropdown
         self.time_filter_var = tk.StringVar(value="All Data")
-        self.time_filter_options = ["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month"]
+        self.time_filter_options = ["All Data", "All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month"]
         ttk.Label(self.account_frame, text="Select Timeframe:").grid(row=1, column=0, pady=5)
         self.time_filter_menu = ttk.OptionMenu(self.account_frame, self.time_filter_var, *self.time_filter_options, command=self.controller.plot_net_worth)
         self.time_filter_menu.grid(row=2, column=0, pady=5)
