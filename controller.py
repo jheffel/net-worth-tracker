@@ -1,5 +1,5 @@
 import pandas as pd
-from tkinter import filedialog, messagebox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox, QMainWindow
 from datetime import datetime, timedelta
 import mplcursors  # Import for interactive tooltips
 from model import FinanceModel
@@ -8,10 +8,12 @@ from view import FinanceView
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-class FinanceController:
-    def __init__(self, root):
+class FinanceController(QMainWindow):
+    def __init__(self):
+        super().__init__()  # Call the superclass's __init__ method
         self.model = FinanceModel()
-        self.view = FinanceView(root, self)
+        self.view = FinanceView(self)
+        self.setCentralWidget(self.view)
         self.update_checkboxes()
         self.plot_net_worth()
 
@@ -29,12 +31,11 @@ class FinanceController:
 
     def update_checkboxes(self):
         account_data = self.model.load_data()
-
         self.view.update_account_checkboxes(account_data.keys())
 
     def import_from_ods(self):
         """Imports financial data from a multi-sheet ODS file into the database."""
-        ods_file = filedialog.askopenfilename(filetypes=[("ODS files", "*.ods")])
+        ods_file, _ = QFileDialog.getOpenFileName(self, "Open ODS File", "", "ODS files (*.ods)")
         if not ods_file:
             return  
 
@@ -69,127 +70,94 @@ class FinanceController:
                     except ValueError:
                         print(f"Invalid date or balance in row: {row}")
 
-            messagebox.showinfo("Success", "Data successfully imported from ODS!")
+            QMessageBox.information(self, "Success", "Data successfully imported from ODS!")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error importing ODS: {e}")
+            QMessageBox.critical(self, "Error", f"Error importing ODS: {e}")
 
-        # 🔹 Update checkboxes after importing data
+        # Update checkboxes after importing data
         self.update_checkboxes()
         self.plot_net_worth()
 
-
-
-
     def toggle_all_accounts(self):
         """Toggles all account checkboxes between checked and unchecked."""
-        new_state = not all(var.get() for var in self.view.account_check_vars.values())  
+        new_state = not all(var.isChecked() for var in self.view.account_check_vars.values())  
         for var in self.view.account_check_vars.values():
-            var.set(new_state)
+            var.setChecked(new_state)
 
         # Refresh the graph after toggling checkboxes
         self.plot_net_worth()
 
     def plot_crypto_pie_chart(self, *args):
-        """Plots a pie chart of the crypto accounts."""
-
         account_balances = {}
-
         account_data = self.model.load_data()
         for account in self.model.cryptoList:
             if account in account_data:
                 account_balances[account] = list(account_data[account].values())[-1]
 
-        #debug
         for key, value in account_balances.items():
-            #print(key, value)
             if value < 0:
-                #can't have negative values in pie chart
                 account_balances[key] = value * -1
 
         labels = account_balances.keys()
         sizes = account_balances.values()
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.axis('equal')
         ax.set_title("Crypto Accounts Distribution")
         self.view.display_crypto_graph(fig)
-
         plt.close(fig)
 
-
-
     def plot_operating_pie_chart(self, *args):
-        """Plots a pie chart of the operating accounts."""
-
         account_balances = {}
-
         account_data = self.model.load_data()
         for account in self.model.operatingList:
             if account in account_data:
                 account_balances[account] = list(account_data[account].values())[-1]
 
-        #debug
         for key, value in account_balances.items():
             if value < 0:
-                #can't have negative values in pie chart
                 account_balances[key] = value * -1
-
-            #print(key, value)
 
         labels = account_balances.keys()
         sizes = account_balances.values()
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.axis('equal')
         ax.set_title("Operating Accounts Distribution")
         self.view.display_operating_graph(fig)
-
         plt.close(fig)
 
     def plot_investment_pie_chart(self, *args):
-        """Plots a pie chart of the investment accounts."""
-
         account_balances = {}
-
         account_data = self.model.load_data()
         for account in self.model.investingList:
             if account in account_data:
                 account_balances[account] = list(account_data[account].values())[-1]
 
-        #debug
         for key, value in account_balances.items():
             if value < 0:
-                #can't have negative values in pie chart
                 account_balances[key] = value * -1
-            #print(key, value)
 
         labels = account_balances.keys()
         sizes = account_balances.values()
         fig, ax = plt.subplots()
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.axis('equal')
         ax.set_title("Investment Accounts Distribution")
         self.view.display_investing_graph(fig)
-
         plt.close(fig)
 
     def plot_equity_pie_chart(self, *args):
-        """Plots a pie chart of the equity accounts."""
-
         account_balances = {}
-
         account_data = self.model.load_data()
         for account in self.model.equityList:
             if account in account_data:
                 account_balances[account] = list(account_data[account].values())[-1]
 
-        #debug
         for key, value in account_balances.items():
             if value < 0:
-                #can't have negative values in pie chart
                 account_balances[key] = value * -1
-            #print(key, value)
 
         labels = account_balances.keys()
         sizes = account_balances.values()
@@ -198,24 +166,22 @@ class FinanceController:
         ax.axis('equal')
         ax.set_title("Equity Accounts Distribution")
         self.view.display_equity_graph(fig)
-
         plt.close(fig)
 
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
         account_data = self.model.load_data()
         if not account_data:
-            messagebox.showwarning("No Data", "No financial data available to plot.")
+            QMessageBox.warning(self, "No Data", "No financial data available to plot.")
             return
         
-        selected_accounts = [account for account, var in self.view.account_check_vars.items() if var.get()]
+        selected_accounts = [account for account, var in self.view.account_check_vars.items() if var.isChecked()]
         if not selected_accounts:
             selected_accounts = list(account_data.keys())
 
-        timeframe = self.view.time_filter_var.get()
+        timeframe = self.view.time_filter_var.currentText()
         today = datetime.today()
 
-        # Define time filtering
         if timeframe == "Last Year":
             start_date = today - timedelta(days=365)
         elif timeframe == "Last 6 Months":
@@ -227,20 +193,16 @@ class FinanceController:
         else:
             start_date = None  
 
-
-        # Create a figure and axes
         fig, ax = plt.subplots(figsize=(8, 5))
         fig.tight_layout()
 
-        lines = []  # Store line objects for tooltips
+        lines = []
 
         for account in selected_accounts:
             if account in account_data:
                 dates = []
                 balances = []
-                #dates, balances = account_data[account]
                 for date, balance in account_data[account].items():
-
                     dates.append(date)
                     balances.append(balance)
 
@@ -254,7 +216,6 @@ class FinanceController:
                     line, = ax.plot(filtered_dates, filtered_balances, marker='o', linestyle='-', label=account)
                     lines.append(line)  
 
-        # Ensure tooltips work on individual points
         if lines:
             cursor = mplcursors.cursor(lines, hover=True)
             cursor.connect("add", lambda sel: sel.annotation.set_text(
@@ -268,11 +229,5 @@ class FinanceController:
         ax.grid()
         plt.xticks(rotation=45)
 
-
-
-
         self.view.display_graph(fig)
-        
-        # Close the figure to prevent memory issues
         plt.close(fig)
-

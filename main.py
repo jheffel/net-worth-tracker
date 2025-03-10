@@ -1,12 +1,12 @@
 from controller import FinanceController
-
-import tkinter
-from tkinter import ttk  # Normal Tkinter.* widgets are not themed!
-from ttkthemes import ThemedTk
+from PyQt6.QtWidgets import QApplication
+import sys
 
 # Run the application
 if __name__ == "__main__":
-
-    window = ThemedTk(theme="breeze")
-    app = FinanceController(window)
-    window.mainloop()
+    app = QApplication(sys.argv)
+    #app.setStyle("cleanlooks")
+    app.setStyle("Fusion")
+    window = FinanceController()
+    window.show()
+    sys.exit(app.exec())
