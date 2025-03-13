@@ -16,6 +16,10 @@ class FinanceController(QMainWindow):
         self.setCentralWidget(self.view)
         self.update_checkboxes()
         self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
 
         if self.model.investingList:
             self.plot_investment_pie_chart()
@@ -78,6 +82,11 @@ class FinanceController(QMainWindow):
         # Update checkboxes after importing data
         self.update_checkboxes()
         self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
+
 
     def toggle_all_accounts(self):
         """Toggles all account checkboxes between checked and unchecked."""
@@ -87,6 +96,10 @@ class FinanceController(QMainWindow):
 
         # Refresh the graph after toggling checkboxes
         self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
 
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
