@@ -114,6 +114,16 @@ class FinanceView(QWidget):
             widget = self.graph_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.5)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+        
         canvas = FigureCanvas(fig)
         self.graph_layout.addWidget(canvas)
 
@@ -123,6 +133,16 @@ class FinanceView(QWidget):
             widget = self.investing_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.5)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+
         canvas = FigureCanvas(fig)
         self.investing_layout.addWidget(canvas)
 
@@ -132,6 +152,16 @@ class FinanceView(QWidget):
             widget = self.crypto_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.5)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+
         canvas = FigureCanvas(fig)
         self.crypto_layout.addWidget(canvas)
 
@@ -141,6 +171,16 @@ class FinanceView(QWidget):
             widget = self.operating_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.5)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+
         canvas = FigureCanvas(fig)
         self.operating_layout.addWidget(canvas)
 
@@ -150,5 +190,15 @@ class FinanceView(QWidget):
             widget = self.equity_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.5)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+
         canvas = FigureCanvas(fig)
         self.equity_layout.addWidget(canvas)
