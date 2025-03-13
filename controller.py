@@ -14,6 +14,7 @@ class FinanceController(QMainWindow):
         self.model = FinanceModel()
         self.view = FinanceView(self)
         self.setCentralWidget(self.view)
+        self.setWindowTitle("Net Worth Tracker")
         self.update_checkboxes()
         self.plot_net_worth()
         self.plot_crypto_pie_chart()

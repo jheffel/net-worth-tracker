@@ -6,7 +6,6 @@ class FinanceView(QWidget):
     def __init__(self, controller, parent=None):
         super().__init__(parent)
         self.controller = controller
-        self.setWindowTitle("Net Worth Tracker")
 
         # Create top-left and bottom frames with styled panel appearance
         self.topleft = QFrame()
