@@ -103,10 +103,38 @@ class FinanceController(QMainWindow):
 
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
+        date = args[0] if args else datetime.today().date()
+
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y-%m-%d")
+
         account_data = self.model.load_data()
         for account in self.model.cryptoList:
             if account in account_data:
-                account_balances[account] = list(account_data[account].values())[-1]
+                if date in account_data[account]:
+                    account_balances[account] = account_data[account][date]
+                else:
+                    #interpolate
+                    dates = list(account_data[account].keys())
+
+                    balances = list(account_data[account].values())
+                    
+                    for i in range(len(dates) - 1):
+                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+
+                        if isinstance(date, datetime):
+                            date = date.date()
+
+
+                        if prev_date < date < next_date:
+                            prev_balance, next_balance = balances[i], balances[i + 1]
+                            days_diff = (next_date - prev_date).days
+                            balance_diff = next_balance - prev_balance
+                            days_to_target = (date - prev_date).days
+                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                            account_balances[account] = interpolated_balance
+                            break
+
 
         for key, value in account_balances.items():
             if value < 0:
@@ -123,11 +151,40 @@ class FinanceController(QMainWindow):
 
     def plot_operating_pie_chart(self, *args):
         account_balances = {}
+        date = args[0] if args else datetime.today().date()
+
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y-%m-%d")
+
         account_data = self.model.load_data()
         for account in self.model.operatingList:
             if account in account_data:
-                account_balances[account] = list(account_data[account].values())[-1]
+                if date in account_data[account]:
+                    account_balances[account] = account_data[account][date]
+                else:
+                    #interpolate
+                    dates = list(account_data[account].keys())
 
+                    balances = list(account_data[account].values())
+                    
+                    for i in range(len(dates) - 1):
+                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+
+                        if isinstance(date, datetime):
+                            date = date.date()
+
+
+                        if prev_date < date < next_date:
+                            prev_balance, next_balance = balances[i], balances[i + 1]
+                            days_diff = (next_date - prev_date).days
+                            balance_diff = next_balance - prev_balance
+                            days_to_target = (date - prev_date).days
+                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                            account_balances[account] = interpolated_balance
+                            break
+
+
+        
         for key, value in account_balances.items():
             if value < 0:
                 account_balances[key] = value * -1
@@ -143,10 +200,37 @@ class FinanceController(QMainWindow):
 
     def plot_investment_pie_chart(self, *args):
         account_balances = {}
+        date = args[0] if args else datetime.today().date()
+
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y-%m-%d")
         account_data = self.model.load_data()
         for account in self.model.investingList:
             if account in account_data:
-                account_balances[account] = list(account_data[account].values())[-1]
+                if date in account_data[account]:
+                    account_balances[account] = account_data[account][date]
+                else:
+                    #interpolate
+                    dates = list(account_data[account].keys())
+
+                    balances = list(account_data[account].values())
+                    
+                    for i in range(len(dates) - 1):
+                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+
+                        if isinstance(date, datetime):
+                            date = date.date()
+
+
+                        if prev_date < date < next_date:
+                            prev_balance, next_balance = balances[i], balances[i + 1]
+                            days_diff = (next_date - prev_date).days
+                            balance_diff = next_balance - prev_balance
+                            days_to_target = (date - prev_date).days
+                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                            account_balances[account] = interpolated_balance
+                            break
+
 
         for key, value in account_balances.items():
             if value < 0:
@@ -163,10 +247,41 @@ class FinanceController(QMainWindow):
 
     def plot_equity_pie_chart(self, *args):
         account_balances = {}
+        date = args[0] if args else datetime.today().date()
+
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y-%m-%d")
+
         account_data = self.model.load_data()
         for account in self.model.equityList:
             if account in account_data:
-                account_balances[account] = list(account_data[account].values())[-1]
+                if date in account_data[account]:
+                    account_balances[account] = account_data[account][date]
+                else:
+                    #interpolate
+                    dates = list(account_data[account].keys())
+
+                    balances = list(account_data[account].values())
+                    
+                    for i in range(len(dates) - 1):
+                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+
+                        if isinstance(date, datetime):
+                            date = date.date()
+
+
+                        if prev_date < date < next_date:
+                            prev_balance, next_balance = balances[i], balances[i + 1]
+                            days_diff = (next_date - prev_date).days
+                            balance_diff = next_balance - prev_balance
+                            days_to_target = (date - prev_date).days
+                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                            account_balances[account] = interpolated_balance
+                            break
+
+
+
+
 
         for key, value in account_balances.items():
             if value < 0:
@@ -234,6 +349,10 @@ class FinanceController(QMainWindow):
             cursor.connect("add", lambda sel: sel.annotation.set_text(
                 f"{sel.artist.get_label()}\nDate: {mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')}\nBalance: ${sel.target[1]:,.2f}"
             ))
+            cursor.connect("add", lambda sel: self.plot_crypto_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
+            cursor.connect("add", lambda sel: self.plot_operating_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
+            cursor.connect("add", lambda sel: self.plot_investment_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
+            cursor.connect("add", lambda sel: self.plot_equity_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
 
         ax.set_xlabel("Date")
         ax.set_ylabel("Balance ($)")
