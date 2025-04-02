@@ -17,10 +17,6 @@ class FinanceController(QMainWindow):
         self.setWindowTitle("Net Worth Tracker")
         self.update_checkboxes()
         self.plot_net_worth()
-        self.plot_crypto_pie_chart()
-        self.plot_operating_pie_chart()
-        self.plot_investment_pie_chart()
-        self.plot_equity_pie_chart()
 
         if self.model.investingList:
             self.plot_investment_pie_chart()
@@ -97,10 +93,18 @@ class FinanceController(QMainWindow):
 
         # Refresh the graph after toggling checkboxes
         self.plot_net_worth()
-        self.plot_crypto_pie_chart()
-        self.plot_operating_pie_chart()
-        self.plot_investment_pie_chart()
-        self.plot_equity_pie_chart()
+
+        if self.model.investingList:
+            self.plot_investment_pie_chart()
+
+        if self.model.operatingList:
+            self.plot_operating_pie_chart()
+
+        if self.model.cryptoList:
+            self.plot_crypto_pie_chart()
+
+        if self.model.equityList:
+            self.plot_equity_pie_chart()
 
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
@@ -110,45 +114,46 @@ class FinanceController(QMainWindow):
             date = datetime.strptime(date, "%Y-%m-%d")
 
         account_data = self.model.load_data()
-        for account in self.model.cryptoList:
-            if account in account_data:
-                if date in account_data[account]:
-                    account_balances[account] = account_data[account][date]
-                else:
-                    #interpolate
-                    dates = list(account_data[account].keys())
+        if self.model.cryptoList:
+            for account in self.model.cryptoList:
+                if account in account_data:
+                    if date in account_data[account]:
+                        account_balances[account] = account_data[account][date]
+                    else:
+                        #interpolate
+                        dates = list(account_data[account].keys())
 
-                    balances = list(account_data[account].values())
-                    
-                    for i in range(len(dates) - 1):
-                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+                        balances = list(account_data[account].values())
+                        
+                        for i in range(len(dates) - 1):
+                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
 
-                        if isinstance(date, datetime):
-                            date = date.date()
-
-
-                        if prev_date < date < next_date:
-                            prev_balance, next_balance = balances[i], balances[i + 1]
-                            days_diff = (next_date - prev_date).days
-                            balance_diff = next_balance - prev_balance
-                            days_to_target = (date - prev_date).days
-                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                            account_balances[account] = interpolated_balance
-                            break
+                            if isinstance(date, datetime):
+                                date = date.date()
 
 
-        for key, value in account_balances.items():
-            if value < 0:
-                account_balances[key] = value * -1
+                            if prev_date < date < next_date:
+                                prev_balance, next_balance = balances[i], balances[i + 1]
+                                days_diff = (next_date - prev_date).days
+                                balance_diff = next_balance - prev_balance
+                                days_to_target = (date - prev_date).days
+                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                                account_balances[account] = interpolated_balance
+                                break
 
-        labels = account_balances.keys()
-        sizes = account_balances.values()
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')
-        ax.set_title("Crypto Accounts Distribution")
-        self.view.display_crypto_graph(fig)
-        plt.close(fig)
+
+            for key, value in account_balances.items():
+                if value < 0:
+                    account_balances[key] = value * -1
+
+            labels = account_balances.keys()
+            sizes = account_balances.values()
+            fig, ax = plt.subplots()
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            ax.set_title("Crypto Accounts Distribution")
+            self.view.display_crypto_graph(fig)
+            plt.close(fig)
 
     def plot_operating_pie_chart(self, *args):
         account_balances = {}
@@ -158,46 +163,47 @@ class FinanceController(QMainWindow):
             date = datetime.strptime(date, "%Y-%m-%d")
 
         account_data = self.model.load_data()
-        for account in self.model.operatingList:
-            if account in account_data:
-                if date in account_data[account]:
-                    account_balances[account] = account_data[account][date]
-                else:
-                    #interpolate
-                    dates = list(account_data[account].keys())
+        if self.model.operatingList:
+            for account in self.model.operatingList:
+                if account in account_data:
+                    if date in account_data[account]:
+                        account_balances[account] = account_data[account][date]
+                    else:
+                        #interpolate
+                        dates = list(account_data[account].keys())
 
-                    balances = list(account_data[account].values())
-                    
-                    for i in range(len(dates) - 1):
-                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+                        balances = list(account_data[account].values())
+                        
+                        for i in range(len(dates) - 1):
+                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
 
-                        if isinstance(date, datetime):
-                            date = date.date()
-
-
-                        if prev_date < date < next_date:
-                            prev_balance, next_balance = balances[i], balances[i + 1]
-                            days_diff = (next_date - prev_date).days
-                            balance_diff = next_balance - prev_balance
-                            days_to_target = (date - prev_date).days
-                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                            account_balances[account] = interpolated_balance
-                            break
+                            if isinstance(date, datetime):
+                                date = date.date()
 
 
-        
-        for key, value in account_balances.items():
-            if value < 0:
-                account_balances[key] = value * -1
+                            if prev_date < date < next_date:
+                                prev_balance, next_balance = balances[i], balances[i + 1]
+                                days_diff = (next_date - prev_date).days
+                                balance_diff = next_balance - prev_balance
+                                days_to_target = (date - prev_date).days
+                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                                account_balances[account] = interpolated_balance
+                                break
 
-        labels = account_balances.keys()
-        sizes = account_balances.values()
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')
-        ax.set_title("Operating Accounts Distribution")
-        self.view.display_operating_graph(fig)
-        plt.close(fig)
+
+            
+            for key, value in account_balances.items():
+                if value < 0:
+                    account_balances[key] = value * -1
+
+            labels = account_balances.keys()
+            sizes = account_balances.values()
+            fig, ax = plt.subplots()
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            ax.set_title("Operating Accounts Distribution")
+            self.view.display_operating_graph(fig)
+            plt.close(fig)
 
     def plot_investment_pie_chart(self, *args):
         account_balances = {}
@@ -206,45 +212,46 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
         account_data = self.model.load_data()
-        for account in self.model.investingList:
-            if account in account_data:
-                if date in account_data[account]:
-                    account_balances[account] = account_data[account][date]
-                else:
-                    #interpolate
-                    dates = list(account_data[account].keys())
+        if self.model.investingList:
+            for account in self.model.investingList:
+                if account in account_data:
+                    if date in account_data[account]:
+                        account_balances[account] = account_data[account][date]
+                    else:
+                        #interpolate
+                        dates = list(account_data[account].keys())
 
-                    balances = list(account_data[account].values())
-                    
-                    for i in range(len(dates) - 1):
-                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+                        balances = list(account_data[account].values())
+                        
+                        for i in range(len(dates) - 1):
+                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
 
-                        if isinstance(date, datetime):
-                            date = date.date()
-
-
-                        if prev_date < date < next_date:
-                            prev_balance, next_balance = balances[i], balances[i + 1]
-                            days_diff = (next_date - prev_date).days
-                            balance_diff = next_balance - prev_balance
-                            days_to_target = (date - prev_date).days
-                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                            account_balances[account] = interpolated_balance
-                            break
+                            if isinstance(date, datetime):
+                                date = date.date()
 
 
-        for key, value in account_balances.items():
-            if value < 0:
-                account_balances[key] = value * -1
+                            if prev_date < date < next_date:
+                                prev_balance, next_balance = balances[i], balances[i + 1]
+                                days_diff = (next_date - prev_date).days
+                                balance_diff = next_balance - prev_balance
+                                days_to_target = (date - prev_date).days
+                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                                account_balances[account] = interpolated_balance
+                                break
 
-        labels = account_balances.keys()
-        sizes = account_balances.values()
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')
-        ax.set_title("Investment Accounts Distribution")
-        self.view.display_investing_graph(fig)
-        plt.close(fig)
+
+            for key, value in account_balances.items():
+                if value < 0:
+                    account_balances[key] = value * -1
+
+            labels = account_balances.keys()
+            sizes = account_balances.values()
+            fig, ax = plt.subplots()
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            ax.set_title("Investment Accounts Distribution")
+            self.view.display_investing_graph(fig)
+            plt.close(fig)
 
     def plot_equity_pie_chart(self, *args):
         account_balances = {}
@@ -254,48 +261,49 @@ class FinanceController(QMainWindow):
             date = datetime.strptime(date, "%Y-%m-%d")
 
         account_data = self.model.load_data()
-        for account in self.model.equityList:
-            if account in account_data:
-                if date in account_data[account]:
-                    account_balances[account] = account_data[account][date]
-                else:
-                    #interpolate
-                    dates = list(account_data[account].keys())
+        if self.model.equityList:
+            for account in self.model.equityList:
+                if account in account_data:
+                    if date in account_data[account]:
+                        account_balances[account] = account_data[account][date]
+                    else:
+                        #interpolate
+                        dates = list(account_data[account].keys())
 
-                    balances = list(account_data[account].values())
-                    
-                    for i in range(len(dates) - 1):
-                        prev_date, next_date = dates[i].date(), dates[i + 1].date()
+                        balances = list(account_data[account].values())
+                        
+                        for i in range(len(dates) - 1):
+                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
 
-                        if isinstance(date, datetime):
-                            date = date.date()
-
-
-                        if prev_date < date < next_date:
-                            prev_balance, next_balance = balances[i], balances[i + 1]
-                            days_diff = (next_date - prev_date).days
-                            balance_diff = next_balance - prev_balance
-                            days_to_target = (date - prev_date).days
-                            interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                            account_balances[account] = interpolated_balance
-                            break
+                            if isinstance(date, datetime):
+                                date = date.date()
 
 
+                            if prev_date < date < next_date:
+                                prev_balance, next_balance = balances[i], balances[i + 1]
+                                days_diff = (next_date - prev_date).days
+                                balance_diff = next_balance - prev_balance
+                                days_to_target = (date - prev_date).days
+                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                                account_balances[account] = interpolated_balance
+                                break
 
 
 
-        for key, value in account_balances.items():
-            if value < 0:
-                account_balances[key] = value * -1
 
-        labels = account_balances.keys()
-        sizes = account_balances.values()
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')
-        ax.set_title("Equity Accounts Distribution")
-        self.view.display_equity_graph(fig)
-        plt.close(fig)
+
+            for key, value in account_balances.items():
+                if value < 0:
+                    account_balances[key] = value * -1
+
+            labels = account_balances.keys()
+            sizes = account_balances.values()
+            fig, ax = plt.subplots()
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            ax.set_title("Equity Accounts Distribution")
+            self.view.display_equity_graph(fig)
+            plt.close(fig)
 
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
