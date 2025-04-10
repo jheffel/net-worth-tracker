@@ -13,6 +13,10 @@ class FinanceController(QMainWindow):
         super().__init__()  # Call the superclass's __init__ method
         self.model = FinanceModel()
         self.view = FinanceView(self)
+
+        self.txtColor = self.view.txtColor
+        self.txtAlpha = self.view.txtAlpha
+
         self.setCentralWidget(self.view)
         self.setWindowTitle("Net Worth Tracker")
         self.update_checkboxes()
@@ -151,7 +155,7 @@ class FinanceController(QMainWindow):
             fig, ax = plt.subplots()
             ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
-            ax.set_title("Crypto Accounts Distribution")
+            ax.set_title("Crypto Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
             self.view.display_crypto_graph(fig)
             plt.close(fig)
 
@@ -201,7 +205,7 @@ class FinanceController(QMainWindow):
             fig, ax = plt.subplots()
             ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
-            ax.set_title("Operating Accounts Distribution")
+            ax.set_title("Operating Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
             self.view.display_operating_graph(fig)
             plt.close(fig)
 
@@ -249,7 +253,7 @@ class FinanceController(QMainWindow):
             fig, ax = plt.subplots()
             ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
-            ax.set_title("Investment Accounts Distribution")
+            ax.set_title("Investment Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
             self.view.display_investing_graph(fig)
             plt.close(fig)
 
@@ -301,7 +305,8 @@ class FinanceController(QMainWindow):
             fig, ax = plt.subplots()
             ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
-            ax.set_title("Equity Accounts Distribution")
+
+            ax.set_title("Equity Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
             self.view.display_equity_graph(fig)
             plt.close(fig)
 
@@ -363,12 +368,16 @@ class FinanceController(QMainWindow):
             cursor.connect("add", lambda sel: self.plot_investment_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
             cursor.connect("add", lambda sel: self.plot_equity_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
 
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Balance ($)")
-        ax.set_title(f"Account Balances ({timeframe})")
+        ax.set_xlabel("Date", color=self.txtColor, alpha=self.txtAlpha)
+        ax.set_ylabel("Balance ($)", color=self.txtColor, alpha=self.txtAlpha)
+        ax.set_title(f"Account Balances ({timeframe})", color=self.txtColor, alpha=self.txtAlpha)
+        ax.tick_params(axis='x', colors="gray")
+        ax.tick_params(axis='y', colors="gray")
+        ax.xaxis.set_alpha(self.txtAlpha)
+        ax.yaxis.set_alpha(self.txtAlpha)
         ax.legend()
         ax.grid()
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=0)
 
         self.view.display_graph(fig)
         plt.close(fig)

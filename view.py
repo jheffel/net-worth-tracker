@@ -5,6 +5,10 @@ from PyQt6.QtCore import Qt
 class FinanceView(QWidget):
     def __init__(self, controller, parent=None):
         super().__init__(parent)
+
+        self.txtColor = "white"
+        self.txtAlpha = 0.75
+
         self.controller = controller
 
         # Create top-left and bottom frames with styled panel appearance
@@ -117,12 +121,19 @@ class FinanceView(QWidget):
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.5)
+        fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
+
+        for text in fig.texts:
+            text.set_color('white')
+            text.set_alpha(1.0)
+
+
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
+            ax.patch.set_alpha(0.1)
             ax.patch.set_edgecolor('none')
+            ax.grid(color='black', linestyle='-', linewidth=0.5, alpha=0.25)
         
         canvas = FigureCanvas(fig)
         self.graph_layout.addWidget(canvas)
@@ -134,14 +145,19 @@ class FinanceView(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
-        # Set the figure and axes background to transparent
+        # Set the figure and axes background to transparent            
         fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.5)
+        fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
             ax.patch.set_edgecolor('none')
+            
+            for text in ax.texts:
+                text.set_color(self.txtColor)
+                text.set_alpha(self.txtAlpha)
+
 
         canvas = FigureCanvas(fig)
         self.investing_layout.addWidget(canvas)
@@ -155,12 +171,16 @@ class FinanceView(QWidget):
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.5)
+        fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
             ax.patch.set_edgecolor('none')
+
+            for text in ax.texts:
+                text.set_color(self.txtColor)
+                text.set_alpha(self.txtAlpha)
 
         canvas = FigureCanvas(fig)
         self.crypto_layout.addWidget(canvas)
@@ -174,12 +194,16 @@ class FinanceView(QWidget):
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.5)
+        fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
             ax.patch.set_edgecolor('none')
+
+            for text in ax.texts:
+                text.set_color(self.txtColor)
+                text.set_alpha(self.txtAlpha)
 
         canvas = FigureCanvas(fig)
         self.operating_layout.addWidget(canvas)
@@ -193,9 +217,14 @@ class FinanceView(QWidget):
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.5)
+        fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
         for ax in fig.get_axes():
+
+            for text in ax.texts:
+                text.set_color(self.txtColor)
+                text.set_alpha(self.txtAlpha)
+
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
             ax.patch.set_edgecolor('none')
