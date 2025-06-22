@@ -82,6 +82,10 @@ class FinanceView(QWidget):
         self.topleft.setLayout(self.graph_layout)
 
         # Bottom panel for pie charts
+        self.summary_frame = QFrame(self.bottom)
+        self.summary_layout = QVBoxLayout(self.summary_frame)
+        self.bottomLayout.addWidget(self.summary_frame)
+
         self.operating_frame = QFrame(self.bottom)
         self.operating_layout = QVBoxLayout(self.operating_frame)
         self.bottomLayout.addWidget(self.operating_frame)
@@ -231,3 +235,28 @@ class FinanceView(QWidget):
 
         canvas = FigureCanvas(fig)
         self.equity_layout.addWidget(canvas)
+
+
+    def display_summary_graph(self, fig):
+        """Displays the Matplotlib graph inside the PyQt GUI."""
+        for i in reversed(range(self.summary_layout.count())):
+            widget = self.summary_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Set the figure and axes background to transparent
+        fig.patch.set_facecolor('black')
+        fig.patch.set_alpha(0.75)
+        fig.patch.set_edgecolor('none')
+        for ax in fig.get_axes():
+
+            for text in ax.texts:
+                text.set_color(self.txtColor)
+                text.set_alpha(self.txtAlpha)
+
+            ax.patch.set_facecolor('black')
+            ax.patch.set_alpha(0.5)
+            ax.patch.set_edgecolor('none')
+
+        canvas = FigureCanvas(fig)
+        self.summary_layout.addWidget(canvas)

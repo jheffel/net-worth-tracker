@@ -13,6 +13,7 @@ class FinanceModel:
         self.investingList = self.loadInvestingList()
         self.cryptoList = self.loadCryptoList()
         self.equityList = self.loadEquityList()
+        self.summaryList = self.loadSummaryList()
 
         self.db_file = db_file
         
@@ -34,6 +35,26 @@ class FinanceModel:
         ''')
         conn.commit()
         conn.close()
+
+
+    def loadSummaryList(self):
+        
+        fpath = "config/summary.txt"
+        
+        if os.path.exists(fpath):
+            summaryList = []
+            with open(fpath, "r") as file:
+                for line in file:
+                    summaryList.append(line.strip())
+
+            print("Summary accounts:")
+            for summary in summaryList:
+                print("\t", summary)
+
+            return summaryList
+        else:    
+            return False
+
 
     def loadEquityList(self):
         

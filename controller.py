@@ -34,6 +34,9 @@ class FinanceController(QMainWindow):
         if self.model.equityList:
             self.plot_equity_pie_chart()
 
+        if self.model.summaryList:
+            self.plot_summary_pie_chart()
+
     def update_checkboxes(self):
         account_data = self.model.load_data()
         self.view.update_account_checkboxes(account_data.keys())
@@ -87,6 +90,7 @@ class FinanceController(QMainWindow):
         self.plot_operating_pie_chart()
         self.plot_investment_pie_chart()
         self.plot_equity_pie_chart()
+        self.plot_summary_pie_chart()
 
 
     def toggle_all_accounts(self):
@@ -109,6 +113,9 @@ class FinanceController(QMainWindow):
 
         if self.model.equityList:
             self.plot_equity_pie_chart()
+
+        if self.model.summaryList:
+            self.plot_summary_pie_chart()   
 
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
@@ -310,6 +317,66 @@ class FinanceController(QMainWindow):
             self.view.display_equity_graph(fig)
             plt.close(fig)
 
+
+
+    def plot_summary_pie_chart(self, *args):
+        account_balances = {}
+        date = args[0] if args else datetime.today().date()
+
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y-%m-%d")
+
+        account_data = self.model.load_data()
+        if self.model.summaryList:
+            for account in self.model.summaryList:
+                print(account, date)
+                if account in account_data:
+                    #print('yes')
+                    #print(account_data[account])
+                    if date in account_data[account]:
+                        account_balances[account] = account_data[account][date]
+                    else:
+                        #interpolate
+                        dates = list(account_data[account].keys())
+
+                        balances = list(account_data[account].values())
+                        
+                        for i in range(len(dates) - 1):
+                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
+
+                            if isinstance(date, datetime):
+                                date = date.date()
+
+
+                            if prev_date < date < next_date:
+                                prev_balance, next_balance = balances[i], balances[i + 1]
+                                days_diff = (next_date - prev_date).days
+                                balance_diff = next_balance - prev_balance
+                                days_to_target = (date - prev_date).days
+                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
+                                account_balances[account] = interpolated_balance
+                                break
+
+
+
+
+
+            for key, value in account_balances.items():
+                if value < 0:
+                    account_balances[key] = value * -1
+
+            labels = account_balances.keys()
+            sizes = account_balances.values()
+            fig, ax = plt.subplots()
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+
+            ax.set_title("Summary Distribution", color=self.txtColor, alpha=self.txtAlpha)
+            self.view.display_summary_graph(fig)
+            plt.close(fig)
+
+
+
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
         account_data = self.model.load_data()
@@ -367,6 +434,7 @@ class FinanceController(QMainWindow):
             cursor.connect("add", lambda sel: self.plot_operating_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
             cursor.connect("add", lambda sel: self.plot_investment_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
             cursor.connect("add", lambda sel: self.plot_equity_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
+            cursor.connect("add", lambda sel: self.plot_summary_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
 
         ax.set_xlabel("Date", color=self.txtColor, alpha=self.txtAlpha)
         ax.set_ylabel("Balance ($)", color=self.txtColor, alpha=self.txtAlpha)
@@ -379,5 +447,49 @@ class FinanceController(QMainWindow):
         ax.grid()
         plt.xticks(rotation=0)
 
+
+
+        # Calculate amount changed for the selected timeframe
+        if selected_accounts and any(filtered_dates for account in selected_accounts if account in account_data):
+            # Find the earliest and latest date in the filtered data
+            all_dates = []
+            for account in selected_accounts:
+                if account in account_data:
+                    dates = [d for d in account_data[account].keys() if (not start_date or d >= start_date)]
+                    all_dates.extend(dates)
+            if all_dates:
+                min_date = min(all_dates)
+                max_date = max(all_dates)
+                start_total = 0
+                end_total = 0
+                for account in selected_accounts:
+                    if account in account_data:
+                        # Get balance at min_date
+                        start_balance = None
+                        end_balance = None
+                        dates = sorted(account_data[account].keys())
+                        # Find closest date <= min_date for start, and <= max_date for end
+                        for d in dates:
+                            if d <= min_date:
+                                start_balance = account_data[account][d]
+                            if d <= max_date:
+                                end_balance = account_data[account][d]
+                        if start_balance is not None:
+                            start_total += start_balance
+                        if end_balance is not None:
+                            end_total += end_balance
+                amount_changed = end_total - start_total
+                fig.text(
+                    0.01, 0.01,
+                    f"Amount Changed: ${amount_changed:,.2f}   ({min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})",
+                    ha='left', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+                )
+
+
+
+
+
         self.view.display_graph(fig)
         plt.close(fig)
+
+        
