@@ -329,10 +329,7 @@ class FinanceController(QMainWindow):
         account_data = self.model.load_data()
         if self.model.summaryList:
             for account in self.model.summaryList:
-                print(account, date)
                 if account in account_data:
-                    #print('yes')
-                    #print(account_data[account])
                     if date in account_data[account]:
                         account_balances[account] = account_data[account][date]
                     else:
