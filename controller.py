@@ -165,6 +165,8 @@ class FinanceController(QMainWindow):
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
+                if value == 0:
+                    del account_balances[key]
 
             labels = account_balances.keys()
             sizes = account_balances.values()
@@ -223,6 +225,9 @@ class FinanceController(QMainWindow):
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
+                if value == 0:
+                    del account_balances[key]
+
 
             labels = account_balances.keys()
             sizes = account_balances.values()
@@ -281,6 +286,8 @@ class FinanceController(QMainWindow):
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
+                if value == 0:
+                    del account_balances[key]
 
             labels = account_balances.keys()
             sizes = account_balances.values()
@@ -342,6 +349,8 @@ class FinanceController(QMainWindow):
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
+                if value == 0:
+                    del account_balances[key]
 
             labels = account_balances.keys()
             sizes = account_balances.values()
@@ -409,6 +418,8 @@ class FinanceController(QMainWindow):
 
                 if value < 0:
                     account_balances[key] = value * -1
+                if value == 0:
+                    del account_balances[key]
 
             labels = account_balances.keys()
             sizes = account_balances.values()
