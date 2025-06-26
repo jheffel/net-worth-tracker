@@ -162,10 +162,16 @@ class FinanceController(QMainWindow):
             # Sum all account balances for the crypto pie chart
             total_balance = sum(account_balances.values())
 
+            removeZeroKeys = []
+
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
                 if value == 0:
+                    removeZeroKeys.append(key)
+
+            for key in removeZeroKeys:
+                if key in account_balances:        
                     del account_balances[key]
 
             labels = account_balances.keys()
@@ -222,10 +228,16 @@ class FinanceController(QMainWindow):
 
             total_balance = sum(account_balances.values())
             
+            removeZeroKeys = []
+
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
                 if value == 0:
+                    removeZeroKeys.append(key)
+
+            for key in removeZeroKeys:
+                if key in account_balances:        
                     del account_balances[key]
 
 
@@ -283,10 +295,16 @@ class FinanceController(QMainWindow):
 
             total_balance = sum(account_balances.values())
 
+            removeZeroKeys = []
+
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
                 if value == 0:
+                    removeZeroKeys.append(key)
+
+            for key in removeZeroKeys:
+                if key in account_balances:        
                     del account_balances[key]
 
             labels = account_balances.keys()
@@ -346,10 +364,16 @@ class FinanceController(QMainWindow):
 
             total_balance = sum(account_balances.values())
 
+            removeZeroKeys = []
+
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
                 if value == 0:
+                    removeZeroKeys.append(key)
+
+            for key in removeZeroKeys:
+                if key in account_balances:        
                     del account_balances[key]
 
             labels = account_balances.keys()
@@ -411,15 +435,18 @@ class FinanceController(QMainWindow):
             # Sum all account balances for the summary pie chart
             total_balance = sum(account_balances.values())
            
+            removeZeroKeys = []
 
-            # Ensure all values are positive for the pie chart
             for key, value in account_balances.items():
-
-
                 if value < 0:
                     account_balances[key] = value * -1
                 if value == 0:
+                    removeZeroKeys.append(key)
+
+            for key in removeZeroKeys:
+                if key in account_balances:        
                     del account_balances[key]
+
 
             labels = account_balances.keys()
             sizes = account_balances.values()
