@@ -8,6 +8,12 @@ from view import FinanceView
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+
+def autopct_format(pct, allvals):
+    absolute = int(round(pct/100.*sum(allvals)))
+    return f"{pct:.1f}%\n(${absolute:,})"
+
+
 class FinanceController(QMainWindow):
     def __init__(self):
         super().__init__()  # Call the superclass's __init__ method
@@ -153,6 +159,9 @@ class FinanceController(QMainWindow):
                                 break
 
 
+            # Sum all account balances for the crypto pie chart
+            total_balance = sum(account_balances.values())
+
             for key, value in account_balances.items():
                 if value < 0:
                     account_balances[key] = value * -1
@@ -160,9 +169,17 @@ class FinanceController(QMainWindow):
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
             ax.set_title("Crypto Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
+
+            fig.text(
+                0.5, 0.01,
+                f"Balance: ${total_balance:,.2f}",
+                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+            )
+
             self.view.display_crypto_graph(fig)
             plt.close(fig)
 
@@ -201,7 +218,7 @@ class FinanceController(QMainWindow):
                                 account_balances[account] = interpolated_balance
                                 break
 
-
+            total_balance = sum(account_balances.values())
             
             for key, value in account_balances.items():
                 if value < 0:
@@ -210,9 +227,18 @@ class FinanceController(QMainWindow):
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
             ax.axis('equal')
             ax.set_title("Operating Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
+
+            fig.text(
+                0.5, 0.01,
+                f"Balance: ${total_balance:,.2f}",
+                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+            )
+
+
             self.view.display_operating_graph(fig)
             plt.close(fig)
 
@@ -250,6 +276,7 @@ class FinanceController(QMainWindow):
                                 account_balances[account] = interpolated_balance
                                 break
 
+            total_balance = sum(account_balances.values())
 
             for key, value in account_balances.items():
                 if value < 0:
@@ -258,9 +285,17 @@ class FinanceController(QMainWindow):
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
             ax.axis('equal')
             ax.set_title("Investment Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
+
+            fig.text(
+                0.5, 0.01,
+                f"Balance: ${total_balance:,.2f}",
+                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+            )
+
             self.view.display_investing_graph(fig)
             plt.close(fig)
 
@@ -302,6 +337,7 @@ class FinanceController(QMainWindow):
 
 
 
+            total_balance = sum(account_balances.values())
 
             for key, value in account_balances.items():
                 if value < 0:
@@ -310,15 +346,22 @@ class FinanceController(QMainWindow):
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
             ax.axis('equal')
 
             ax.set_title("Equity Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
+
+            fig.text(
+                0.5, 0.01,
+                f"Balance: ${total_balance:,.2f}",
+                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+            )
+
             self.view.display_equity_graph(fig)
             plt.close(fig)
 
-
-
+    
     def plot_summary_pie_chart(self, *args):
         account_balances = {}
         date = args[0] if args else datetime.today().date()
@@ -356,19 +399,33 @@ class FinanceController(QMainWindow):
 
 
 
+            # Sum all account balances for the summary pie chart
+            total_balance = sum(account_balances.values())
+           
 
-
+            # Ensure all values are positive for the pie chart
             for key, value in account_balances.items():
+
+
                 if value < 0:
                     account_balances[key] = value * -1
 
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+
+
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
             ax.axis('equal')
 
             ax.set_title("Summary Distribution", color=self.txtColor, alpha=self.txtAlpha)
+
+            fig.text(
+                0.5, 0.01,
+                f"Balance: ${total_balance:,.2f}",
+                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+            )
+
             self.view.display_summary_graph(fig)
             plt.close(fig)
 
