@@ -65,6 +65,20 @@ class FinanceView(QWidget):
         self.import_button.clicked.connect(self.controller.import_from_ods)
         self.account_layout.addWidget(self.import_button)
 
+
+        # Add a currency selector to the UI
+        self.currency_selector = QComboBox()
+        self.currency_selector.addItems(self.controller.model.available_currencies)
+        self.currency_selector.setCurrentText(self.controller.model.main_currency)
+        self.currency_selector.currentTextChanged.connect(self.controller.model.set_main_currency)
+        currency_label = QLabel("Main Currency:")
+        currency_layout = QHBoxLayout()
+        currency_layout.addWidget(currency_label)
+        currency_layout.addWidget(self.currency_selector)
+        #self.view.layout().insertLayout(0, layout)
+        self.account_layout.addLayout(currency_layout) 
+
+
         # Create a scroll area for the account subframe
         self.scroll_area = QScrollArea(self.account_frame)
         self.scroll_area.setWidgetResizable(True)

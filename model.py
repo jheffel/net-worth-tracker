@@ -20,6 +20,16 @@ class FinanceModel:
         os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
 
         self._initialize_db()
+
+
+        # --- Currency support ---
+        self.available_currencies = ["CAD", "USD", "EUR", "GBP", "JPY"]
+        self.main_currency = "CAD"
+        self.exchange_rates = {"USD": 1.5, "EUR": 1.1, "GBP": 1.3, "JPY": 0.007, "CAD": 1.0}  # Example rates
+        # --- End currency support ---
+
+
+
     
     def _initialize_db(self):
         conn = sqlite3.connect(self.db_file)
@@ -30,7 +40,8 @@ class FinanceModel:
                 account_name TEXT,
                 date TEXT,
                 balance REAL,
-                UNIQUE(account_name, date)
+                currency TEXT,
+                UNIQUE(account_name, date, currency)
             )
         ''')
         conn.commit()
@@ -142,21 +153,49 @@ class FinanceModel:
         else:
             return False
 
-    def add_balance(self, account_name, date, balance):
+    def add_balance(self, account_name, date, balance, currency):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO account_balances (account_name, date, balance)
-            VALUES (?, ?, ?)
-            ON CONFLICT(account_name, date) DO UPDATE SET balance=excluded.balance
-        """, (account_name, date, balance))
+            INSERT INTO account_balances (account_name, date, balance, currency)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(account_name, date, currency) DO UPDATE SET balance=excluded.balance
+        """, (account_name, date, balance, currency))
         conn.commit()
         conn.close()
+
+
+    def set_main_currency(self, currency):
+        self.main_currency = currency
+        self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
+        self.plot_summary_pie_chart()
+
+    def get_account_currency(self, account):
+        # Try to get the currency for an account from the model, fallback to main_currency
+        if hasattr(self.model, 'get_account_currency'):
+            return self.model.get_account_currency(account)
+        if hasattr(self.model, 'account_currency_map'):
+            return self.model.account_currency_map.get(account, self.main_currency)
+        return self.main_currency
+
+    def convert_to_main(self, amount, currency):
+        if currency == self.main_currency:
+            return amount
+        if currency in self.exchange_rates and self.main_currency in self.exchange_rates:
+            usd_amount = amount / self.exchange_rates[currency]  # Convert to USD
+            return usd_amount * self.exchange_rates[self.main_currency]  # Convert to main
+        return amount  # Fallback: no conversion
+
+
 
     def load_data(self):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
-        cursor.execute("SELECT account_name, date, balance FROM account_balances ORDER BY date")
+        cursor.execute("SELECT account_name, date, balance, currency FROM account_balances ORDER BY date")
         data = cursor.fetchall()
         conn.close()
         
@@ -168,18 +207,38 @@ class FinanceModel:
         crypto = {}
         equity = {}
 
-        for account_name, date_str, balance in data:
+        for account_name, date_str, balance, currency in data:
             date = datetime.strptime(date_str, "%Y-%m-%d")
             if account_name not in account_data:
                 account_data[account_name] = {}
+
+            if currency not in account_data[account_name]:
+                account_data[account_name][currency] = {}
+
+            if date not in account_data[account_name][currency]:
+                account_data[account_name][currency][date] = {}
+                
+            # Ensure the currency is in the available currencies
+            if currency not in self.available_currencies:
+                print(f"Warning: Currency '{currency}' for account '{account_name}' on date '{date}' is not in available currencies. .")
+            else:   
+
+                #print("account_name:", account_name)
+                #print("date:", date)
+                #print("balance:", balance)
+                #print("currency:", currency)
+
+                account_data[account_name][currency][date] = balance
             
-            account_data[account_name][date] = balance
+            
 
         #extend all data to current date
-        for account_name in account_data:
-            last_date = max(account_data[account_name].keys())
-            last_balance = account_data[account_name][last_date]
-            account_data[account_name][datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)] = last_balance
+        for currency in self.available_currencies:
+            #print("currency:", currency)
+            for account_name in account_data:
+                last_date = max(account_data[account_name][currency].keys())
+                last_balance = account_data[account_name][currency][last_date]
+                account_data[account_name][currency][datetime.now()] = last_balance
 
         #sort the account data by date
         for account_name in account_data:
