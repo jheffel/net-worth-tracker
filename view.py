@@ -70,7 +70,7 @@ class FinanceView(QWidget):
         self.currency_selector = QComboBox()
         self.currency_selector.addItems(self.controller.model.available_currencies)
         self.currency_selector.setCurrentText(self.controller.model.main_currency)
-        self.currency_selector.currentTextChanged.connect(self.controller.model.set_main_currency)
+        self.currency_selector.currentTextChanged.connect(self.controller.set_main_currency)
         currency_label = QLabel("Main Currency:")
         currency_layout = QHBoxLayout()
         currency_layout.addWidget(currency_label)

@@ -49,7 +49,14 @@ class FinanceController(QMainWindow):
 
 
 
-
+    def set_main_currency(self, currency):
+        self.model.main_currency = currency
+        self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
+        self.plot_summary_pie_chart()
 
 
 
@@ -527,6 +534,11 @@ class FinanceController(QMainWindow):
                     filtered_dates, filtered_balances = dates, balances  
 
                 if filtered_dates:
+                    print(f"Plotting account: {account} with {len(filtered_dates)} data points")
+                    for date in filtered_dates:
+                        print(f"\tDate: {date}, Balance: {account_data[account][date]}")
+                    # Convert dates to matplotlib date format
+                    #filtered_dates = mdates.date2num(filtered_dates)
                     line, = ax.plot(filtered_dates, filtered_balances, marker='o', linestyle='-', label=account)
                     lines.append(line)  
 
