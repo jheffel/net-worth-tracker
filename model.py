@@ -23,9 +23,9 @@ class FinanceModel:
 
 
         # --- Currency support ---
-        self.available_currencies = ["CAD", "USD", "EUR", "GBP", "JPY", "BTC"]
+        self.available_currencies = ["CAD", "USD", "EUR", "GBP", "JPY", "BTC", "ETH"]
         self.main_currency = "CAD"
-        self.exchange_rates = {"USD": 1.0, "EUR": 1.1, "GBP": 1.3, "JPY": 0.007, "CAD": 1.37, "BTC": .0000093}  # Example rates
+        self.exchange_rates = {"USD": 1.0, "EUR": 0.85, "GBP": 0.73, "JPY": 146.05, "CAD": 1.37, "BTC": .0000093, "ETH": 0.00040}  # Example rates
         # --- End currency support ---
 
 
@@ -165,14 +165,7 @@ class FinanceModel:
         conn.close()
 
 
-    def set_main_currency(self, currency):
-        self.main_currency = currency
-        #self.plot_net_worth()
-        #self.plot_crypto_pie_chart()
-        #self.plot_operating_pie_chart()
-        #self.plot_investment_pie_chart()
-        #self.plot_equity_pie_chart()
-        #self.plot_summary_pie_chart()
+
 
     def get_account_currency(self, account):
         # Try to get the currency for an account from the model, fallback to main_currency
@@ -213,10 +206,15 @@ class FinanceModel:
 
         timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
+        invalid_currencies = {}
+
         for account_name, date_str, balance, currency in data:
             # Ensure the currency is in the available currencies
             if currency not in self.available_currencies:
-                print(f"Warning: Currency '{currency}' for account '{account_name}' on date '{date_str}' is not in available currencies. .skipping")
+                if account_name not in invalid_currencies:
+                    invalid_currencies[account_name] = set()
+                invalid_currencies[account_name] = invalid_currencies[account_name].union({currency})
+                
             else:
                 date = datetime.strptime(date_str, "%Y-%m-%d")
                 if account_name not in account_data:
@@ -230,7 +228,10 @@ class FinanceModel:
                     
                 account_data[account_name][currency][date] = balance
             
-            
+        #for account_name, currencies in invalid_currencies.items():
+            #for currency in currencies:
+                #print(f"Warning: Currency '{currency}' for account '{account_name}' is not in available currencies. Skipping.")
+
 
         #extend all data to current date
         for account_name in account_data:
@@ -295,7 +296,7 @@ class FinanceModel:
                     converted_balance = self.convert_to_main(balance, currency)
                     account_data[account_name][currency][date] = converted_balance
 
-        print("Account data after conversion:", account_data)
+        #print("Account data after conversion:", account_data)
 
 
 
@@ -311,7 +312,7 @@ class FinanceModel:
                     newData[account_name][date] += balance
        
         account_data = newData
-        print("\n\n\n\n\n\nAccount data after merging currencies:", account_data)
+        #print("\n\n\n\n\n\nAccount data after merging currencies:", account_data)
 
 
         #calculate the net worth, total, operating, total investing, crypto, and equity
