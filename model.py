@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import os
 import json
+import exchange_rates
 
 
 class FinanceModel:
@@ -20,12 +21,37 @@ class FinanceModel:
         os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
 
         self._initialize_db()
+        self.exchangeRate = exchange_rates.ExchangeRate()
 
 
         # --- Currency support ---
-        self.available_currencies = ["CAD", "USD", "EUR", "GBP", "JPY", "BTC", "ETH"]
+        self.available_currencies = ["CAD",
+                                     "USD",
+                                     "INR",
+                                     "IDR",
+                                     "JPY",
+                                     "TWD",
+                                     "TRY",
+                                     "KRW",
+                                     "SEK",
+                                     "CHF",
+                                     "EUR",
+                                     "HKD",
+                                     "MXN",
+                                     "NZD",
+                                     "SAR",
+                                     "SGD",
+                                     "ZAR",
+                                     "GBP",
+                                     "NOK",
+                                     "PEN",
+                                     "RUB",
+                                     "AUD",
+                                     "BRL",
+                                     "CNY"]
         self.main_currency = "CAD"
-        self.exchange_rates = {"USD": 1.0, "EUR": 0.85, "GBP": 0.73, "JPY": 146.05, "CAD": 1.37, "BTC": .0000093, "ETH": 0.00040}  # Example rates
+        #self.exchange_rates = {"USD": 1.0, "EUR": 0.85, "GBP": 0.73, "JPY": 146.05, "CAD": 1.37, "BTC": .0000093, "ETH": 0.00040}  # Example rates
+
         # --- End currency support ---
 
 
@@ -175,19 +201,47 @@ class FinanceModel:
             return self.model.account_currency_map.get(account, self.main_currency)
         return self.main_currency
 
-    def convert_to_main(self, amount, currency):
+    def convert_to_main(self, date, amount, currency):
+
+        if isinstance(date, datetime):
+            date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            #print(f"date: {date}")
+            date = date.strftime("%Y-%m-%d")
+            #print(f"date_stripped: {date}")
+ 
+        #print(f"Converting {amount} from {currency} to main currency ({self.main_currency}) on date {date}")
+
         if currency == self.main_currency:
             return amount
-        if currency in self.exchange_rates and self.main_currency in self.exchange_rates:
-            #convertedAmount = amount * self.exchange_rates[self.main_currency] / self.exchange_rates[currency]
-            #return convertedAmount
-            usd_amount = amount / self.exchange_rates[currency]  # Convert to USD --- IGNORE ---
-            return usd_amount * self.exchange_rates[self.main_currency]  # Convert to main --- IGNORE ---
-            #main_amount = amount / self.exchange_rates[currency]  # Convert to USD
-            #return main_amount * self.exchange_rates[self.main_currency]  # Convert to main
+        
+        currencytoCAD_rate = False
+        if currency == "CAD":
+            currencytoCAD_rate = 1.0  # No conversion needed if already in CAD
+        else:
+            currencytoCAD_rate = self.exchangeRate.get_nearest_rate(date, currency, "CAD")
+
+        #if currencytoCAD_rate is not None:
+        #    print(f"Exchange rate on {date} from {currency} to CAD: {currencytoCAD_rate}")
+        #else:
+        #    print(f"No rate found for {currency}/CAD on {date}")
+
+        cad_amount = amount * currencytoCAD_rate  # Convert to CAD
+
+        MaintoCAD_rate = False
+        # If the main currency is CAD, we don't need to convert
+        if self.main_currency == "CAD":
+            MaintoCAD_rate = 1.0
+        else:
+            MaintoCAD_rate = self.exchangeRate.get_nearest_rate(date, self.main_currency, "CAD")
+            #if MaintoCAD_rate is not None:
+            #    print(f"Exchange rate on {date} from CAD to {self.main_currency}: {MaintoCAD_rate}")
+            #else:
+            #    print(f"No rate found for CAD/{self.main_currency} on {date}")
+
+
+        return cad_amount / MaintoCAD_rate  # Convert to main
+
         return amount  # Fallback: no conversion
-
-
 
     def load_data(self):
         conn = sqlite3.connect(self.db_file)
@@ -293,7 +347,7 @@ class FinanceModel:
             for currency in account_data[account_name].keys():
                 for date, balance in account_data[account_name][currency].items():
                     #convert the balance to the main currency
-                    converted_balance = self.convert_to_main(balance, currency)
+                    converted_balance = self.convert_to_main(date, balance, currency)
                     account_data[account_name][currency][date] = converted_balance
 
         #print("Account data after conversion:", account_data)
