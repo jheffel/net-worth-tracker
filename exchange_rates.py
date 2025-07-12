@@ -59,4 +59,18 @@ class ExchangeRate:
         conn.close()
         if row:
             return row[0]
+        else:
+            # If no rate found try searching for the next available date
+            cursor.execute('''
+                SELECT rate FROM exchange_rates
+                WHERE date >= ? AND base_currency=? AND target_currency=?
+                ORDER BY date ASC
+                LIMIT 1
+            ''', (date, base_currency, target_currency))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                return row[0]
+        #if no rate found return None
+        print(f"No exchange rate found for {base_currency} to {target_currency} on or around {date}.")
         return None
