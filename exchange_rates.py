@@ -57,6 +57,7 @@ class ExchangeRate:
         ''', (date, base_currency, target_currency))
         row = cursor.fetchone()
         if row:
+            conn.close()
             return row[0]
         else:
             # If no rate found try searching for the next available date
