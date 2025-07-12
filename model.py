@@ -48,9 +48,14 @@ class FinanceModel:
                                      "RUB",
                                      "AUD",
                                      "BRL",
-                                     "CNY"]
+                                     "CNY",
+                                     "BTC",
+                                     "ETH",
+                                     "XRP",
+                                     "BCH",
+                                     "ADA",
+                                     "DOGE"]
         self.main_currency = "CAD"
-        #self.exchange_rates = {"USD": 1.0, "EUR": 0.85, "GBP": 0.73, "JPY": 146.05, "CAD": 1.37, "BTC": .0000093, "ETH": 0.00040}  # Example rates
 
         # --- End currency support ---
 
