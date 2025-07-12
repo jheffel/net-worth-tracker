@@ -2,6 +2,13 @@
 ## Description
 Net Worth Tracker is a simple application to help you track your net worth over time. It allows you to input your financial accounts and calculates your net worth, and "total" based on the provided data.
 
+## Exchange Rate Data
+Exchange rate data was sourced from https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/
+
+https://coinmarketcap.com/currencies/bitcoin/historical-data/
+
+coinmarketcap api for cron job daily rate collection
+
 ## Screenshot
 ![Snap Shot](<images/finance tracker.png>)
 

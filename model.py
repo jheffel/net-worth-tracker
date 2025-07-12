@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import os
 import json
+import exchange_rates
 
 
 class FinanceModel:
@@ -20,6 +21,46 @@ class FinanceModel:
         os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
 
         self._initialize_db()
+        self.exchangeRate = exchange_rates.ExchangeRate()
+
+
+        # --- Currency support ---
+        self.available_currencies = ["CAD",
+                                     "USD",
+                                     "INR",
+                                     "IDR",
+                                     "JPY",
+                                     "TWD",
+                                     "TRY",
+                                     "KRW",
+                                     "SEK",
+                                     "CHF",
+                                     "EUR",
+                                     "HKD",
+                                     "MXN",
+                                     "NZD",
+                                     "SAR",
+                                     "SGD",
+                                     "ZAR",
+                                     "GBP",
+                                     "NOK",
+                                     "PEN",
+                                     "RUB",
+                                     "AUD",
+                                     "BRL",
+                                     "CNY",
+                                     "BTC",
+                                     "ETH",
+                                     "XRP",
+                                     "BCH",
+                                     "ADA",
+                                     "DOGE"]
+        self.main_currency = "CAD"
+
+        # --- End currency support ---
+
+
+
     
     def _initialize_db(self):
         conn = sqlite3.connect(self.db_file)
@@ -30,7 +71,8 @@ class FinanceModel:
                 account_name TEXT,
                 date TEXT,
                 balance REAL,
-                UNIQUE(account_name, date)
+                currency TEXT,
+                UNIQUE(account_name, date, currency)
             )
         ''')
         conn.commit()
@@ -142,21 +184,74 @@ class FinanceModel:
         else:
             return False
 
-    def add_balance(self, account_name, date, balance):
+    def add_balance(self, account_name, date, balance, currency):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO account_balances (account_name, date, balance)
-            VALUES (?, ?, ?)
-            ON CONFLICT(account_name, date) DO UPDATE SET balance=excluded.balance
-        """, (account_name, date, balance))
+            INSERT INTO account_balances (account_name, date, balance, currency)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(account_name, date, currency) DO UPDATE SET balance=excluded.balance
+        """, (account_name, date, balance, currency))
         conn.commit()
         conn.close()
+
+
+
+
+    def get_account_currency(self, account):
+        # Try to get the currency for an account from the model, fallback to main_currency
+        if hasattr(self.model, 'get_account_currency'):
+            return self.model.get_account_currency(account)
+        if hasattr(self.model, 'account_currency_map'):
+            return self.model.account_currency_map.get(account, self.main_currency)
+        return self.main_currency
+
+    def convert_to_main(self, date, amount, currency):
+
+        if isinstance(date, datetime):
+            date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            #print(f"date: {date}")
+            date = date.strftime("%Y-%m-%d")
+            #print(f"date_stripped: {date}")
+ 
+        #print(f"Converting {amount} from {currency} to main currency ({self.main_currency}) on date {date}")
+
+        if currency == self.main_currency:
+            return amount
+        
+        currencytoCAD_rate = False
+        if currency == "CAD":
+            currencytoCAD_rate = 1.0  # No conversion needed if already in CAD
+        else:
+            currencytoCAD_rate = self.exchangeRate.get_nearest_rate(date, currency, "CAD")
+
+        #if currencytoCAD_rate is not None:
+        #    print(f"Exchange rate on {date} from {currency} to CAD: {currencytoCAD_rate}")
+        #else:
+        #    print(f"No rate found for {currency}/CAD on {date}")
+
+        cad_amount = amount * currencytoCAD_rate  # Convert to CAD
+
+        MaintoCAD_rate = False
+        # If the main currency is CAD, we don't need to convert
+        if self.main_currency == "CAD":
+            MaintoCAD_rate = 1.0
+        else:
+            MaintoCAD_rate = self.exchangeRate.get_nearest_rate(date, self.main_currency, "CAD")
+            #if MaintoCAD_rate is not None:
+            #    print(f"Exchange rate on {date} from CAD to {self.main_currency}: {MaintoCAD_rate}")
+            #else:
+            #    print(f"No rate found for CAD/{self.main_currency} on {date}")
+
+
+        return cad_amount / MaintoCAD_rate  # Convert to main
+
+        return amount  # Fallback: no conversion
 
     def load_data(self):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
-        cursor.execute("SELECT account_name, date, balance FROM account_balances ORDER BY date")
+        cursor.execute("SELECT account_name, date, balance, currency FROM account_balances ORDER BY date")
         data = cursor.fetchall()
         conn.close()
         
@@ -168,60 +263,124 @@ class FinanceModel:
         crypto = {}
         equity = {}
 
-        for account_name, date_str, balance in data:
-            date = datetime.strptime(date_str, "%Y-%m-%d")
-            if account_name not in account_data:
-                account_data[account_name] = {}
+        timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        invalid_currencies = {}
+
+        for account_name, date_str, balance, currency in data:
+            # Ensure the currency is in the available currencies
+            if currency not in self.available_currencies:
+                if account_name not in invalid_currencies:
+                    invalid_currencies[account_name] = set()
+                invalid_currencies[account_name] = invalid_currencies[account_name].union({currency})
+                
+            else:
+                date = datetime.strptime(date_str, "%Y-%m-%d")
+                if account_name not in account_data:
+                    account_data[account_name] = {}
+
+                if currency not in account_data[account_name]:
+                    account_data[account_name][currency] = {}
+
+                if date not in account_data[account_name][currency]:
+                    account_data[account_name][currency][date] = {}
+                    
+                account_data[account_name][currency][date] = balance
             
-            account_data[account_name][date] = balance
+        #for account_name, currencies in invalid_currencies.items():
+            #for currency in currencies:
+                #print(f"Warning: Currency '{currency}' for account '{account_name}' is not in available currencies. Skipping.")
+
 
         #extend all data to current date
         for account_name in account_data:
-            last_date = max(account_data[account_name].keys())
-            last_balance = account_data[account_name][last_date]
-            account_data[account_name][datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)] = last_balance
+            for currency in account_data[account_name].keys():
+                last_date = max(account_data[account_name][currency].keys())
+                last_balance = account_data[account_name][currency][last_date]
+                account_data[account_name][currency][timeNow] = last_balance
 
         #sort the account data by date
         for account_name in account_data:
-            account_data[account_name] = dict(sorted(account_data[account_name].items()))
+            for currency in account_data[account_name].keys():
+                account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
+
 
 
         #interpolate all data for all dates available in the data
         all_dates = set()
         for account_name in account_data:
-            all_dates.update(account_data[account_name].keys())
+            for currency in account_data[account_name].keys():
+                all_dates.update(account_data[account_name][currency].keys())
         all_dates = sorted(all_dates)
 
         for account_name in account_data:
-            #print("account name:", account_name)
-            for date in all_dates:
+            for currency in account_data[account_name].keys():
+                for date in all_dates:
+                    if date not in account_data[account_name][currency].keys():
+                        
+                        #check if this is the first recorded date for this account
+                        if date > min(account_data[account_name][currency].keys()):
 
-                #print("date:", date)
+                            previous_date = max(d for d in account_data[account_name][currency] if d < date)
+                            previous_balance = account_data[account_name][currency][previous_date]
 
-                if date not in account_data[account_name].keys():
-                    
-                    #check if this is the first recorded date for this account
-                    if date > min(account_data[account_name].keys()):
+                            #check if this is the last recorded date for this account
+                            #print("date:", date, type(date))
+                            #timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                            #print("time now:", timeNow, type(timeNow))
 
-                        previous_date = max(d for d in account_data[account_name] if d < date)
-                        previous_balance = account_data[account_name][previous_date]
+                            if date < timeNow:
 
-                        #check if this is the last recorded date for this account
-                        if date < datetime.now().replace(hour=0, minute=0, second=0, microsecond=0):
-                            next_date = min(d for d in account_data[account_name] if d > date)
-                            next_balance = account_data[account_name][next_date]
+                                next_date = min(d for d in account_data[account_name][currency] if d > date)
+                                next_balance = account_data[account_name][currency][next_date]
 
-                            #update the account data with the interpolated balance
-                            account_data[account_name][date] = previous_balance + (next_balance - previous_balance) * (date - previous_date).days / (next_date - previous_date).days
+                                #update the account data with the interpolated balance
+                                #print(f"Interpolating balance for {account_name} on {date} in {currency}: previous date {previous_date} with balance {previous_balance}, next date {next_date} with balance {next_balance}")
+
+                                account_data[account_name][currency][date] = previous_balance + (next_balance - previous_balance) * (date - previous_date).days / (next_date - previous_date).days
 
 
         #sort the account data by date
         for account_name in account_data:
-            account_data[account_name] = dict(sorted(account_data[account_name].items()))
+            for currency in account_data[account_name].keys():
+                account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
+            #account_data[account_name] = dict(sorted(account_data[account_name].items()))
+
+
+        #convert currencies to main currency
+        for account_name in account_data:
+            for currency in account_data[account_name].keys():
+                for date, balance in account_data[account_name][currency].items():
+                    #convert the balance to the main currency
+                    converted_balance = self.convert_to_main(date, balance, currency)
+                    account_data[account_name][currency][date] = converted_balance
+
+        #print("Account data after conversion:", account_data)
+
+
+
+        #merge all the currencies in to the main currency
+        newData = {}
+        for account_name in account_data:
+            if account_name not in newData:
+                newData[account_name] = {}
+            for currency in account_data[account_name].keys():
+                for date, balance in account_data[account_name][currency].items():
+                    if date not in newData[account_name]:
+                        newData[account_name][date] = 0
+                    newData[account_name][date] += balance
+       
+        account_data = newData
+        #print("\n\n\n\n\n\nAccount data after merging currencies:", account_data)
+
 
         #calculate the net worth, total, operating, total investing, crypto, and equity
         for account_name, data in account_data.items():
+            #print(f"Processing account: {account_name}")
+            #for currency, data2 in data.items():
+            #print(f"Processing currency: {currency} for account: {account_name}")
             for date, balance in data.items():
+                #print(f"Processing date: {date} with balance: {balance} for account: {account_name} in currency: {currency}")
 
                 #calculate the total of everything minus accounts in the ignore list
                 if self.ignoreForTotalList:

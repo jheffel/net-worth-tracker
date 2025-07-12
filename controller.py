@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-def autopct_format(pct, allvals):
+def autopct_format(pct, allvals, currency):
     absolute = int(round(pct/100.*sum(allvals)))
-    return f"{pct:.1f}%\n(${absolute:,})"
+    return f"{pct:.1f}%\n({currency} {absolute:,})"
 
 
 class FinanceController(QMainWindow):
@@ -25,6 +25,8 @@ class FinanceController(QMainWindow):
 
         self.setCentralWidget(self.view)
         self.setWindowTitle("Net Worth Tracker")
+
+
         self.update_checkboxes()
         self.plot_net_worth()
 
@@ -42,6 +44,22 @@ class FinanceController(QMainWindow):
 
         if self.model.summaryList:
             self.plot_summary_pie_chart()
+
+
+
+
+
+    def set_main_currency(self, currency):
+        self.model.main_currency = currency
+        self.plot_net_worth()
+        self.plot_crypto_pie_chart()
+        self.plot_operating_pie_chart()
+        self.plot_investment_pie_chart()
+        self.plot_equity_pie_chart()
+        self.plot_summary_pie_chart()
+
+
+
 
     def update_checkboxes(self):
         account_data = self.model.load_data()
@@ -64,9 +82,9 @@ class FinanceController(QMainWindow):
                 # Ensure we use the first column for the account name
                 account_name = df.iloc[0, 0] if not df.empty else sheet_name  
 
-                # Ensure only first three columns are used
-                df = df.iloc[:, :3]
-                df.columns = ["account", "date", "balance"]  # Rename columns
+                # Ensure only first four columns are used
+                df = df.iloc[:, :4]
+                df.columns = ["account", "date", "balance", "currency"]  # Rename columns
 
                 for _, row in df.iterrows():
                     try:
@@ -75,11 +93,13 @@ class FinanceController(QMainWindow):
                             continue
 
                         date = str(row["date"].date()).strip()
+                        currency = str(row["currency"]).strip()
                         datetime.strptime(date, "%Y-%m-%d")  # Validate date format
 
                         balance = str(row["balance"]).strip().replace("$", "").replace(",", "")
-                        if balance:
-                            self.model.add_balance(account_name, date, float(balance))
+                        if balance and currency:
+                            self.model.add_balance(account_name, date, float(balance), currency)
+
 
                     except ValueError:
                         print(f"Invalid date or balance in row: {row}")
@@ -177,14 +197,14 @@ class FinanceController(QMainWindow):
             labels = account_balances.keys()
             sizes = account_balances.values()
             fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
             #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
             ax.set_title("Crypto Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
             fig.text(
                 0.5, 0.01,
-                f"Balance: ${total_balance:,.2f}",
+                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
@@ -245,13 +265,13 @@ class FinanceController(QMainWindow):
             sizes = account_balances.values()
             fig, ax = plt.subplots()
             #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
             ax.axis('equal')
             ax.set_title("Operating Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
             fig.text(
                 0.5, 0.01,
-                f"Balance: ${total_balance:,.2f}",
+                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
@@ -311,13 +331,13 @@ class FinanceController(QMainWindow):
             sizes = account_balances.values()
             fig, ax = plt.subplots()
             #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
             ax.axis('equal')
             ax.set_title("Investment Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
             fig.text(
                 0.5, 0.01,
-                f"Balance: ${total_balance:,.2f}",
+                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
@@ -380,14 +400,14 @@ class FinanceController(QMainWindow):
             sizes = account_balances.values()
             fig, ax = plt.subplots()
             #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
             ax.axis('equal')
 
             ax.set_title("Equity Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
             fig.text(
                 0.5, 0.01,
-                f"Balance: ${total_balance:,.2f}",
+                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
@@ -453,14 +473,14 @@ class FinanceController(QMainWindow):
             fig, ax = plt.subplots()
 
 
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes), startangle=90)
+            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
             ax.axis('equal')
 
             ax.set_title("Summary Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
             fig.text(
                 0.5, 0.01,
-                f"Balance: ${total_balance:,.2f}",
+                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
@@ -514,13 +534,18 @@ class FinanceController(QMainWindow):
                     filtered_dates, filtered_balances = dates, balances  
 
                 if filtered_dates:
+                    #print(f"Plotting account: {account} with {len(filtered_dates)} data points")
+                    #for date in filtered_dates:
+                        #print(f"\tDate: {date}, Balance: {account_data[account][date]}")
+                    # Convert dates to matplotlib date format
+                    #filtered_dates = mdates.date2num(filtered_dates)
                     line, = ax.plot(filtered_dates, filtered_balances, marker='o', linestyle='-', label=account)
                     lines.append(line)  
 
         if lines:
             cursor = mplcursors.cursor(lines, hover=True)
             cursor.connect("add", lambda sel: sel.annotation.set_text(
-                f"{sel.artist.get_label()}\nDate: {mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')}\nBalance: ${sel.target[1]:,.2f}"
+                f"{sel.artist.get_label()}\nDate: {mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')}\nBalance: {self.model.main_currency} {sel.target[1]:,.2f}"
             ))
             cursor.connect("add", lambda sel: self.plot_crypto_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
             cursor.connect("add", lambda sel: self.plot_operating_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
@@ -529,7 +554,7 @@ class FinanceController(QMainWindow):
             cursor.connect("add", lambda sel: self.plot_summary_pie_chart(mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')))
 
         ax.set_xlabel("Date", color=self.txtColor, alpha=self.txtAlpha)
-        ax.set_ylabel("Balance ($)", color=self.txtColor, alpha=self.txtAlpha)
+        ax.set_ylabel("Balance ({})".format(self.model.main_currency), color=self.txtColor, alpha=self.txtAlpha)
         ax.set_title(f"Account Balances ({timeframe})", color=self.txtColor, alpha=self.txtAlpha)
         ax.tick_params(axis='x', colors="gray")
         ax.tick_params(axis='y', colors="gray")
@@ -573,7 +598,7 @@ class FinanceController(QMainWindow):
                 amount_changed = end_total - start_total
                 fig.text(
                     0.01, 0.01,
-                    f"Amount Changed: ${amount_changed:,.2f}   ({min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})",
+                    f"Amount Changed: {self.model.main_currency} {amount_changed:,.2f}   ({min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})",
                     ha='left', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
                 )
 
@@ -584,4 +609,3 @@ class FinanceController(QMainWindow):
         self.view.display_graph(fig)
         plt.close(fig)
 
-        
