@@ -4,8 +4,10 @@ Net Worth Tracker is a simple application to help you track your net worth over 
 
 ## Exchange Rate Data
 Exchange rate data was sourced from https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/
-https://www.kaggle.com/datasets/mczielinski/bitcoin-historical-data?resource=download
-https://coinmarketcap.com/currencies/ethereum/historical-data/
+
+https://coinmarketcap.com/currencies/bitcoin/historical-data/
+
+coinmarketcap api for cron job daily rate collection
 
 ## Screenshot
 ![Snap Shot](<images/finance tracker.png>)
