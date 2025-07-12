@@ -56,7 +56,6 @@ class ExchangeRate:
             LIMIT 1
         ''', (date, base_currency, target_currency))
         row = cursor.fetchone()
-        conn.close()
         if row:
             return row[0]
         else:
