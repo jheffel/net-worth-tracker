@@ -40,7 +40,7 @@ def readApi(fname):
 
     print("Fetching data from CoinMarketCap API...")
 
-    with open('data/coinmarketcap_apikey.txt', 'r') as f:
+    with open('{}/data/coinmarketcap_apikey.txt'.format(parent_dir), 'r') as f:
         api_key = f.read().strip()
 
 
@@ -75,7 +75,7 @@ def main():
 
     current_date = datetime.now().strftime('%Y-%m-%d')
     print("Current date:", current_date)
-    fname = 'data/coinmarketcap_response/{}.json'.format(current_date)
+    fname = '{}/data/coinmarketcap_response/{}.json'.format(parent_dir, current_date)
 
     currencies = ['BTC', 'ETH', 'XRP', 'BCH', 'ADA', 'DOGE']
 
@@ -88,7 +88,7 @@ def main():
         readApi(fname)
 
 
-    db = exchange_rates.ExchangeRate()
+    db = exchange_rates.ExchangeRate(parent_dir + "/db/exchange_rates.db")
     passed = True
     #check if we need to add data to DB
     for currency in currencies:
