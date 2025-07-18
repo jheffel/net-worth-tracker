@@ -83,22 +83,45 @@ class FinanceController(QMainWindow):
                 account_name = df.iloc[0, 0] if not df.empty else sheet_name  
 
                 # Ensure only first four columns are used
-                df = df.iloc[:, :4]
-                df.columns = ["account", "date", "balance", "currency"]  # Rename columns
+                df = df.iloc[:, :5]
+
+                print(df.head())  # Debugging: print the first few rows of the DataFrame
+
+                #df.columns = ["account", "date", "balance", "currency", "ticker"]  # Rename columns
+                if df.shape[1] == 5:
+                    df.columns = ["account", "date", "balance", "currency", "ticker"]
+                elif df.shape[1] == 4:
+                    df.columns = ["account", "date", "balance", "currency"]
+                    df["ticker"] = ""  # Add empty ticker column
+                else:
+                    QMessageBox.warning(self, "Warning", f"Sheet '{sheet_name}' has unexpected number of columns ({df.shape[1]}). Skipping.")
+                    continue
+
 
                 for _, row in df.iterrows():
+                    print(f"Processing row:{_} {row}")  # Debugging: print each row being processed
+
                     try:
                         # Skip row if 'date' or 'balance' is missing or invalid
                         if pd.isna(row['date']) or pd.isna(row['balance']):
                             continue
-
+                                
                         date = str(row["date"].date()).strip()
-                        currency = str(row["currency"]).strip()
                         datetime.strptime(date, "%Y-%m-%d")  # Validate date format
+                        print("date {}".format(date))
+
+                        currency = str(row["currency"]).strip()
+                        print("currency: {}".format(currency))
+
+                        ticker = str(row["ticker"]).strip()
+                        print("ticker:{}".format(ticker))
+                        if ticker == "NaN":
+                            ticker = ""
+                        print("ticker:{}".format(ticker))
 
                         balance = str(row["balance"]).strip().replace("$", "").replace(",", "")
                         if balance and currency:
-                            self.model.add_balance(account_name, date, float(balance), currency)
+                            self.model.add_balance(account_name, date, float(balance), currency, ticker)
 
 
                     except ValueError:
