@@ -328,16 +328,17 @@ class FinanceModel:
         all_dates = sorted(all_dates)
 
         #add dates by interval
-        firstDate = min(all_dates)
-        lastDate = max(all_dates)
-        interval = timedelta(days=10)  # Daily interval
-        current_date = firstDate
+        if all_dates:
+            firstDate = min(all_dates)
+            lastDate = max(all_dates)
+            interval = timedelta(days=10)  # Daily interval
+            current_date = firstDate
 
-        while current_date <= lastDate:
-            all_dates.append(current_date)
-            current_date += interval
+            while current_date <= lastDate:
+                all_dates.append(current_date)
+                current_date += interval
 
-        all_dates = sorted(set(all_dates))
+            all_dates = sorted(set(all_dates))
 
 
         for account_name in account_data:
