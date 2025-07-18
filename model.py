@@ -17,7 +17,7 @@ class FinanceModel:
         self.equityList = self.loadEquityList()
         self.summaryList = self.loadSummaryList()
 
-        self.stockList = self.loadStockList()
+        #self.stockList = self.loadStockList()
 
         self.db_file = db_file
         
@@ -27,9 +27,6 @@ class FinanceModel:
         self.exchangeRate = exchange_rates.ExchangeRate()
         self.stock = stocks.stockTicker()
 
-        #handle this more elegantly - load the stock data db
-        #for stock in self.stockList:
-        #    self.stock.populate_stock_data(stock, "2021-01-01")
 
 
         # --- Currency support ---
@@ -87,21 +84,21 @@ class FinanceModel:
         conn.commit()
         conn.close()
 
-    def loadStockList(self):
-        fpath = "config/stock.txt"
-        if os.path.exists(fpath):
-            stockList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    stockList.append(line.strip())
+    # def loadStockList(self):
+    #     fpath = "config/stock.txt"
+    #     if os.path.exists(fpath):
+    #         stockList = []
+    #         with open(fpath, "r") as file:
+    #             for line in file:
+    #                 stockList.append(line.strip())
 
-            print("Stock accounts:")
-            for stock in stockList:
-                print("\t", stock)
+    #         print("Stock accounts:")
+    #         for stock in stockList:
+    #             print("\t", stock)
 
-            return stockList
-        else:
-            return False
+    #         return stockList
+    #     else:
+    #         return False
         
 
     def loadSummaryList(self):
@@ -229,7 +226,7 @@ class FinanceModel:
 #            return self.model.account_currency_map.get(account, self.main_currency)
 #        return self.main_currency
 
-    def convert_to_main(self, date, amount, currency, ticker):
+    def convert_to_main(self, date, amount, currency):
 
         if isinstance(date, datetime):
             date = date.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -252,14 +249,6 @@ class FinanceModel:
         #    print(f"Exchange rate on {date} from {currency} to CAD: {currencytoCAD_rate}")
         #else:
         #    print(f"No rate found for {currency}/CAD on {date}")
-
-        if ticker:
-            # If a ticker is provided, we assume it's a stock or crypto and we need to convert it to its base currency
-            ticker_rate = self.stock.get_nearest_price(date, ticker)
-            if ticker_rate is not None:
-                # Convert the amount using the ticker rate
-                amount = amount * ticker_rate
-                print(f"Converted {amount} from {ticker} to {currency} on {date} using rate {ticker_rate}")
 
 
         cad_amount = amount * currencytoCAD_rate  # Convert to CAD
@@ -360,7 +349,20 @@ class FinanceModel:
                     all_dates.update(account_data[account_name][currency][ticker].keys())
                 #all_dates.update(account_data[account_name][currency].keys())
         all_dates = sorted(all_dates)
-        
+
+        #add dates by interval
+        firstDate = min(all_dates)
+        lastDate = max(all_dates)
+        interval = timedelta(days=10)  # Daily interval
+        current_date = firstDate
+
+        while current_date <= lastDate:
+            all_dates.append(current_date)
+            current_date += interval
+
+        all_dates = sorted(set(all_dates))
+
+
         for account_name in account_data:
             for currency in account_data[account_name].keys():
                 for ticker in account_data[account_name][currency].keys():
@@ -403,8 +405,11 @@ class FinanceModel:
             for currency in account_data[account_name].keys():
                 for ticker in account_data[account_name][currency].keys():
                     for date, balance in account_data[account_name][currency][ticker].items():
+                        #convert the balance to the ticker currency
+                        if ticker:
+                            balance = balance * self.stock.get_nearest_price(date, ticker)
                         #convert the balance to the main currency
-                        converted_balance = self.convert_to_main(date, balance, currency, ticker)
+                        converted_balance = self.convert_to_main(date, balance, currency)
                         account_data[account_name][currency][ticker][date] = converted_balance
 
         #print("Account data after conversion:", account_data)

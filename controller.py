@@ -117,6 +117,8 @@ class FinanceController(QMainWindow):
                         print("ticker:{}".format(ticker))
                         if ticker == "NaN":
                             ticker = ""
+                        if ticker == "nan":
+                            ticker = ""
                         print("ticker:{}".format(ticker))
 
                         balance = str(row["balance"]).strip().replace("$", "").replace(",", "")
@@ -521,7 +523,9 @@ class FinanceController(QMainWindow):
         
         selected_accounts = [account for account, var in self.view.account_check_vars.items() if var.isChecked()]
         if not selected_accounts:
-            selected_accounts = list(account_data.keys())
+            #selected_accounts = list(account_data.keys())
+            self.view.display_graph_empty("No accounts selected.")
+            return            
 
         timeframe = self.view.time_filter_var.currentText()
         today = datetime.today()

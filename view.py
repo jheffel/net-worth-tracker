@@ -125,7 +125,7 @@ class FinanceView(QWidget):
 
         for account in accounts:
             var = QCheckBox(account, self.account_subframe)
-            var.setChecked(True)
+            var.setChecked(False)
             var.stateChanged.connect(self.controller.plot_net_worth)
             self.account_check_vars[account] = var
             self.account_subframe_layout.addWidget(var)
@@ -274,3 +274,14 @@ class FinanceView(QWidget):
 
         canvas = FigureCanvas(fig)
         self.summary_layout.addWidget(canvas)
+
+    def display_graph_empty(self, message):
+        # Remove any existing graph
+        for i in reversed(range(self.graph_layout.count())):
+            widget = self.graph_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+        # Show a label with the message
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.graph_layout.addWidget(label)
