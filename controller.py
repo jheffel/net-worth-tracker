@@ -20,6 +20,8 @@ class FinanceController(QMainWindow):
         self.model = FinanceModel()
         self.view = FinanceView(self)
 
+        self.resize(1920, 1080)  # Set initial window size
+
         self.txtColor = self.view.txtColor
         self.txtAlpha = self.view.txtAlpha
 
@@ -83,22 +85,47 @@ class FinanceController(QMainWindow):
                 account_name = df.iloc[0, 0] if not df.empty else sheet_name  
 
                 # Ensure only first four columns are used
-                df = df.iloc[:, :4]
-                df.columns = ["account", "date", "balance", "currency"]  # Rename columns
+                df = df.iloc[:, :5]
+
+                #print(df.head())  # Debugging: print the first few rows of the DataFrame
+
+                #df.columns = ["account", "date", "balance", "currency", "ticker"]  # Rename columns
+                if df.shape[1] == 5:
+                    df.columns = ["account", "date", "balance", "currency", "ticker"]
+                elif df.shape[1] == 4:
+                    df.columns = ["account", "date", "balance", "currency"]
+                    df["ticker"] = ""  # Add empty ticker column
+                else:
+                    QMessageBox.warning(self, "Warning", f"Sheet '{sheet_name}' has unexpected number of columns ({df.shape[1]}). Skipping.")
+                    continue
+
 
                 for _, row in df.iterrows():
+                    #print(f"Processing row:{_} {row}")  # Debugging: print each row being processed
+
                     try:
                         # Skip row if 'date' or 'balance' is missing or invalid
                         if pd.isna(row['date']) or pd.isna(row['balance']):
                             continue
-
+                                
                         date = str(row["date"].date()).strip()
-                        currency = str(row["currency"]).strip()
                         datetime.strptime(date, "%Y-%m-%d")  # Validate date format
+                        #print("date {}".format(date))
+
+                        currency = str(row["currency"]).strip()
+                        #print("currency: {}".format(currency))
+
+                        ticker = str(row["ticker"]).strip()
+                        #print("ticker:{}".format(ticker))
+                        if ticker == "NaN":
+                            ticker = ""
+                        if ticker == "nan":
+                            ticker = ""
+                        #print("ticker:{}".format(ticker))
 
                         balance = str(row["balance"]).strip().replace("$", "").replace(",", "")
                         if balance and currency:
-                            self.model.add_balance(account_name, date, float(balance), currency)
+                            self.model.add_balance(account_name, date, float(balance), currency, ticker)
 
 
                     except ValueError:
@@ -498,7 +525,9 @@ class FinanceController(QMainWindow):
         
         selected_accounts = [account for account, var in self.view.account_check_vars.items() if var.isChecked()]
         if not selected_accounts:
-            selected_accounts = list(account_data.keys())
+            #selected_accounts = list(account_data.keys())
+            self.view.display_graph_empty("No accounts selected.")
+            return            
 
         timeframe = self.view.time_filter_var.currentText()
         today = datetime.today()

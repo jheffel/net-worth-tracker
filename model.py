@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import os
 import json
 import exchange_rates
+import stocks
 
 
 class FinanceModel:
@@ -16,48 +17,29 @@ class FinanceModel:
         self.equityList = self.loadEquityList()
         self.summaryList = self.loadSummaryList()
 
+        self.available_currencies = self.loadCurrencyList()
+        self.main_currency = "CAD"  # Default main currency
+
+        #self.stockList = self.loadStockList()
+
         self.db_file = db_file
         
         os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
 
         self._initialize_db()
         self.exchangeRate = exchange_rates.ExchangeRate()
+        self.stock = stocks.stockTicker()
 
 
-        # --- Currency support ---
-        self.available_currencies = ["CAD",
-                                     "USD",
-                                     "INR",
-                                     "IDR",
-                                     "JPY",
-                                     "TWD",
-                                     "TRY",
-                                     "KRW",
-                                     "SEK",
-                                     "CHF",
-                                     "EUR",
-                                     "HKD",
-                                     "MXN",
-                                     "NZD",
-                                     "SAR",
-                                     "SGD",
-                                     "ZAR",
-                                     "GBP",
-                                     "NOK",
-                                     "PEN",
-                                     "RUB",
-                                     "AUD",
-                                     "BRL",
-                                     "CNY",
-                                     "BTC",
-                                     "ETH",
-                                     "XRP",
-                                     "BCH",
-                                     "ADA",
-                                     "DOGE"]
-        self.main_currency = "CAD"
-
-        # --- End currency support ---
+    def loadCurrencyList(self):
+        fpath = "config/currency.txt"
+        if os.path.exists(fpath):
+            with open(fpath, "r") as file:
+                currencies = [line.strip() for line in file if line.strip()]
+            print("Available currencies:")
+            for currency in currencies:
+                print("\t", currency)
+            return currencies
 
 
 
@@ -72,12 +54,29 @@ class FinanceModel:
                 date TEXT,
                 balance REAL,
                 currency TEXT,
-                UNIQUE(account_name, date, currency)
+                ticker TEXT,
+                UNIQUE(account_name, date, currency, ticker)
             )
         ''')
         conn.commit()
         conn.close()
 
+    # def loadStockList(self):
+    #     fpath = "config/stock.txt"
+    #     if os.path.exists(fpath):
+    #         stockList = []
+    #         with open(fpath, "r") as file:
+    #             for line in file:
+    #                 stockList.append(line.strip())
+
+    #         print("Stock accounts:")
+    #         for stock in stockList:
+    #             print("\t", stock)
+
+    #         return stockList
+    #     else:
+    #         return False
+        
 
     def loadSummaryList(self):
         
@@ -184,27 +183,25 @@ class FinanceModel:
         else:
             return False
 
-    def add_balance(self, account_name, date, balance, currency):
+    def add_balance(self, account_name, date, balance, currency, ticker):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO account_balances (account_name, date, balance, currency)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(account_name, date, currency) DO UPDATE SET balance=excluded.balance
-        """, (account_name, date, balance, currency))
+            INSERT INTO account_balances (account_name, date, balance, currency, ticker)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(account_name, date, currency, ticker) DO UPDATE SET balance=excluded.balance
+        """, (account_name, date, balance, currency, ticker))
         conn.commit()
         conn.close()
 
 
-
-
-    def get_account_currency(self, account):
-        # Try to get the currency for an account from the model, fallback to main_currency
-        if hasattr(self.model, 'get_account_currency'):
-            return self.model.get_account_currency(account)
-        if hasattr(self.model, 'account_currency_map'):
-            return self.model.account_currency_map.get(account, self.main_currency)
-        return self.main_currency
+#    def get_account_currency(self, account):
+#        # Try to get the currency for an account from the model, fallback to main_currency
+#        if hasattr(self.model, 'get_account_currency'):
+#            return self.model.get_account_currency(account)
+#        if hasattr(self.model, 'account_currency_map'):
+#            return self.model.account_currency_map.get(account, self.main_currency)
+#        return self.main_currency
 
     def convert_to_main(self, date, amount, currency):
 
@@ -230,6 +227,7 @@ class FinanceModel:
         #else:
         #    print(f"No rate found for {currency}/CAD on {date}")
 
+
         cad_amount = amount * currencytoCAD_rate  # Convert to CAD
 
         MaintoCAD_rate = False
@@ -251,7 +249,7 @@ class FinanceModel:
     def load_data(self):
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
-        cursor.execute("SELECT account_name, date, balance, currency FROM account_balances ORDER BY date")
+        cursor.execute("SELECT account_name, date, balance, currency, ticker FROM account_balances ORDER BY date")
         data = cursor.fetchall()
         conn.close()
         
@@ -267,7 +265,10 @@ class FinanceModel:
 
         invalid_currencies = {}
 
-        for account_name, date_str, balance, currency in data:
+        for account_name, date_str, balance, currency, ticker in data:
+
+            #print(f"Processing account: {account_name}, date: {date_str}, balance: {balance}, currency: {currency}, ticker: {ticker}")
+
             # Ensure the currency is in the available currencies
             if currency not in self.available_currencies:
                 if account_name not in invalid_currencies:
@@ -282,10 +283,13 @@ class FinanceModel:
                 if currency not in account_data[account_name]:
                     account_data[account_name][currency] = {}
 
-                if date not in account_data[account_name][currency]:
-                    account_data[account_name][currency][date] = {}
+                if ticker not in account_data[account_name][currency]:
+                    account_data[account_name][currency][ticker] = {}
+
+                if date not in account_data[account_name][currency][ticker]:
+                    account_data[account_name][currency][ticker][date] = {}
                     
-                account_data[account_name][currency][date] = balance
+                account_data[account_name][currency][ticker][date] = balance
             
         #for account_name, currencies in invalid_currencies.items():
             #for currency in currencies:
@@ -294,15 +298,23 @@ class FinanceModel:
 
         #extend all data to current date
         for account_name in account_data:
+            #print(f"Extending data for account: {account_name}")
+        
             for currency in account_data[account_name].keys():
-                last_date = max(account_data[account_name][currency].keys())
-                last_balance = account_data[account_name][currency][last_date]
-                account_data[account_name][currency][timeNow] = last_balance
+                #print(f"Extending data for currency: {currency} in account: {account_name}")
+                
+                for ticker in account_data[account_name][currency].keys():
+                    last_date = max(account_data[account_name][currency][ticker].keys())
+                    #print(f"Last date for {account_name} {ticker} in {currency}: {last_date}")
+                    last_balance = account_data[account_name][currency][ticker][last_date]
+                    account_data[account_name][currency][ticker][timeNow] = last_balance
 
         #sort the account data by date
         for account_name in account_data:
             for currency in account_data[account_name].keys():
-                account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
+                for ticker in account_data[account_name][currency].keys():
+                    account_data[account_name][currency][ticker] = dict(sorted(account_data[account_name][currency][ticker].items()))
+                #account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
 
 
 
@@ -310,50 +322,73 @@ class FinanceModel:
         all_dates = set()
         for account_name in account_data:
             for currency in account_data[account_name].keys():
-                all_dates.update(account_data[account_name][currency].keys())
+                for ticker in account_data[account_name][currency].keys():
+                    all_dates.update(account_data[account_name][currency][ticker].keys())
+                #all_dates.update(account_data[account_name][currency].keys())
         all_dates = sorted(all_dates)
+
+        #add dates by interval
+        if all_dates:
+            firstDate = min(all_dates)
+            lastDate = max(all_dates)
+            interval = timedelta(days=10)  # Daily interval
+            current_date = firstDate
+
+            while current_date <= lastDate:
+                all_dates.append(current_date)
+                current_date += interval
+
+            all_dates = sorted(set(all_dates))
+
 
         for account_name in account_data:
             for currency in account_data[account_name].keys():
-                for date in all_dates:
-                    if date not in account_data[account_name][currency].keys():
-                        
-                        #check if this is the first recorded date for this account
-                        if date > min(account_data[account_name][currency].keys()):
-
-                            previous_date = max(d for d in account_data[account_name][currency] if d < date)
-                            previous_balance = account_data[account_name][currency][previous_date]
-
-                            #check if this is the last recorded date for this account
-                            #print("date:", date, type(date))
-                            #timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                            #print("time now:", timeNow, type(timeNow))
-
-                            if date < timeNow:
-
-                                next_date = min(d for d in account_data[account_name][currency] if d > date)
-                                next_balance = account_data[account_name][currency][next_date]
-
-                                #update the account data with the interpolated balance
-                                #print(f"Interpolating balance for {account_name} on {date} in {currency}: previous date {previous_date} with balance {previous_balance}, next date {next_date} with balance {next_balance}")
-
-                                account_data[account_name][currency][date] = previous_balance + (next_balance - previous_balance) * (date - previous_date).days / (next_date - previous_date).days
+                for ticker in account_data[account_name][currency].keys():
+                    for date in all_dates:
+                        if date not in account_data[account_name][currency][ticker].keys():
+                            
+                            #check if this is the first recorded date for this account
+                            if date > min(account_data[account_name][currency][ticker].keys()):
+            
+                                previous_date = max(d for d in account_data[account_name][currency][ticker] if d < date)
+                                previous_balance = account_data[account_name][currency][ticker][previous_date]
+            
+                                #check if this is the last recorded date for this account
+                                #print("date:", date, type(date))
+                                #timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                                #print("time now:", timeNow, type(timeNow))
+            
+                                if date < timeNow:
+            
+                                    next_date = min(d for d in account_data[account_name][currency][ticker] if d > date)
+                                    next_balance = account_data[account_name][currency][ticker][next_date]
+            
+                                    #update the account data with the interpolated balance
+                                    #print(f"Interpolating balance for {account_name} on {date} in {currency}: previous date {previous_date} with balance {previous_balance}, next date {next_date} with balance {next_balance}")
+            
+                                    account_data[account_name][currency][ticker][date] = previous_balance + (next_balance - previous_balance) * (date - previous_date).days / (next_date - previous_date).days
 
 
         #sort the account data by date
         for account_name in account_data:
             for currency in account_data[account_name].keys():
-                account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
+                for ticker in account_data[account_name][currency].keys():
+                    account_data[account_name][currency][ticker] = dict(sorted(account_data[account_name][currency][ticker].items()))
+                #account_data[account_name][currency] = dict(sorted(account_data[account_name][currency].items()))
             #account_data[account_name] = dict(sorted(account_data[account_name].items()))
 
 
         #convert currencies to main currency
         for account_name in account_data:
             for currency in account_data[account_name].keys():
-                for date, balance in account_data[account_name][currency].items():
-                    #convert the balance to the main currency
-                    converted_balance = self.convert_to_main(date, balance, currency)
-                    account_data[account_name][currency][date] = converted_balance
+                for ticker in account_data[account_name][currency].keys():
+                    for date, balance in account_data[account_name][currency][ticker].items():
+                        #convert the balance to the ticker currency
+                        if ticker:
+                            balance = balance * self.stock.get_nearest_price(date, ticker)
+                        #convert the balance to the main currency
+                        converted_balance = self.convert_to_main(date, balance, currency)
+                        account_data[account_name][currency][ticker][date] = converted_balance
 
         #print("Account data after conversion:", account_data)
 
@@ -365,10 +400,11 @@ class FinanceModel:
             if account_name not in newData:
                 newData[account_name] = {}
             for currency in account_data[account_name].keys():
-                for date, balance in account_data[account_name][currency].items():
-                    if date not in newData[account_name]:
-                        newData[account_name][date] = 0
-                    newData[account_name][date] += balance
+                for ticker in account_data[account_name][currency].keys():
+                    for date, balance in account_data[account_name][currency][ticker].items():
+                        if date not in newData[account_name]:
+                            newData[account_name][date] = 0
+                        newData[account_name][date] += balance
        
         account_data = newData
         #print("\n\n\n\n\n\nAccount data after merging currencies:", account_data)
