@@ -17,6 +17,9 @@ class FinanceModel:
         self.equityList = self.loadEquityList()
         self.summaryList = self.loadSummaryList()
 
+        self.available_currencies = self.loadCurrencyList()
+        self.main_currency = "CAD"  # Default main currency
+
         #self.stockList = self.loadStockList()
 
         self.db_file = db_file
@@ -28,41 +31,15 @@ class FinanceModel:
         self.stock = stocks.stockTicker()
 
 
-
-        # --- Currency support ---
-        self.available_currencies = ["CAD",
-                                     "USD",
-                                     "INR",
-                                     "IDR",
-                                     "JPY",
-                                     "TWD",
-                                     "TRY",
-                                     "KRW",
-                                     "SEK",
-                                     "CHF",
-                                     "EUR",
-                                     "HKD",
-                                     "MXN",
-                                     "NZD",
-                                     "SAR",
-                                     "SGD",
-                                     "ZAR",
-                                     "GBP",
-                                     "NOK",
-                                     "PEN",
-                                     "RUB",
-                                     "AUD",
-                                     "BRL",
-                                     "CNY",
-                                     "BTC",
-                                     "ETH",
-                                     "XRP",
-                                     "BCH",
-                                     "ADA",
-                                     "DOGE"]
-        self.main_currency = "CAD"
-
-        # --- End currency support ---
+    def loadCurrencyList(self):
+        fpath = "config/currency.txt"
+        if os.path.exists(fpath):
+            with open(fpath, "r") as file:
+                currencies = [line.strip() for line in file if line.strip()]
+            print("Available currencies:")
+            for currency in currencies:
+                print("\t", currency)
+            return currencies
 
 
 
@@ -290,7 +267,7 @@ class FinanceModel:
 
         for account_name, date_str, balance, currency, ticker in data:
 
-            print(f"Processing account: {account_name}, date: {date_str}, balance: {balance}, currency: {currency}, ticker: {ticker}")
+            #print(f"Processing account: {account_name}, date: {date_str}, balance: {balance}, currency: {currency}, ticker: {ticker}")
 
             # Ensure the currency is in the available currencies
             if currency not in self.available_currencies:
@@ -321,14 +298,14 @@ class FinanceModel:
 
         #extend all data to current date
         for account_name in account_data:
-            print(f"Extending data for account: {account_name}")
+            #print(f"Extending data for account: {account_name}")
         
             for currency in account_data[account_name].keys():
-                print(f"Extending data for currency: {currency} in account: {account_name}")
+                #print(f"Extending data for currency: {currency} in account: {account_name}")
                 
                 for ticker in account_data[account_name][currency].keys():
                     last_date = max(account_data[account_name][currency][ticker].keys())
-                    print(f"Last date for {account_name} {ticker} in {currency}: {last_date}")
+                    #print(f"Last date for {account_name} {ticker} in {currency}: {last_date}")
                     last_balance = account_data[account_name][currency][ticker][last_date]
                     account_data[account_name][currency][ticker][timeNow] = last_balance
 

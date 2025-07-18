@@ -20,6 +20,8 @@ class FinanceController(QMainWindow):
         self.model = FinanceModel()
         self.view = FinanceView(self)
 
+        self.resize(1920, 1080)  # Set initial window size
+
         self.txtColor = self.view.txtColor
         self.txtAlpha = self.view.txtAlpha
 
@@ -85,7 +87,7 @@ class FinanceController(QMainWindow):
                 # Ensure only first four columns are used
                 df = df.iloc[:, :5]
 
-                print(df.head())  # Debugging: print the first few rows of the DataFrame
+                #print(df.head())  # Debugging: print the first few rows of the DataFrame
 
                 #df.columns = ["account", "date", "balance", "currency", "ticker"]  # Rename columns
                 if df.shape[1] == 5:
@@ -99,7 +101,7 @@ class FinanceController(QMainWindow):
 
 
                 for _, row in df.iterrows():
-                    print(f"Processing row:{_} {row}")  # Debugging: print each row being processed
+                    #print(f"Processing row:{_} {row}")  # Debugging: print each row being processed
 
                     try:
                         # Skip row if 'date' or 'balance' is missing or invalid
@@ -108,18 +110,18 @@ class FinanceController(QMainWindow):
                                 
                         date = str(row["date"].date()).strip()
                         datetime.strptime(date, "%Y-%m-%d")  # Validate date format
-                        print("date {}".format(date))
+                        #print("date {}".format(date))
 
                         currency = str(row["currency"]).strip()
-                        print("currency: {}".format(currency))
+                        #print("currency: {}".format(currency))
 
                         ticker = str(row["ticker"]).strip()
-                        print("ticker:{}".format(ticker))
+                        #print("ticker:{}".format(ticker))
                         if ticker == "NaN":
                             ticker = ""
                         if ticker == "nan":
                             ticker = ""
-                        print("ticker:{}".format(ticker))
+                        #print("ticker:{}".format(ticker))
 
                         balance = str(row["balance"]).strip().replace("$", "").replace(",", "")
                         if balance and currency:

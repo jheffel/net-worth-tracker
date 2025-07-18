@@ -24,12 +24,16 @@ class FinanceView(QWidget):
         self.splitter1.addWidget(self.topleft)
 
         # Set initial widget sizes
-        self.splitter1.setSizes([100, 200])  
+        #self.splitter1.setSizes([100, 200])  
+        #self.splitter1.setStretchFactor(0, 9)  # 90% for graph
+        #self.splitter1.setStretchFactor(1, 1)  # 10% for other widgets
 
         # Create vertical splitter to divide left and bottom areas
         self.splitter2 = QSplitter(Qt.Orientation.Vertical)
         self.splitter2.addWidget(self.splitter1)
         self.splitter2.addWidget(self.bottom)
+        self.splitter2.setStretchFactor(0, 8)  # 90% for top area
+        self.splitter2.setStretchFactor(1, 2)  # 10% for bottom area
 
         # Create a central widget and layout to hold the splitters
         self.central_widget = QWidget()
@@ -94,6 +98,11 @@ class FinanceView(QWidget):
         self.graph_frame = QFrame(self.splitter1)
         self.graph_layout = QVBoxLayout(self.graph_frame)
         self.topleft.setLayout(self.graph_layout)
+        
+        self.splitter1.addWidget(self.graph_frame)
+        self.splitter1.setStretchFactor(0, 1)  # 10% for left panel
+        self.splitter1.setStretchFactor(1, 9)  # 90% for graph
+
 
         # Bottom panel for pie charts
         self.summary_frame = QFrame(self.bottom)
