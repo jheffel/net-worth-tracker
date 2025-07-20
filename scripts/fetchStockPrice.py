@@ -191,16 +191,19 @@ def runDaily():
     for stock in stockList:
         price = db.get_price(current_date, stock)
         if price is None:
-            print(f"No rate found for {stock} on {current_date}")
+            print(f"No rate found for {stock} on {current_date} in database")
             passed = False
         else:
             print(f"Price for {stock} on {current_date} already exists in DB.")
 
     if not passed:
         # If we don't have all rates, we add data to DB
-        with open(input_path, "r") as f:
+        with open(output_path, "r") as f:
             data = json.load(f)
-        addDatatoDB(data, db)
+        if data:
+            addDatatoDB(data, db)
+        else:
+            print("No data to add to DB.")
 
 
 
