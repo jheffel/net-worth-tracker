@@ -10,14 +10,15 @@ class FinanceModel:
     def __init__(self, db_file="db/finance.db"):
 
         #list of accounts to ignore when calculating total net worth
-        self.ignoreForTotalList = self.loadIgnoreForTotalList()
-        self.operatingList = self.loadOperatingList()
-        self.investingList = self.loadInvestingList()
-        self.cryptoList = self.loadCryptoList()
-        self.equityList = self.loadEquityList()
-        self.summaryList = self.loadSummaryList()
+        self.ignoreForTotalList = self.load_list_from_file('ignoreForTotal')
+        self.operatingList = self.load_list_from_file('operating')
+        self.investingList = self.load_list_from_file('investing')
+        self.cryptoList = self.load_list_from_file('crypto')
+        self.equityList = self.load_list_from_file('equity')
+        self.summaryList = self.load_list_from_file('summary')
 
-        self.available_currencies = self.loadCurrencyList()
+        self.available_currencies = self.load_list_from_file('available_currency') + self.load_list_from_file('available_crypto')
+        self.available_stock = self.load_list_from_file('available_stock')
         self.main_currency = "CAD"  # Default main currency
 
         #self.stockList = self.loadStockList()
@@ -31,17 +32,17 @@ class FinanceModel:
         self.stock = stocks.stockTicker()
 
 
-    def loadCurrencyList(self):
-        fpath = "config/currency.txt"
+    def load_list_from_file(self, filename):
+        fpath = f"config/{filename}.txt"
         if os.path.exists(fpath):
             with open(fpath, "r") as file:
-                currencies = [line.strip() for line in file if line.strip()]
-            print("Available currencies:")
-            for currency in currencies:
-                print("\t", currency)
-            return currencies
-
-
+                items = [line.strip() for line in file if line.strip()]
+            if items:
+                print(f"{filename} accounts:")
+                for item in items:
+                    print("\t", item)
+            return items
+        return []
 
     
     def _initialize_db(self):
@@ -61,127 +62,6 @@ class FinanceModel:
         conn.commit()
         conn.close()
 
-    # def loadStockList(self):
-    #     fpath = "config/stock.txt"
-    #     if os.path.exists(fpath):
-    #         stockList = []
-    #         with open(fpath, "r") as file:
-    #             for line in file:
-    #                 stockList.append(line.strip())
-
-    #         print("Stock accounts:")
-    #         for stock in stockList:
-    #             print("\t", stock)
-
-    #         return stockList
-    #     else:
-    #         return False
-        
-
-    def loadSummaryList(self):
-        
-        fpath = "config/summary.txt"
-        
-        if os.path.exists(fpath):
-            summaryList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    summaryList.append(line.strip())
-
-            print("Summary accounts:")
-            for summary in summaryList:
-                print("\t", summary)
-
-            return summaryList
-        else:    
-            return False
-
-
-    def loadEquityList(self):
-        
-        fpath = "config/equity.txt"
-
-        if os.path.exists(fpath):
-            equityList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    equityList.append(line.strip())
-
-            print("Equity accounts:")
-            for equity in equityList:
-                print("\t", equity)
-
-            return equityList
-        else:
-            return False
-
-    def loadOperatingList(self):
-        
-        fpath = "config/operating.txt"
-        
-        if os.path.exists(fpath):
-            operatingList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    operatingList.append(line.strip())
-
-            print("Operating accounts:")
-            for operating in operatingList:
-                print("\t", operating)
-
-            return operatingList
-        else:    
-            return False
-
-    def loadInvestingList(self):
-        
-        fpath = "config/investing.txt"
-        
-        if os.path.exists(fpath):
-            investingList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    investingList.append(line.strip())
-
-            print("investing accounts:")
-            for investing in investingList:
-                print("\t", investing)
-
-            return investingList
-        else:
-            return False
-
-    def loadCryptoList(self):
-        fpath = "config/crypto.txt"
-        if os.path.exists(fpath):
-            cryptoList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    cryptoList.append(line.strip())
-            
-            print("crypto accounts:")
-            for crypto in cryptoList:  
-                print("\t", crypto)
-
-            return cryptoList
-        else:
-            return False
-
-    def loadIgnoreForTotalList(self):
-        fpath = "config/ignoreForTotal.txt"
-        if os.path.exists(fpath):
-            ignoreForTotalList = []
-            with open(fpath, "r") as file:
-                for line in file:
-                    ignoreForTotalList.append(line.strip())
-
-            print("Total will ignore:")
-            for ignore in ignoreForTotalList:
-                print("\t", ignore)
-
-            return ignoreForTotalList
-        else:
-            return False
 
     def add_balance(self, account_name, date, balance, currency, ticker):
         conn = sqlite3.connect(self.db_file)
@@ -194,14 +74,6 @@ class FinanceModel:
         conn.commit()
         conn.close()
 
-
-#    def get_account_currency(self, account):
-#        # Try to get the currency for an account from the model, fallback to main_currency
-#        if hasattr(self.model, 'get_account_currency'):
-#            return self.model.get_account_currency(account)
-#        if hasattr(self.model, 'account_currency_map'):
-#            return self.model.account_currency_map.get(account, self.main_currency)
-#        return self.main_currency
 
     def convert_to_main(self, date, amount, currency):
 

@@ -76,30 +76,12 @@ def main():
     else:
         getResponse(current_date, output_path)
 
-    currencies = ["USD",
-                  "INR",
-                  "IDR",
-                  "JPY",
-                  "TWD",
-                  "TRY",
-                  "KRW",
-                  "SEK",
-                  "CHF",
-                  "EUR",
-                  "HKD",
-                  "MXN",
-                  "NZD",
-                  "SAR",
-                  "SGD",
-                  "ZAR",
-                  "GBP",
-                  "NOK",
-                  "PEN",
-                  "RUB",
-                  "AUD",
-                  "BRL",
-                  "CNY"]
     
+    # Read currencies from currency.txt
+    currency_file = os.path.join(basePath, "config/available_currency.txt")
+    with open(currency_file, "r") as f:
+        currencies = [line.strip() for line in f if line.strip()]
+
     db = exchange_rates.ExchangeRate("{}db/exchange_rates.db".format(basePath))
     passed = True
     #check if we need to add data to DB

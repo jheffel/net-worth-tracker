@@ -56,7 +56,7 @@ def write_to_json(data, output_path):
     print(f"Data written to {output_path}")
 
 def loadStockList(basePath=""):
-    fpath = "{}config/stock.txt".format(basePath)
+    fpath = "{}config/available_stock.txt".format(basePath)
     if os.path.exists(fpath):
         stockList = []
         with open(fpath, "r") as file:
@@ -127,12 +127,12 @@ def addDatatoDB(data, db):
     print("Data added to database successfully.")
 
 
-def addHistoricalDataToDB():
+def addHistoricalDataToDB(startDate = "2021-01-01"):
 
     basePath = parent_dir + "/"
 
     db = stocks.stockTicker("{}db/stock.db".format(basePath))
-    startDate = "2021-01-01"  # Example start date for historical data
+    #startDate = "2021-01-01"  # Example start date for historical data
 
     stockList = loadStockList(basePath)
     if not stockList:

@@ -36,7 +36,7 @@ def addDatatoDB(input_path, db):
         
         print(f"Added {line['currency']} rate for {line['date']} to the database.")
 
-def readApi(fname):
+def readApi(fname, currencies):
 
     print("Fetching data from CoinMarketCap API...")
 
@@ -46,7 +46,7 @@ def readApi(fname):
 
     url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest'
     parameters = {
-        'symbol': 'BTC,ETH,XRP,BCH,ADA,DOGE',
+        'symbol': ",".join(currencies),
         'convert':'CAD'
     }
     headers = {
@@ -77,15 +77,16 @@ def main():
     print("Current date:", current_date)
     fname = '{}/data/coinmarketcap_response/{}.json'.format(parent_dir, current_date)
 
-    currencies = ['BTC', 'ETH', 'XRP', 'BCH', 'ADA', 'DOGE']
-
+    # Read currencies from crypto.txt
+    with open(f'{parent_dir}/config/available_crypto.txt', 'r') as f:
+        currencies = [line.strip() for line in f if line.strip()]
 
     #check if we already have data for today
     if os.path.exists(fname):
         print("Data for today already exists:", fname)
     else:
         
-        readApi(fname)
+        readApi(fname, currencies)
 
 
     db = exchange_rates.ExchangeRate(parent_dir + "/db/exchange_rates.db")
