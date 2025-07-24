@@ -18,6 +18,7 @@ class FinanceModel:
         self.summaryList = self.load_list_from_file('summary')
 
         self.available_currencies = self.load_list_from_file('available_currency') + self.load_list_from_file('available_crypto')
+        self.available_stock = self.load_list_from_file('available_stock')
         self.main_currency = "CAD"  # Default main currency
 
         #self.stockList = self.loadStockList()
@@ -36,7 +37,7 @@ class FinanceModel:
         if os.path.exists(fpath):
             with open(fpath, "r") as file:
                 items = [line.strip() for line in file if line.strip()]
-            if label:
+            if items:
                 print(f"{filename} accounts:")
                 for item in items:
                     print("\t", item)
