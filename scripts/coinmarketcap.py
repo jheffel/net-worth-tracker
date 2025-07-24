@@ -77,8 +77,9 @@ def main():
     print("Current date:", current_date)
     fname = '{}/data/coinmarketcap_response/{}.json'.format(parent_dir, current_date)
 
-    currencies = ['BTC', 'ETH', 'XRP', 'BCH', 'ADA', 'DOGE']
-
+    # Read currencies from crypto.txt
+    with open(f'{parent_dir}/config/available_crypto.txt', 'r') as f:
+        currencies = [line.strip() for line in f if line.strip()]
 
     #check if we already have data for today
     if os.path.exists(fname):

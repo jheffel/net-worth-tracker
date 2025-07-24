@@ -56,7 +56,7 @@ def write_to_json(data, output_path):
     print(f"Data written to {output_path}")
 
 def loadStockList(basePath=""):
-    fpath = "{}config/stock.txt".format(basePath)
+    fpath = "{}config/available_stock.txt".format(basePath)
     if os.path.exists(fpath):
         stockList = []
         with open(fpath, "r") as file:
