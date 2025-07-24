@@ -127,12 +127,12 @@ def addDatatoDB(data, db):
     print("Data added to database successfully.")
 
 
-def addHistoricalDataToDB():
+def addHistoricalDataToDB(startDate = "2021-01-01"):
 
     basePath = parent_dir + "/"
 
     db = stocks.stockTicker("{}db/stock.db".format(basePath))
-    startDate = "2021-01-01"  # Example start date for historical data
+    #startDate = "2021-01-01"  # Example start date for historical data
 
     stockList = loadStockList(basePath)
     if not stockList:
