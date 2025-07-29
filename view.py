@@ -190,7 +190,6 @@ class FinanceView(QWidget):
 
     def show_custom_input(self, state):
     
-        #print("state: {}".format(state))
         if state == "Custom":
             self.start_date_var.setEnabled(True)
             self.start_date_var.setVisible(True)

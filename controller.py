@@ -176,6 +176,18 @@ class FinanceController(QMainWindow):
         if self.model.summaryList:
             self.plot_summary_pie_chart()   
 
+
+    def select_grouped_accounts(self, groupList):
+        """Toggles all crypto account checkboxes between checked and unchecked."""
+        
+        for var in self.view.account_check_vars.values():
+            #print(var)
+            #print(var.text())
+            if var.text() in groupList:
+                var.setChecked(True)
+            else:
+                var.setChecked(False)
+
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
         date = args[0] if args else datetime.today().date()
@@ -241,8 +253,14 @@ class FinanceController(QMainWindow):
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
+            # Add event to run a function when the pie chart is clicked anywhere
+            #mplcursors.cursor(fig).connect("add", lambda sel: self.select_crypto_accounts())
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.cryptoList))
+
             self.view.display_crypto_graph(fig)
             plt.close(fig)
+
+
 
     def plot_operating_pie_chart(self, *args):
         account_balances = {}
@@ -309,6 +327,8 @@ class FinanceController(QMainWindow):
             )
 
 
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.operatingList))
+
             self.view.display_operating_graph(fig)
             plt.close(fig)
 
@@ -373,6 +393,8 @@ class FinanceController(QMainWindow):
                 f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
+
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.investingList))
 
             self.view.display_investing_graph(fig)
             plt.close(fig)
@@ -443,6 +465,8 @@ class FinanceController(QMainWindow):
                 f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
+
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.equityList))
 
             self.view.display_equity_graph(fig)
             plt.close(fig)
@@ -516,6 +540,8 @@ class FinanceController(QMainWindow):
                 f"Balance: {self.model.main_currency} {total_balance:,.2f}",
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
+
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.summaryList))
 
             self.view.display_summary_graph(fig)
             plt.close(fig)
@@ -666,9 +692,6 @@ class FinanceController(QMainWindow):
                     f"Amount Changed: {self.model.main_currency} {amount_changed:,.2f}   ({min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})",
                     ha='left', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
                 )
-
-
-
 
 
         self.view.display_graph(fig)
