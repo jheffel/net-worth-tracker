@@ -70,7 +70,7 @@ class FinanceController(QMainWindow):
 
 
     def update_checkboxes(self):
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         self.view.update_account_checkboxes(account_data.keys())
 
     def import_from_ods(self):
@@ -183,7 +183,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.cryptoList:
             for account in self.model.cryptoList:
                 if account in account_data:
@@ -251,7 +251,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.operatingList:
             for account in self.model.operatingList:
                 if account in account_data:
@@ -318,7 +318,7 @@ class FinanceController(QMainWindow):
 
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.investingList:
             for account in self.model.investingList:
                 if account in account_data:
@@ -384,7 +384,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.equityList:
             for account in self.model.equityList:
                 if account in account_data:
@@ -455,7 +455,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.summaryList:
             for account in self.model.summaryList:
                 if account in account_data:
@@ -524,7 +524,6 @@ class FinanceController(QMainWindow):
 
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
-        #account_data = self.model.load_data()
         account_data = self.get_account_data()
         if not account_data:
             QMessageBox.warning(self, "No Data", "No financial data available to plot.")
