@@ -18,6 +18,10 @@ class FinanceController(QMainWindow):
     def __init__(self):
         super().__init__()  # Call the superclass's __init__ method
         self.model = FinanceModel()
+
+        self._cached_account_data = None  # Cache for account data
+        self.get_account_data()
+
         self.view = FinanceView(self)
 
         self.resize(1920, 1080)  # Set initial window size
@@ -47,12 +51,14 @@ class FinanceController(QMainWindow):
         if self.model.summaryList:
             self.plot_summary_pie_chart()
 
-
-
-
-
+    def get_account_data(self):
+        if self._cached_account_data is None:
+            self._cached_account_data = self.model.load_data()
+        return self._cached_account_data
+    
     def set_main_currency(self, currency):
         self.model.main_currency = currency
+        self._cached_account_data = None  # Invalidate cache
         self.plot_net_worth()
         self.plot_crypto_pie_chart()
         self.plot_operating_pie_chart()
@@ -64,7 +70,7 @@ class FinanceController(QMainWindow):
 
 
     def update_checkboxes(self):
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         self.view.update_account_checkboxes(account_data.keys())
 
     def import_from_ods(self):
@@ -170,6 +176,18 @@ class FinanceController(QMainWindow):
         if self.model.summaryList:
             self.plot_summary_pie_chart()   
 
+
+    def select_grouped_accounts(self, groupList):
+        """Toggles all crypto account checkboxes between checked and unchecked."""
+        
+        for var in self.view.account_check_vars.values():
+            #print(var)
+            #print(var.text())
+            if var.text() in groupList:
+                var.setChecked(True)
+            else:
+                var.setChecked(False)
+
     def plot_crypto_pie_chart(self, *args):
         account_balances = {}
         date = args[0] if args else datetime.today().date()
@@ -177,7 +195,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.cryptoList:
             for account in self.model.cryptoList:
                 if account in account_data:
@@ -235,8 +253,14 @@ class FinanceController(QMainWindow):
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
+            # Add event to run a function when the pie chart is clicked anywhere
+            #mplcursors.cursor(fig).connect("add", lambda sel: self.select_crypto_accounts())
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.cryptoList))
+
             self.view.display_crypto_graph(fig)
             plt.close(fig)
+
+
 
     def plot_operating_pie_chart(self, *args):
         account_balances = {}
@@ -245,7 +269,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.operatingList:
             for account in self.model.operatingList:
                 if account in account_data:
@@ -303,6 +327,8 @@ class FinanceController(QMainWindow):
             )
 
 
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.operatingList))
+
             self.view.display_operating_graph(fig)
             plt.close(fig)
 
@@ -312,7 +338,7 @@ class FinanceController(QMainWindow):
 
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.investingList:
             for account in self.model.investingList:
                 if account in account_data:
@@ -368,6 +394,8 @@ class FinanceController(QMainWindow):
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.investingList))
+
             self.view.display_investing_graph(fig)
             plt.close(fig)
 
@@ -378,7 +406,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.equityList:
             for account in self.model.equityList:
                 if account in account_data:
@@ -438,6 +466,8 @@ class FinanceController(QMainWindow):
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.equityList))
+
             self.view.display_equity_graph(fig)
             plt.close(fig)
 
@@ -449,7 +479,7 @@ class FinanceController(QMainWindow):
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
 
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if self.model.summaryList:
             for account in self.model.summaryList:
                 if account in account_data:
@@ -511,6 +541,8 @@ class FinanceController(QMainWindow):
                 ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
             )
 
+            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.summaryList))
+
             self.view.display_summary_graph(fig)
             plt.close(fig)
 
@@ -518,7 +550,7 @@ class FinanceController(QMainWindow):
 
     def plot_net_worth(self, *args):
         """Plots net worth with dynamic time filtering and interactive tooltips."""
-        account_data = self.model.load_data()
+        account_data = self.get_account_data()
         if not account_data:
             QMessageBox.warning(self, "No Data", "No financial data available to plot.")
             return
@@ -531,6 +563,7 @@ class FinanceController(QMainWindow):
 
         timeframe = self.view.time_filter_var.currentText()
         today = datetime.today()
+        start_date, end_date = None, None
 
         if timeframe == "Last Year":
             start_date = today - timedelta(days=365)
@@ -540,6 +573,20 @@ class FinanceController(QMainWindow):
             start_date = today - timedelta(days=91)
         elif timeframe == "Last Month":
             start_date = today - timedelta(days=30)
+        elif timeframe == "Custom":
+            start_date = self.view.start_date_var.date().toPyDate()
+            end_date = self.view.end_date_var.date().toPyDate()
+
+            # Convert start_date to datetime object
+            start_date = datetime.combine(start_date, datetime.min.time())
+            end_date = datetime.combine(end_date, datetime.min.time())
+
+            if end_date < start_date:
+                self.view.display_graph_empty("End date cannot be before the start date.")
+                return
+            elif end_date > today:
+                self.view.display_graph_empty("End date cannot be after today.")
+                return
         else:
             start_date = None  
 
@@ -553,8 +600,14 @@ class FinanceController(QMainWindow):
                 dates = []
                 balances = []
                 for date, balance in account_data[account].items():
-                    dates.append(date)
-                    balances.append(balance)
+
+                    if end_date:
+                        if date >= start_date and date <= end_date:
+                            dates.append(date)
+                            balances.append(balance)
+                    else:
+                        dates.append(date)
+                        balances.append(balance)
 
                 if start_date:
                     filtered_dates = [d for d in dates if d >= start_date]
@@ -572,7 +625,7 @@ class FinanceController(QMainWindow):
                     lines.append(line)  
 
         if lines:
-            cursor = mplcursors.cursor(lines, hover=True)
+            cursor = mplcursors.cursor(lines, hover=False)
             cursor.connect("add", lambda sel: sel.annotation.set_text(
                 f"{sel.artist.get_label()}\nDate: {mdates.num2date(sel.target[0]).strftime('%Y-%m-%d')}\nBalance: {self.model.main_currency} {sel.target[1]:,.2f}"
             ))
@@ -601,7 +654,16 @@ class FinanceController(QMainWindow):
             all_dates = []
             for account in selected_accounts:
                 if account in account_data:
-                    dates = [d for d in account_data[account].keys() if (not start_date or d >= start_date)]
+                    #dates = [d for d in account_data[account].keys() if (not start_date or d >= start_date and d<=end_date)]
+                    dates = []
+                    for d in account_data[account].keys():
+                        if (not start_date or d >= start_date):
+                            if end_date:
+                                if (not end_date or d <= end_date):
+                                    dates.append(d)
+                            else:
+                                    dates.append(d)
+                    
                     all_dates.extend(dates)
             if all_dates:
                 min_date = min(all_dates)
@@ -630,9 +692,6 @@ class FinanceController(QMainWindow):
                     f"Amount Changed: {self.model.main_currency} {amount_changed:,.2f}   ({min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')})",
                     ha='left', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
                 )
-
-
-
 
 
         self.view.display_graph(fig)

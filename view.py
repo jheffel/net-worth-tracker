@@ -1,6 +1,9 @@
-from PyQt6.QtWidgets import (QSplitter, QTextEdit, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QScrollArea, QCheckBox, QLabel, QPushButton, QComboBox)
+from PyQt6.QtWidgets import (QSplitter, QTextEdit, QDateEdit, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QScrollArea, QCheckBox, QLabel, QPushButton, QComboBox)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt6.QtCore import Qt
+
+from datetime import datetime, timedelta
+
 
 class FinanceView(QWidget):
     def __init__(self, controller, parent=None):
@@ -23,10 +26,6 @@ class FinanceView(QWidget):
         self.splitter1 = QSplitter(Qt.Orientation.Horizontal)
         self.splitter1.addWidget(self.topleft)
 
-        # Set initial widget sizes
-        #self.splitter1.setSizes([100, 200])  
-        #self.splitter1.setStretchFactor(0, 9)  # 90% for graph
-        #self.splitter1.setStretchFactor(1, 1)  # 10% for other widgets
 
         # Create vertical splitter to divide left and bottom areas
         self.splitter2 = QSplitter(Qt.Orientation.Vertical)
@@ -41,47 +40,97 @@ class FinanceView(QWidget):
         self.hbox.addWidget(self.splitter2)
         self.setLayout(self.hbox)
 
-        # Apply cleanlooks style for visual consistency
-        # QApplication.setStyle("cleanlooks")
 
         # Left panel for account selection
         self.account_frame = QFrame(self.topleft)
         self.account_layout = QVBoxLayout(self.account_frame)
         self.topleft.setLayout(self.account_layout)
 
-
+        #timeframe frame
+        self.timeframe_frame = QFrame(self.topleft)
+        self.timeframe_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.timeframe_layout = QVBoxLayout(self.timeframe_frame)
+        self.account_layout.addWidget(self.timeframe_frame)
 
         # Time filter dropdown
         self.time_filter_label = QLabel("Select Timeframe:", self.account_frame)
-        self.account_layout.addWidget(self.time_filter_label)
+        self.timeframe_layout.addWidget(self.time_filter_label)
         self.time_filter_var = QComboBox(self.account_frame)
-        self.time_filter_var.addItems(["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month"])
+        self.time_filter_var.addItems(["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month", "Custom"])
         self.time_filter_var.currentIndexChanged.connect(self.controller.plot_net_worth)
-        self.account_layout.addWidget(self.time_filter_var)
+        self.timeframe_layout.addWidget(self.time_filter_var)
 
-        # "Check/Uncheck All" Button
-        self.toggle_button = QPushButton("Check/Uncheck All", self.account_frame)
-        self.toggle_button.clicked.connect(self.controller.toggle_all_accounts)
-        self.account_layout.addWidget(self.toggle_button)
+        # Custom date input
+        self.custom_label = QLabel("Select Custom Date Range:", self.account_frame)
+        self.timeframe_layout.addWidget(self.custom_label)
 
-        # Import ODS Button
-        self.import_button = QPushButton("Import ODS", self.account_frame)
-        self.import_button.clicked.connect(self.controller.import_from_ods)
-        self.account_layout.addWidget(self.import_button)
+        self.custom_label.setVisible(False)
+
+        #self.start_date_var = QDateEdit("Start Date", self.account_frame)
+        self.start_date_var = QDateEdit()
+        self.start_date_var.setDisplayFormat("yyyy-MM-dd")
+        self.start_date_var.setCalendarPopup(True)
+        self.start_date_var.setDate(datetime.today() - timedelta(days=365))
+        
+        self.start_date_var.setVisible(False)
+
+        self.start_date_var.dateChanged.connect(self.controller.plot_net_worth)
+        #self.start_date_var.clicked.connect(lambda: self.date_picker(0))
+
+        self.end_date_var = QDateEdit()
+        self.end_date_var.setDisplayFormat("yyyy-MM-dd")
+        self.end_date_var.setDate(datetime.today())
+        self.end_date_var.setCalendarPopup(True)
+        #self.end_date_var.clicked.connect(lambda: self.date_picker(1))
+
+        self.end_date_var.setVisible(False)
+
+        self.end_date_var.dateChanged.connect(self.controller.plot_net_worth)
+
+        # Create a horizontal layout to hold the start and end date buttons
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.start_date_var)
+        hbox.addWidget(self.end_date_var)
+
+        self.timeframe_layout.addLayout(hbox)
+
+        # Hide custom date input by default
+        for i in range(5):
+            self.time_filter_var.currentTextChanged.connect(lambda state=i: self.show_custom_input(state))
+
+
+
+
 
 
         # Add a currency selector to the UI
+        self.currency_frame = QFrame(self.topleft)
+        self.currency_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
         self.currency_selector = QComboBox()
         self.currency_selector.addItems(self.controller.model.available_currencies)
         self.currency_selector.setCurrentText(self.controller.model.main_currency)
         self.currency_selector.currentTextChanged.connect(self.controller.set_main_currency)
         currency_label = QLabel("Main Currency:")
-        currency_layout = QHBoxLayout()
+        currency_layout = QHBoxLayout(self.currency_frame)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_selector)
         #self.view.layout().insertLayout(0, layout)
-        self.account_layout.addLayout(currency_layout) 
+        #self.account_layout.addLayout(currency_layout) 
+        self.account_layout.addWidget(self.currency_frame)
 
+       # "Check/Uncheck All" Button
+        self.tool_frame = QFrame(self.topleft)
+        self.tool_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        self.tool_layout = QHBoxLayout(self.tool_frame)
+
+        self.toggle_button = QPushButton("Check/Uncheck All", self.account_frame)
+        self.toggle_button.clicked.connect(self.controller.toggle_all_accounts)
+        
+        self.tool_layout.addWidget(self.toggle_button)
+
+        self.account_layout.addWidget(self.tool_frame)
 
         # Create a scroll area for the account subframe
         self.scroll_area = QScrollArea(self.account_frame)
@@ -93,6 +142,20 @@ class FinanceView(QWidget):
 
         # Account checkboxes
         self.account_check_vars = {}
+
+        # Import ODS Button
+        self.import_frame = QFrame()
+        self.import_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        self.import_layout = QHBoxLayout(self.import_frame)
+
+        self.import_button = QPushButton("Import ODS", self.account_frame)
+        self.import_button.clicked.connect(self.controller.import_from_ods)
+        
+        self.import_layout.addWidget(self.import_button)
+
+        self.account_layout.addWidget(self.import_frame)
+
 
         # Right panel for graph
         self.graph_frame = QFrame(self.splitter1)
@@ -124,6 +187,28 @@ class FinanceView(QWidget):
         self.equity_frame = QFrame(self.bottom)
         self.equity_layout = QVBoxLayout(self.equity_frame)
         self.bottomLayout.addWidget(self.equity_frame)
+
+    def show_custom_input(self, state):
+    
+        if state == "Custom":
+            self.start_date_var.setEnabled(True)
+            self.start_date_var.setVisible(True)
+            
+            self.end_date_var.setEnabled(True)
+            self.end_date_var.setVisible(True)
+
+            self.custom_label.setEnabled(True)
+            self.custom_label.setVisible(True)
+
+        else:
+            self.start_date_var.setDisabled(True)
+            self.start_date_var.setVisible(False)
+
+            self.end_date_var.setDisabled(True)
+            self.end_date_var.setVisible(False)
+            
+            self.custom_label.setDisabled(True)
+            self.custom_label.setVisible(False)
 
     def update_account_checkboxes(self, accounts):
         """Updates the account checkboxes dynamically."""
