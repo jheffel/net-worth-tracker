@@ -142,6 +142,10 @@ class FinanceController(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error importing ODS: {e}")
 
+
+        # invalidate the cache
+        self._cached_account_data = None 
+
         # Update checkboxes after importing data
         self.update_checkboxes()
         self.plot_net_worth()
