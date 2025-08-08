@@ -2,8 +2,10 @@ import sqlite3
 from datetime import datetime, timedelta
 import os
 import json
+import pandas as pd
 import exchange_rates
 import stocks
+from contextlib import contextmanager
 
 
 class FinanceModel:
@@ -31,6 +33,14 @@ class FinanceModel:
         self.exchangeRate = exchange_rates.ExchangeRate()
         self.stock = stocks.stockTicker()
 
+    @contextmanager
+    def get_db_connection(self):
+        """Context manager for database connections with automatic cleanup."""
+        conn = sqlite3.connect(self.db_file)
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def load_list_from_file(self, filename):
         fpath = f"config/{filename}.txt"
@@ -43,41 +53,40 @@ class FinanceModel:
                     print("\t", item)
             return items
         return []
-
     
     def _initialize_db(self):
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS account_balances (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_name TEXT,
-                date TEXT,
-                balance REAL,
-                currency TEXT,
-                ticker TEXT,
-                UNIQUE(account_name, date, currency, ticker)
-            )
-        ''')
-        conn.commit()
-        conn.close()
-
+        with self.get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS account_balances (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_name TEXT,
+                    date TEXT,
+                    balance REAL,
+                    currency TEXT,
+                    ticker TEXT,
+                    UNIQUE(account_name, date, currency, ticker)
+                )
+            ''')
+            conn.commit()
 
     def add_balance(self, account_name, date, balance, currency, ticker):
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO account_balances (account_name, date, balance, currency, ticker)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(account_name, date, currency, ticker) DO UPDATE SET balance=excluded.balance
-        """, (account_name, date, balance, currency, ticker))
-        conn.commit()
-        conn.close()
+        with self.get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO account_balances (account_name, date, balance, currency, ticker)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(account_name, date, currency, ticker) DO UPDATE SET balance=excluded.balance
+            """, (account_name, date, balance, currency, ticker))
+            conn.commit()
 
 
     def convert_to_main(self, date, amount, currency):
 
-        if isinstance(date, datetime):
+        # Handle pandas Timestamp objects
+        if hasattr(date, 'strftime'):
+            date = date.strftime("%Y-%m-%d")
+        elif isinstance(date, datetime):
             date = date.replace(hour=0, minute=0, second=0, microsecond=0)
             #print(f"date: {date}")
             date = date.strftime("%Y-%m-%d")
@@ -88,7 +97,7 @@ class FinanceModel:
         if currency == self.main_currency:
             return amount
         
-        currencytoCAD_rate = False
+        currencytoCAD_rate = None
         if currency == "CAD":
             currencytoCAD_rate = 1.0  # No conversion needed if already in CAD
         else:
@@ -99,10 +108,13 @@ class FinanceModel:
         #else:
         #    print(f"No rate found for {currency}/CAD on {date}")
 
+        # If no exchange rate found, return original amount
+        if currencytoCAD_rate is None:
+            return amount
 
         cad_amount = amount * currencytoCAD_rate  # Convert to CAD
 
-        MaintoCAD_rate = False
+        MaintoCAD_rate = None
         # If the main currency is CAD, we don't need to convert
         if self.main_currency == "CAD":
             MaintoCAD_rate = 1.0
@@ -113,17 +125,22 @@ class FinanceModel:
             #else:
             #    print(f"No rate found for CAD/{self.main_currency} on {date}")
 
+        # If no exchange rate found for main currency, return CAD amount
+        if MaintoCAD_rate is None:
+            return cad_amount
 
         return cad_amount / MaintoCAD_rate  # Convert to main
 
-        return amount  # Fallback: no conversion
-
     def load_data(self):
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        cursor.execute("SELECT account_name, date, balance, currency, ticker FROM account_balances ORDER BY date")
-        data = cursor.fetchall()
-        conn.close()
+        with self.get_db_connection() as conn:
+            # Use pandas for faster data loading and processing
+            df = pd.read_sql_query(
+                "SELECT account_name, date, balance, currency, ticker FROM account_balances ORDER BY date",
+                conn
+            )
+        
+        if df.empty:
+            return {}
         
         account_data = {}
         net_worth = {}
@@ -135,33 +152,40 @@ class FinanceModel:
 
         timeNow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        invalid_currencies = {}
+        # Filter valid currencies first
+        valid_mask = df['currency'].isin(self.available_currencies)
+        df_valid = df[valid_mask].copy()
+        
+        if df_valid.empty:
+            return {}
+        
+        # Convert date strings to datetime objects
+        df_valid['date'] = pd.to_datetime(df_valid['date'])
+        
+        # Process data more efficiently
+        for _, row in df_valid.iterrows():
+            account_name = row['account_name']
+            date = row['date']
+            balance = row['balance']
+            currency = row['currency']
+            ticker = row['ticker']
+            
+            if pd.isna(ticker):
+                ticker = ""
+            
+            if account_name not in account_data:
+                account_data[account_name] = {}
 
-        for account_name, date_str, balance, currency, ticker in data:
+            if currency not in account_data[account_name]:
+                account_data[account_name][currency] = {}
 
-            #print(f"Processing account: {account_name}, date: {date_str}, balance: {balance}, currency: {currency}, ticker: {ticker}")
+            if ticker not in account_data[account_name][currency]:
+                account_data[account_name][currency][ticker] = {}
 
-            # Ensure the currency is in the available currencies
-            if currency not in self.available_currencies:
-                if account_name not in invalid_currencies:
-                    invalid_currencies[account_name] = set()
-                invalid_currencies[account_name] = invalid_currencies[account_name].union({currency})
+            if date not in account_data[account_name][currency][ticker]:
+                account_data[account_name][currency][ticker][date] = {}
                 
-            else:
-                date = datetime.strptime(date_str, "%Y-%m-%d")
-                if account_name not in account_data:
-                    account_data[account_name] = {}
-
-                if currency not in account_data[account_name]:
-                    account_data[account_name][currency] = {}
-
-                if ticker not in account_data[account_name][currency]:
-                    account_data[account_name][currency][ticker] = {}
-
-                if date not in account_data[account_name][currency][ticker]:
-                    account_data[account_name][currency][ticker][date] = {}
-                    
-                account_data[account_name][currency][ticker][date] = balance
+            account_data[account_name][currency][ticker][date] = balance
             
         #for account_name, currencies in invalid_currencies.items():
             #for currency in currencies:
@@ -255,12 +279,21 @@ class FinanceModel:
             for currency in account_data[account_name].keys():
                 for ticker in account_data[account_name][currency].keys():
                     for date, balance in account_data[account_name][currency][ticker].items():
-                        #convert the balance to the ticker currency
-                        if ticker:
-                            balance = balance * self.stock.get_nearest_price(date, ticker)
-                        #convert the balance to the main currency
-                        converted_balance = self.convert_to_main(date, balance, currency)
-                        account_data[account_name][currency][ticker][date] = converted_balance
+                        try:
+                            #convert the balance to the ticker currency
+                            if ticker:
+                                # Convert pandas Timestamp to string for SQLite
+                                date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
+                                stock_price = self.stock.get_nearest_price(date_str, ticker)
+                                if stock_price is not None:
+                                    balance = balance * stock_price
+                            #convert the balance to the main currency
+                            converted_balance = self.convert_to_main(date, balance, currency)
+                            account_data[account_name][currency][ticker][date] = converted_balance
+                        except Exception as e:
+                            print(f"Error processing {account_name} {currency} {ticker} on {date}: {e}")
+                            # Keep original balance if conversion fails
+                            account_data[account_name][currency][ticker][date] = balance
 
         #print("Account data after conversion:", account_data)
 

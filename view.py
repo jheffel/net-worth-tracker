@@ -44,7 +44,7 @@ class FinanceView(QWidget):
         # Left panel for account selection
         self.account_frame = QFrame(self.topleft)
         self.account_layout = QVBoxLayout(self.account_frame)
-        self.topleft.setLayout(self.account_layout)
+        # Don't set layout on topleft since it's already managed by splitter
 
         #timeframe frame
         self.timeframe_frame = QFrame(self.topleft)
@@ -160,7 +160,7 @@ class FinanceView(QWidget):
         # Right panel for graph
         self.graph_frame = QFrame(self.splitter1)
         self.graph_layout = QVBoxLayout(self.graph_frame)
-        self.topleft.setLayout(self.graph_layout)
+        # Don't set layout on topleft since it's already managed by splitter
         
         self.splitter1.addWidget(self.graph_frame)
         self.splitter1.setStretchFactor(0, 1)  # 10% for left panel
@@ -226,10 +226,8 @@ class FinanceView(QWidget):
 
     def display_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.graph_layout.count())):
-            widget = self.graph_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
+        # Clear existing widgets more efficiently
+        self._clear_layout(self.graph_layout)
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
@@ -240,7 +238,6 @@ class FinanceView(QWidget):
             text.set_color('white')
             text.set_alpha(1.0)
 
-
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.1)
@@ -250,17 +247,19 @@ class FinanceView(QWidget):
         canvas = FigureCanvas(fig)
         self.graph_layout.addWidget(canvas)
 
-    def display_investing_graph(self, fig):
-        """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.investing_layout.count())):
-            widget = self.investing_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
+    def _clear_layout(self, layout):
+        """Efficiently clear all widgets from a layout."""
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
-        # Set the figure and axes background to transparent            
+    def _setup_figure_style(self, fig):
+        """Common figure styling to reduce code duplication."""
         fig.patch.set_facecolor('black')
         fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
+        
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
@@ -270,102 +269,38 @@ class FinanceView(QWidget):
                 text.set_color(self.txtColor)
                 text.set_alpha(self.txtAlpha)
 
-
+    def display_investing_graph(self, fig):
+        """Displays the Matplotlib graph inside the PyQt GUI."""
+        self._clear_layout(self.investing_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.investing_layout.addWidget(canvas)
 
     def display_crypto_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.crypto_layout.count())):
-            widget = self.crypto_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
+        self._clear_layout(self.crypto_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.crypto_layout.addWidget(canvas)
 
     def display_operating_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.operating_layout.count())):
-            widget = self.operating_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
+        self._clear_layout(self.operating_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.operating_layout.addWidget(canvas)
 
     def display_equity_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.equity_layout.count())):
-            widget = self.equity_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
+        self._clear_layout(self.equity_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.equity_layout.addWidget(canvas)
 
-
     def display_summary_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.summary_layout.count())):
-            widget = self.summary_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
+        self._clear_layout(self.summary_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.summary_layout.addWidget(canvas)
 
