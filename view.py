@@ -41,10 +41,9 @@ class FinanceView(QWidget):
         self.setLayout(self.hbox)
 
 
-        # Left panel for account selection
-        self.account_frame = QFrame(self.topleft)
-        self.account_layout = QVBoxLayout(self.account_frame)
-        # Don't set layout on topleft since it's already managed by splitter
+        # Left panel for account selection - use topleft directly
+        self.account_layout = QVBoxLayout(self.topleft)
+        self.topleft.setLayout(self.account_layout)
 
         #timeframe frame
         self.timeframe_frame = QFrame(self.topleft)
@@ -53,15 +52,15 @@ class FinanceView(QWidget):
         self.account_layout.addWidget(self.timeframe_frame)
 
         # Time filter dropdown
-        self.time_filter_label = QLabel("Select Timeframe:", self.account_frame)
+        self.time_filter_label = QLabel("Select Timeframe:", self.topleft)
         self.timeframe_layout.addWidget(self.time_filter_label)
-        self.time_filter_var = QComboBox(self.account_frame)
+        self.time_filter_var = QComboBox(self.topleft)
         self.time_filter_var.addItems(["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month", "Custom"])
         self.time_filter_var.currentIndexChanged.connect(self.controller.plot_net_worth)
         self.timeframe_layout.addWidget(self.time_filter_var)
 
         # Custom date input
-        self.custom_label = QLabel("Select Custom Date Range:", self.account_frame)
+        self.custom_label = QLabel("Select Custom Date Range:", self.topleft)
         self.timeframe_layout.addWidget(self.custom_label)
 
         self.custom_label.setVisible(False)
@@ -115,8 +114,6 @@ class FinanceView(QWidget):
         currency_layout = QHBoxLayout(self.currency_frame)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_selector)
-        #self.view.layout().insertLayout(0, layout)
-        #self.account_layout.addLayout(currency_layout) 
         self.account_layout.addWidget(self.currency_frame)
 
        # "Check/Uncheck All" Button
@@ -125,7 +122,7 @@ class FinanceView(QWidget):
 
         self.tool_layout = QHBoxLayout(self.tool_frame)
 
-        self.toggle_button = QPushButton("Check/Uncheck All", self.account_frame)
+        self.toggle_button = QPushButton("Check/Uncheck All", self.topleft)
         self.toggle_button.clicked.connect(self.controller.toggle_all_accounts)
         
         self.tool_layout.addWidget(self.toggle_button)
@@ -133,7 +130,7 @@ class FinanceView(QWidget):
         self.account_layout.addWidget(self.tool_frame)
 
         # Create a scroll area for the account subframe
-        self.scroll_area = QScrollArea(self.account_frame)
+        self.scroll_area = QScrollArea(self.topleft)
         self.scroll_area.setWidgetResizable(True)
         self.account_subframe = QWidget()
         self.account_subframe_layout = QVBoxLayout(self.account_subframe)
@@ -149,7 +146,7 @@ class FinanceView(QWidget):
 
         self.import_layout = QHBoxLayout(self.import_frame)
 
-        self.import_button = QPushButton("Import ODS", self.account_frame)
+        self.import_button = QPushButton("Import ODS", self.topleft)
         self.import_button.clicked.connect(self.controller.import_from_ods)
         
         self.import_layout.addWidget(self.import_button)
@@ -160,7 +157,8 @@ class FinanceView(QWidget):
         # Right panel for graph
         self.graph_frame = QFrame(self.splitter1)
         self.graph_layout = QVBoxLayout(self.graph_frame)
-        # Don't set layout on topleft since it's already managed by splitter
+        # Set the layout for graph_frame so it can resize properly
+        self.graph_frame.setLayout(self.graph_layout)
         
         self.splitter1.addWidget(self.graph_frame)
         self.splitter1.setStretchFactor(0, 1)  # 10% for left panel
