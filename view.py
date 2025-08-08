@@ -312,3 +312,43 @@ class FinanceView(QWidget):
         label = QLabel(message)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.graph_layout.addWidget(label)
+
+    def display_crypto_empty(self, message):
+        """Display empty state for crypto graph area."""
+        self._clear_layout(self.crypto_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.crypto_layout.addWidget(label)
+
+    def display_operating_empty(self, message):
+        """Display empty state for operating graph area."""
+        self._clear_layout(self.operating_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.operating_layout.addWidget(label)
+
+    def display_investing_empty(self, message):
+        """Display empty state for investing graph area."""
+        self._clear_layout(self.investing_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.investing_layout.addWidget(label)
+
+    def display_equity_empty(self, message):
+        """Display empty state for equity graph area."""
+        self._clear_layout(self.equity_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.equity_layout.addWidget(label)
+
+    def display_summary_empty(self, message):
+        """Display empty state for summary graph area."""
+        self._clear_layout(self.summary_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.summary_layout.addWidget(label)
