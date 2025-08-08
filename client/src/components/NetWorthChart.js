@@ -19,18 +19,81 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
     // Convert to array and sort
     const sortedDates = Array.from(allDates).sort();
 
-    // Create data points for each date
+    // Helper function to interpolate between two values
+    const interpolate = (value1, value2, ratio) => {
+      return value1 + (value2 - value1) * ratio;
+    };
+
+    // Helper function to find the nearest previous and next values for an account
+    const findNearestValues = (account, targetDate) => {
+      const accountData = balances[account];
+      if (!accountData) return { prev: null, next: null };
+
+      const dates = Object.keys(accountData).sort();
+      let prevDate = null;
+      let nextDate = null;
+      let prevValue = null;
+      let nextValue = null;
+
+      // Find the nearest previous date
+      for (let i = dates.length - 1; i >= 0; i--) {
+        if (dates[i] <= targetDate) {
+          prevDate = dates[i];
+          prevValue = accountData[dates[i]].balance;
+          break;
+        }
+      }
+
+      // Find the nearest next date
+      for (let i = 0; i < dates.length; i++) {
+        if (dates[i] >= targetDate) {
+          nextDate = dates[i];
+          nextValue = accountData[dates[i]].balance;
+          break;
+        }
+      }
+
+      return { prev: { date: prevDate, value: prevValue }, next: { date: nextDate, value: nextValue } };
+    };
+
+    // Create data points for each date with interpolation
     return sortedDates.map(date => {
       const dataPoint = { date };
       let total = 0;
 
       selectedAccounts.forEach(account => {
         if (balances[account] && balances[account][date]) {
+          // Direct data point exists
           const balance = balances[account][date].balance;
           dataPoint[account] = balance;
           total += balance;
         } else {
-          dataPoint[account] = 0;
+          // Need to interpolate
+          const { prev, next } = findNearestValues(account, date);
+          
+          if (prev && next && prev.date !== next.date) {
+            // Interpolate between two known values
+            const prevTime = moment(prev.date).valueOf();
+            const nextTime = moment(next.date).valueOf();
+            const currentTime = moment(date).valueOf();
+            
+            const ratio = (currentTime - prevTime) / (nextTime - prevTime);
+            const interpolatedValue = interpolate(prev.value, next.value, ratio);
+            
+            dataPoint[account] = interpolatedValue;
+            total += interpolatedValue;
+          } else if (prev && !next) {
+            // Use the last known value (extend forward)
+            dataPoint[account] = prev.value;
+            total += prev.value;
+          } else if (!prev && next) {
+            // Use the first known value (extend backward)
+            dataPoint[account] = next.value;
+            total += next.value;
+          } else {
+            // No data available
+            dataPoint[account] = 0;
+          }
         }
       });
 
@@ -65,15 +128,21 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
           <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>
             {formatDate(label)}
           </p>
-          {payload.map((entry, index) => (
-            <p key={index} style={{ 
-              margin: '2px 0', 
-              color: entry.color,
-              fontSize: '12px'
-            }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
+          {payload.map((entry, index) => {
+            const isInterpolated = !balances[entry.dataKey] || !balances[entry.dataKey][label];
+            return (
+              <p key={index} style={{ 
+                margin: '2px 0', 
+                color: entry.color,
+                fontSize: '12px',
+                fontStyle: isInterpolated ? 'italic' : 'normal',
+                opacity: isInterpolated ? 0.8 : 1
+              }}>
+                {entry.name}: {formatCurrency(entry.value)}
+                {isInterpolated && <span style={{ fontSize: '10px', marginLeft: '5px' }}>(interpolated)</span>}
+              </p>
+            );
+          })}
         </div>
       );
     }
@@ -110,6 +179,9 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
     <div style={{ height: '400px', marginBottom: '20px' }}>
       <h3 style={{ margin: '0 0 15px 0', color: '#ffffff' }}>
         Net Worth Over Time ({mainCurrency})
+        <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#cccccc', marginLeft: '10px' }}>
+          (Dots show actual data points, lines interpolate between values)
+        </span>
       </h3>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
@@ -138,7 +210,19 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
               dataKey={account}
               stroke={colors[index % colors.length]}
               strokeWidth={2}
-              dot={{ r: 4 }}
+              dot={(props) => {
+                // Only show dots for actual data points, not interpolated ones
+                const isActualData = balances[account] && balances[account][props.payload.date];
+                return isActualData ? (
+                  <circle
+                    cx={props.cx}
+                    cy={props.cy}
+                    r={4}
+                    fill={colors[index % colors.length]}
+                    stroke="none"
+                  />
+                ) : null;
+              }}
               activeDot={{ r: 6 }}
             />
           ))}
