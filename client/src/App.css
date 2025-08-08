@@ -1,0 +1,86 @@
+/* Date picker styling */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container input {
+  padding: 8px 12px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: #ffffff;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.react-datepicker__input-container input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.react-datepicker {
+  background-color: #2d2d2d;
+  border: 1px solid #444;
+  color: #ffffff;
+}
+
+.react-datepicker__header {
+  background-color: #333;
+  border-bottom: 1px solid #444;
+}
+
+.react-datepicker__current-month {
+  color: #ffffff;
+}
+
+.react-datepicker__day-name {
+  color: #cccccc;
+}
+
+.react-datepicker__day {
+  color: #ffffff;
+}
+
+.react-datepicker__day:hover {
+  background-color: #007bff;
+}
+
+.react-datepicker__day--selected {
+  background-color: #007bff;
+}
+
+.react-datepicker__day--keyboard-selected {
+  background-color: #007bff;
+}
+
+.react-datepicker__navigation {
+  color: #ffffff;
+}
+
+.react-datepicker__navigation:hover {
+  background-color: #444;
+}
+
+/* Additional responsive styles */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .header {
+    padding: 15px;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .controls {
+    gap: 10px;
+  }
+  
+  .control-group {
+    min-width: 150px;
+  }
+}

@@ -1,88 +1,191 @@
 # Net Worth Tracker
 
-A comprehensive financial tracking application built with PyQt6 and Python for monitoring net worth, investments, and financial portfolios.
-
-## Recent Optimizations (Latest Update)
-
-### Performance Improvements
-
-1. **Database Connection Optimization**
-   - Implemented connection pooling with context managers
-   - Reduced database connection overhead
-   - Added proper connection cleanup
-
-2. **Caching System**
-   - Added LRU cache for expensive operations
-   - Implemented account balance caching
-   - Added exchange rate caching to reduce API calls
-
-3. **Data Processing Optimization**
-   - Replaced loops with pandas vectorized operations
-   - Optimized data loading with pandas read_sql_query
-   - Reduced memory usage with efficient data structures
-
-4. **Memory Management**
-   - Added automatic memory cleanup
-   - Implemented cache invalidation strategies
-   - Added garbage collection for long-running sessions
-
-5. **UI Performance**
-   - Optimized widget clearing operations
-   - Reduced redundant figure styling
-   - Improved layout management
-
-6. **Performance Monitoring**
-   - Added performance decorators for key functions
-   - Implemented logging for execution time tracking
-   - Added memory usage monitoring
-
-### Key Optimizations Made
-
-- **Database Operations**: 40-60% faster data loading
-- **Chart Rendering**: 30-50% faster pie chart generation
-- **Memory Usage**: 25-35% reduction in memory footprint
-- **UI Responsiveness**: Improved by reducing blocking operations
+A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Python (PyQt6) and Web (React + Node.js) versions.
 
 ## Features
 
-- **Multi-Currency Support**: Track accounts in different currencies with automatic conversion
-- **Real-time Charts**: Interactive net worth tracking with time filtering
-- **Portfolio Analysis**: Pie charts for different account categories (crypto, investing, operating, equity)
-- **Data Import**: Import financial data from ODS files
-- **Exchange Rate Integration**: Automatic currency conversion using historical rates
-- **Stock Price Integration**: Real-time stock price tracking for equity accounts
+### Core Features
+- **Interactive Charts**: Line charts for net worth tracking with clickable data points
+- **Pie Charts**: Portfolio distribution visualization for different account types
+- **Account Management**: Select/deselect accounts for analysis
+- **Data Import**: Import Excel/ODS files with drag-and-drop support
+- **Currency Support**: Multiple currency support with conversion
+- **Time Filtering**: Custom date ranges and predefined timeframes
+- **Real-time Updates**: Dynamic chart updates based on selections
 
-## Installation
+### Account Types
+- **Operating**: Checking, savings, credit cards
+- **Investing**: RRSP, margin accounts
+- **Crypto**: Bitcoin, Ethereum, and other cryptocurrencies
+- **Equity**: Mortgages, property values
+- **Summary**: Overall portfolio distribution
 
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Run the application: `python main.py`
+## Python Version (PyQt6)
 
-## Usage
+### Requirements
+- Python 3.8+
+- PyQt6
+- pandas
+- matplotlib
+- sqlite3
 
-1. **Import Data**: Use the "Import ODS" button to load your financial data
-2. **Select Accounts**: Check/uncheck accounts to include in charts
-3. **Filter Time**: Use the timeframe dropdown to filter data
-4. **View Charts**: Interactive charts show net worth trends and portfolio distribution
+### Installation
+```bash
+# Install dependencies
+pip install PyQt6 pandas matplotlib
 
-## Configuration
+# Run the application
+python main.py
+```
 
-Edit the text files in the `config/` directory to:
-- Define account categories (crypto, investing, operating, equity)
-- Set available currencies and stocks
-- Configure accounts to ignore in total calculations
+### Features
+- Desktop application with native UI
+- Interactive matplotlib charts
+- SQLite database storage
+- Excel/ODS file import
+- Real-time data processing
 
-## Performance Tips
+## Web Version (React + Node.js)
 
-- Use the caching system for frequently accessed data
-- Clear caches periodically for large datasets
-- Monitor performance logs for optimization opportunities
-- Close unused chart windows to free memory
+### Requirements
+- Node.js 16+
+- npm or yarn
 
-## Architecture
+### Installation
 
-- **Model**: Data management and business logic
-- **View**: UI components and display logic  
-- **Controller**: Application logic and user interaction handling
+1. **Install dependencies:**
+```bash
+# Install server dependencies
+npm install
 
-The application follows MVC pattern with optimized data flow and minimal memory footprint.
+# Install client dependencies
+cd client
+npm install
+cd ..
+```
+
+2. **Start the development server:**
+```bash
+# Start both server and client (recommended)
+npm run dev
+
+# Or start them separately:
+npm run server    # Backend on port 5000
+npm run client    # Frontend on port 3000
+```
+
+3. **Build for production:**
+```bash
+npm run build
+npm start
+```
+
+### Features
+- Modern web interface with dark theme
+- Responsive design for mobile/desktop
+- Interactive Recharts visualizations
+- Drag-and-drop file upload
+- RESTful API backend
+- SQLite database with Node.js
+
+## Data Format
+
+Both versions support importing Excel/ODS files with the following structure:
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| Account | Account name | "chequing" |
+| Date | Date (YYYY-MM-DD) | "2024-01-15" |
+| Balance | Amount | 5000.00 |
+| Currency | Currency code | "CAD" |
+| Ticker | Stock/crypto ticker (optional) | "AAPL" |
+
+### File Structure
+- Each sheet represents an account
+- First row contains column headers
+- Data starts from second row
+- Supported formats: .xlsx, .xls, .ods, .csv
+
+## API Endpoints (Web Version)
+
+### GET `/api/accounts`
+Get all available accounts
+
+### GET `/api/balances`
+Get account balances with optional filtering
+- `startDate`: Start date filter
+- `endDate`: End date filter  
+- `accounts`: Comma-separated account names
+
+### GET `/api/pie-chart/:type`
+Get pie chart data for specific account type
+- `type`: operating, investing, crypto, equity, summary
+- `date`: Date for pie chart data
+
+### POST `/api/import`
+Upload Excel/ODS file for data import
+
+### GET `/api/currencies`
+Get available currencies
+
+### PUT `/api/currency`
+Update main currency
+
+## Recent Optimizations
+
+### Performance Improvements
+1. **Database Connection Optimization**
+   - Connection pooling with context managers
+   - Reduced database connection overhead
+   - Proper connection cleanup
+
+2. **Caching System**
+   - LRU cache for expensive operations
+   - Account balance caching
+   - Exchange rate caching
+
+3. **Data Processing Optimization**
+   - Vectorized operations with pandas
+   - Optimized data loading
+   - Memory-efficient data structures
+
+4. **UI Responsiveness**
+   - Non-blocking operations
+   - Efficient chart rendering
+   - Optimized event handling
+
+## File Structure
+
+```
+net-worth-tracker/
+├── main.py                 # Python app entry point
+├── controller.py           # Python app controller
+├── model.py               # Python app data model
+├── view.py                # Python app UI
+├── exchange_rates.py      # Exchange rate handling
+├── stocks.py              # Stock price handling
+├── package.json           # Web app dependencies
+├── server/
+│   ├── index.js           # Express server
+│   └── database.js        # Database operations
+├── client/
+│   ├── package.json       # React dependencies
+│   ├── public/
+│   └── src/
+│       ├── App.js         # Main React component
+│       ├── components/    # React components
+│       └── index.css      # Styling
+└── config/                # Configuration files
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.
