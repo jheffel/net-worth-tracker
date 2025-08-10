@@ -31,7 +31,11 @@ const upload = multer({ storage: storage });
 app.get('/api/accounts', async (req, res) => {
   try {
     const accounts = await db.getAllAccounts();
-    res.json(accounts);
+    const groups = await db.getAccountGroups();
+    // Add group names to the list (avoid duplicates)
+    const groupNames = Object.keys(groups);
+    const allAccounts = Array.from(new Set([...accounts, ...groupNames]));
+    res.json(allAccounts);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

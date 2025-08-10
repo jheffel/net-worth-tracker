@@ -29,19 +29,23 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             No accounts available. Import data to get started.
           </p>
         ) : (
-          accounts.map(account => (
-            <div key={account} className="account-item">
-              <input
-                type="checkbox"
-                id={account}
-                checked={selectedAccounts.includes(account)}
-                onChange={() => onAccountToggle(account)}
-              />
-              <label htmlFor={account}>
-                {account}
-              </label>
-            </div>
-          ))
+          accounts.map(account => {
+            const groupNames = ['operating', 'investing', 'crypto', 'equity', 'summary'];
+            const isGroup = groupNames.includes(account);
+            return (
+              <div key={account} className="account-item">
+                <input
+                  type="checkbox"
+                  id={account}
+                  checked={selectedAccounts.includes(account)}
+                  onChange={() => onAccountToggle(account)}
+                />
+                <label htmlFor={account} style={isGroup ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
+                  {account} {isGroup && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
+                </label>
+              </div>
+            );
+          })
         )}
       </div>
 

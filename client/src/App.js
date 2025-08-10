@@ -13,7 +13,7 @@ function App() {
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [balances, setBalances] = useState({});
   const [timeframe, setTimeframe] = useState('All Data');
-  const [startDate, setStartDate] = useState(moment().subtract(1, 'year').format('YYYY-MM-DD'));
+  const [startDate, setStartDate] = useState('2020-01-01');
   const [endDate, setEndDate] = useState(moment().format('YYYY-MM-DD'));
   const [mainCurrency, setMainCurrency] = useState('CAD');
   const [currencies, setCurrencies] = useState([]);
@@ -33,7 +33,7 @@ function App() {
     if (accounts.length > 0) {
       loadBalances();
     }
-  }, [accounts, timeframe, startDate, endDate, selectedAccounts]);
+  }, [accounts, selectedAccounts, timeframe, startDate, endDate]);
 
   const loadInitialData = async () => {
     try {
@@ -57,19 +57,20 @@ function App() {
   const loadBalances = async () => {
     try {
       const params = {
-        accounts: selectedAccounts.join(',')
+        accounts: selectedAccounts,
+        startDate,
+        endDate
       };
-
-      if (timeframe !== 'All Data') {
-        params.startDate = startDate;
-        params.endDate = endDate;
-      }
-
+      console.log('Requesting balances with params:', params);
       const response = await axios.get(`${API_BASE}/balances`, { params });
       setBalances(response.data);
     } catch (err) {
       setError('Failed to load balance data');
-      console.error(err);
+      if (err.response) {
+        console.error('API error:', err.response.status, err.response.data);
+      } else {
+        console.error('Network or other error:', err);
+      }
     }
   };
 
@@ -95,6 +96,9 @@ function App() {
       setMainCurrency(currency);
       setSuccess('Currency updated successfully');
       setTimeout(() => setSuccess(null), 3000);
+
+      // Reload balances with new currency
+      await loadBalances();
     } catch (err) {
       setError('Failed to update currency');
       console.error(err);
@@ -140,6 +144,8 @@ function App() {
     );
   }
 
+  // updateChartData is no longer needed, as useEffect handles updates
+
   return (
     <div className="App">
       <div className="container">
@@ -175,6 +181,7 @@ function App() {
           mainCurrency={mainCurrency}
           currencies={currencies}
           onCurrencyChange={handleCurrencyChange}
+          //updateChartData={updateChartData}
         />
 
         <div className="main-content">

@@ -3,10 +3,25 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import moment from 'moment';
 
 const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick }) => {
+  console.log('NetWorthChart balances:', balances);
   const chartData = useMemo(() => {
     if (!balances || Object.keys(balances).length === 0) {
       return [];
     }
+
+    // Define group membership (should match backend logic)
+    const groupMap = {
+      operating: ['chequing', 'credit card', 'savings'],
+      investing: ['RRSP', 'Margin'],
+      crypto: ['Bitcoin', 'Eth'],
+      equity: ['mortgage', 'House value'],
+      summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
+    };
+
+    // Expand selectedAccounts to include group members for synthetic group lines
+    const expandedAccounts = selectedAccounts.flatMap(acc =>
+      groupMap[acc] ? groupMap[acc] : acc
+    );
 
     // Get all unique dates
     const allDates = new Set();
@@ -16,8 +31,17 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
       });
     });
 
-    // Convert to array and sort
-    const sortedDates = Array.from(allDates).sort();
+    const today = moment().format('YYYY-MM-DD');
+    let minDate = today;
+    if (allDates.size > 0) {
+      minDate = Array.from(allDates).sort()[0];
+    }
+    let current = moment(minDate);
+    let sortedDates = [];
+    while (current.format('YYYY-MM-DD') <= today) {
+      sortedDates.push(current.format('YYYY-MM-DD'));
+      current = current.add(1, 'day');
+    }
 
     // Helper function to interpolate between two values
     const interpolate = (value1, value2, ratio) => {
@@ -57,41 +81,78 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
     };
 
     // Create data points for each date with interpolation
-    return sortedDates.map(date => {
+    // Track last known value for each account
+    // Prepare group lines and individual lines
+    let chartRows = sortedDates.map(date => {
       const dataPoint = { date };
       let total = 0;
 
       selectedAccounts.forEach(account => {
-        if (balances[account] && balances[account][date]) {
-          // Direct data point exists
-          const balance = balances[account][date].balance;
-          dataPoint[account] = balance;
-          total += balance;
+        if (groupMap[account]) {
+          // This is a group, sum its members
+          let groupSum = 0;
+          groupMap[account].forEach(member => {
+            const accountData = balances[member];
+            if (accountData && accountData[date]) {
+              groupSum += accountData[date].balance;
+            } else if (accountData) {
+              // Interpolate or extend for member
+              const dates = Object.keys(accountData).sort();
+              let prev = null, next = null;
+              for (let i = 0; i < dates.length; i++) {
+                if (dates[i] < date) prev = dates[i];
+                if (dates[i] > date) { next = dates[i]; break; }
+                if (dates[i] === date) { prev = dates[i]; next = dates[i]; break; }
+              }
+              if (prev && next && prev !== next) {
+                const prevTime = moment(prev).valueOf();
+                const nextTime = moment(next).valueOf();
+                const currentTime = moment(date).valueOf();
+                const ratio = (currentTime - prevTime) / (nextTime - prevTime);
+                groupSum += interpolate(accountData[prev].balance, accountData[next].balance, ratio);
+              } else if (prev && !next) {
+                groupSum += accountData[prev].balance;
+              } else if (!prev && next) {
+                groupSum += accountData[next].balance;
+              }
+            }
+          });
+          dataPoint[account] = groupSum;
+          total += groupSum;
         } else {
-          // Need to interpolate
-          const { prev, next } = findNearestValues(account, date);
-          
-          if (prev && next && prev.date !== next.date) {
-            // Interpolate between two known values
-            const prevTime = moment(prev.date).valueOf();
-            const nextTime = moment(next.date).valueOf();
-            const currentTime = moment(date).valueOf();
-            
-            const ratio = (currentTime - prevTime) / (nextTime - prevTime);
-            const interpolatedValue = interpolate(prev.value, next.value, ratio);
-            
-            dataPoint[account] = interpolatedValue;
-            total += interpolatedValue;
-          } else if (prev && !next) {
-            // Use the last known value (extend forward)
-            dataPoint[account] = prev.value;
-            total += prev.value;
-          } else if (!prev && next) {
-            // Use the first known value (extend backward)
-            dataPoint[account] = next.value;
-            total += next.value;
+          // Individual account
+          const accountData = balances[account];
+          if (accountData && accountData[date]) {
+            const balance = accountData[date].balance;
+            dataPoint[account] = balance;
+            total += balance;
+          } else if (accountData) {
+            // Interpolate or extend
+            const dates = Object.keys(accountData).sort();
+            let prev = null, next = null;
+            for (let i = 0; i < dates.length; i++) {
+              if (dates[i] < date) prev = dates[i];
+              if (dates[i] > date) { next = dates[i]; break; }
+              if (dates[i] === date) { prev = dates[i]; next = dates[i]; break; }
+            }
+            if (prev && next && prev !== next) {
+              const prevTime = moment(prev).valueOf();
+              const nextTime = moment(next).valueOf();
+              const currentTime = moment(date).valueOf();
+              const ratio = (currentTime - prevTime) / (nextTime - prevTime);
+              const interpolatedValue = interpolate(accountData[prev].balance, accountData[next].balance, ratio);
+              dataPoint[account] = interpolatedValue;
+              total += interpolatedValue;
+            } else if (prev && !next) {
+              dataPoint[account] = accountData[prev].balance;
+              total += accountData[prev].balance;
+            } else if (!prev && next) {
+              dataPoint[account] = accountData[next].balance;
+              total += accountData[next].balance;
+            } else {
+              dataPoint[account] = 0;
+            }
           } else {
-            // No data available
             dataPoint[account] = 0;
           }
         }
@@ -100,6 +161,22 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
       dataPoint.total = total;
       return dataPoint;
     });
+
+    // Add a datapoint for today if it doesn't exist, using the last known value for each account
+    if (!chartRows.find(row => row.date === today)) {
+      const lastRow = chartRows.length > 0 ? chartRows[chartRows.length - 1] : null;
+      if (lastRow) {
+        const todayRow = { date: today };
+        let total = 0;
+        selectedAccounts.forEach(account => {
+          todayRow[account] = lastRow[account] || 0;
+          total += todayRow[account];
+        });
+        todayRow.total = total;
+        chartRows.push(todayRow);
+      }
+    }
+    return chartRows;
   }, [balances, selectedAccounts]);
 
   const formatCurrency = (value) => {
@@ -201,7 +278,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
             stroke="#cccccc"
             fontSize={12}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} trigger="hover" />
           <Legend />
           {selectedAccounts.map((account, index) => (
             <Line
@@ -210,6 +287,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
               dataKey={account}
               stroke={colors[index % colors.length]}
               strokeWidth={2}
+              isAnimationActive={false}
               dot={(props) => {
                 // Only show dots for actual data points, not interpolated ones
                 const isActualData = balances[account] && balances[account][props.payload.date];
