@@ -1,12 +1,21 @@
 import React from 'react';
 
 const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll }) => {
+  // Define group membership (should match NetWorthChart.js)
+  const groupMap = {
+    operating: ['chequing', 'credit card', 'savings'],
+    investing: ['RRSP', 'Margin'],
+    crypto: ['Bitcoin', 'Eth'],
+    equity: ['mortgage', 'House value'],
+    summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
+  };
+  const groupNames = Object.keys(groupMap);
+
   return (
     <div>
       <h3 style={{ margin: '0 0 15px 0', color: '#ffffff' }}>
         Account Selection
       </h3>
-      
       <div style={{ marginBottom: '15px' }}>
         <button 
           className="btn btn-primary" 
@@ -30,20 +39,38 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           </p>
         ) : (
           accounts.map(account => {
-            const groupNames = ['operating', 'investing', 'crypto', 'equity', 'summary'];
             const isGroup = groupNames.includes(account);
             return (
-              <div key={account} className="account-item">
-                <input
-                  type="checkbox"
-                  id={account}
-                  checked={selectedAccounts.includes(account)}
-                  onChange={() => onAccountToggle(account)}
-                />
-                <label htmlFor={account} style={isGroup ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
-                  {account} {isGroup && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
-                </label>
-              </div>
+              <React.Fragment key={account}>
+                <div className="account-item">
+                  <input
+                    type="checkbox"
+                    id={account}
+                    checked={selectedAccounts.includes(account)}
+                    onChange={() => onAccountToggle(account)}
+                  />
+                  <label htmlFor={account} style={isGroup ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
+                    {account} {isGroup && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
+                  </label>
+                </div>
+                {isGroup && selectedAccounts.includes(account) && (
+                  <div style={{ marginLeft: 24, marginBottom: 4 }}>
+                    {groupMap[account].map(member => (
+                      <div key={member} className="account-item">
+                        <input
+                          type="checkbox"
+                          id={account + '-' + member}
+                          checked={true}
+                          disabled
+                        />
+                        <label htmlFor={account + '-' + member} style={{ color: '#aaa', fontStyle: 'italic' }}>
+                          {member}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
             );
           })
         )}

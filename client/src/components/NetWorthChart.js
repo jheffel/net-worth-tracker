@@ -1,9 +1,12 @@
+
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
 const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick }) => {
-  console.log('NetWorthChart balances:', balances);
+  console.log('NetWorthChart balances (full object):', JSON.stringify(balances, null, 2));
+  console.log('Account keys:', Object.keys(balances));
+  console.log('Selected accounts:', selectedAccounts);
   const chartData = useMemo(() => {
     if (!balances || Object.keys(balances).length === 0) {
       return [];

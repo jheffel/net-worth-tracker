@@ -56,8 +56,18 @@ function App() {
 
   const loadBalances = async () => {
     try {
+      // Define group membership (should match NetWorthChart.js)
+      const groupMap = {
+        operating: ['chequing', 'credit card', 'savings'],
+        investing: ['RRSP', 'Margin'],
+        crypto: ['Bitcoin', 'Eth'],
+        equity: ['mortgage', 'House value'],
+        summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
+      };
+      // Expand selectedAccounts to only real accounts
+      const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
       const params = {
-        accounts: selectedAccounts,
+        accounts: Array.from(new Set(expandedAccounts)),
         startDate,
         endDate
       };

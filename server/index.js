@@ -32,9 +32,11 @@ app.get('/api/accounts', async (req, res) => {
   try {
     const accounts = await db.getAllAccounts();
     const groups = await db.getAccountGroups();
-    // Add group names to the list (avoid duplicates)
-    const groupNames = Object.keys(groups);
-    const allAccounts = Array.from(new Set([...accounts, ...groupNames]));
+    // Only include groups that have at least one member present in the database
+    const validGroups = Object.entries(groups)
+      .filter(([group, members]) => members.some(member => accounts.includes(member)))
+      .map(([group]) => group);
+    const allAccounts = Array.from(new Set([...accounts, ...validGroups]));
     res.json(allAccounts);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -46,6 +48,7 @@ app.get('/api/balances', async (req, res) => {
   try {
     const { startDate, endDate, accounts } = req.query;
     const balances = await db.getAccountBalances(startDate, endDate, accounts);
+    console.log('API /api/balances response:', JSON.stringify(balances, null, 2));
     res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -78,33 +81,45 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
       const worksheet = workbook.Sheets[sheetName];
       const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
 
-      if (data.length > 0) {
-        const accountName = data[0][0] || sheetName;
-        
+      if (data.length > 1) {
+        const headers = data[0];
+        // Require first header cell to be 'account' (case-insensitive)
+        if (!headers[0] || headers[0].toString().toLowerCase() !== 'account') continue;
+        // Each row after the header is a single account's data
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          if (row.length >= 4 && row[0] && row[1] && row[2] && row[3]) {
-            const date = moment(row[1]).format('YYYY-MM-DD');
-            const balance = parseFloat(row[2]);
-            const currency = row[3];
-            const ticker = row[4] || '';
-
-            if (!isNaN(balance)) {
-              await db.addBalance(accountName, date, balance, currency, ticker);
-              importedData.push({
-                account: accountName,
-                date,
-                balance,
-                currency,
-                ticker
-              });
-            }
+          const accountName = row[0];
+          const dateCell = row[1];
+          const balance = parseFloat(row[2]);
+          const currency = row[3] || 'CAD';
+          const ticker = row[4] || '';
+          console.log('Raw dateCell:', dateCell, 'Type:', typeof dateCell);
+          if (!accountName || !dateCell || isNaN(balance)) continue;
+          let date = null;
+          // Try to handle Excel/ODS serial dates and string dates
+          if (typeof dateCell === 'number') {
+            // Excel/ODS serial date: days since 1899-12-30
+            date = moment('1899-12-30').add(dateCell, 'days').format('YYYY-MM-DD');
+          } else if (typeof dateCell === 'string' && moment(dateCell, moment.ISO_8601, true).isValid()) {
+            date = moment(dateCell).format('YYYY-MM-DD');
+          } else if (moment(dateCell).isValid()) {
+            date = moment(dateCell).format('YYYY-MM-DD');
           }
+          if (!date) continue;
+          await db.addBalance(accountName, date, balance, currency, ticker);
+          importedData.push({
+            account: accountName,
+            date,
+            balance,
+            currency,
+            ticker
+          });
         }
       }
     }
 
-    res.json({ 
+  console.log('Imported data:', JSON.stringify(importedData, null, 2));
+  res.json({ 
       message: 'Data imported successfully', 
       importedCount: importedData.length,
       data: importedData 
