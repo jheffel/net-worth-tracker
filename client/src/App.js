@@ -71,6 +71,7 @@ function App() {
       const allGroupAccounts = Object.values(groupMap).flat();
       const params = {
         accounts: Array.from(new Set(allGroupAccounts)),
+        currency: mainCurrency
       };
       console.log('Requesting balances with params:', params);
       const response = await axios.get(`${API_BASE}/balances`, { params });

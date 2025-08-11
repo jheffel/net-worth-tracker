@@ -97,7 +97,38 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
     // Create data points for each date with interpolation
     // Track last known value for each account
     // Prepare group lines and individual lines
-    let chartRows = sortedDates.map(date => {
+    // For each account, find the last value before rangeStart (if any)
+    let lastValueBeforeRange = {};
+    selectedAccounts.forEach(account => {
+      if (groupMap[account]) {
+        // For groups, sum last values of members
+        let sum = 0;
+        let memberHas = false;
+        groupMap[account].forEach(member => {
+          const accountData = balances[member];
+          if (accountData) {
+            const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+            const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+            if (lastDate) {
+              sum += accountData[lastDate].balance;
+              memberHas = true;
+            }
+          }
+        });
+        lastValueBeforeRange[account] = memberHas ? sum : undefined;
+      } else {
+        const accountData = balances[account];
+        if (accountData) {
+          const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+          const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+          if (lastDate) {
+            lastValueBeforeRange[account] = accountData[lastDate].balance;
+          }
+        }
+      }
+    });
+
+    let chartRows = sortedDates.map((date, idx) => {
       const dataPoint = { date };
       let total = 0;
 
@@ -129,7 +160,13 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
               } else if (!prev && next) {
                 // Do not extend backward before first data point
                 // no-op
+              } else if (idx === 0 && lastValueBeforeRange[account] !== undefined) {
+                // Extend last value forward to first date in range
+                groupSum += lastValueBeforeRange[account];
               }
+            } else if (idx === 0 && lastValueBeforeRange[account] !== undefined) {
+              // Extend last value forward to first date in range
+              groupSum += lastValueBeforeRange[account];
             }
           });
           dataPoint[account] = groupSum;
@@ -164,9 +201,17 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
             } else if (!prev && next) {
               // Do not extend backward before first data point
               // leave undefined so the line does not render
+            } else if (idx === 0 && lastValueBeforeRange[account] !== undefined) {
+              // Extend last value forward to first date in range
+              dataPoint[account] = lastValueBeforeRange[account];
+              total += lastValueBeforeRange[account];
             } else {
               dataPoint[account] = 0;
             }
+          } else if (idx === 0 && lastValueBeforeRange[account] !== undefined) {
+            // Extend last value forward to first date in range
+            dataPoint[account] = lastValueBeforeRange[account];
+            total += lastValueBeforeRange[account];
           } else {
             dataPoint[account] = 0;
           }

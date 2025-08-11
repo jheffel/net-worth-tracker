@@ -65,15 +65,16 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     const labels = [];
     const data = [];
     let total = 0;
+    let signedTotal = 0;
     groupMembers.forEach(account => {
       const value = interpolateValue(balances[account], selectedDate);
       if (value !== 0) {
         labels.push(account);
         data.push(Math.abs(value));
-        total += Math.abs(value);
+        signedTotal += value;
       }
     });
-    return { labels, data, total };
+    return { labels, data, total: signedTotal };
   };
 
   const pieData = {};

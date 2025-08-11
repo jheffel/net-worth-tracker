@@ -20,6 +20,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Initialize database
 const db = new Database();
+const { convertBalance } = require('./convert');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -46,10 +47,31 @@ app.get('/api/accounts', async (req, res) => {
 // Get account balances for a specific date range
 app.get('/api/balances', async (req, res) => {
   try {
-    const { startDate, endDate, accounts } = req.query;
+    const { startDate, endDate, accounts, currency } = req.query;
     const balances = await db.getAccountBalances(startDate, endDate, accounts);
-    console.log('API /api/balances response:', JSON.stringify(balances, null, 2));
-    res.json(balances);
+    let targetCurrency = currency;
+    if (!targetCurrency) {
+      // If not specified, get main currency from DB
+      targetCurrency = await db.getMainCurrency();
+    }
+    // Convert all balances to targetCurrency
+    const converted = {};
+    for (const [account, dates] of Object.entries(balances)) {
+      converted[account] = {};
+      for (const [date, entry] of Object.entries(dates)) {
+        const convertedBalance = await convertBalance({
+          balance: entry.balance,
+          currency: entry.currency,
+          date
+        }, targetCurrency);
+        converted[account][date] = {
+          ...entry,
+          balance: convertedBalance,
+          currency: targetCurrency
+        };
+      }
+    }
+    res.json(converted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
