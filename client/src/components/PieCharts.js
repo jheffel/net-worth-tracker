@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import axios from 'axios';
+
 import moment from 'moment';
 
-const PieCharts = ({ selectedDate, mainCurrency, API_BASE }) => {
-  const [pieData, setPieData] = useState({});
-  const [loading, setLoading] = useState(false);
+
+const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency }) => {
 
   const chartTypes = [
     { key: 'operating', title: 'Operating Accounts' },
@@ -20,37 +19,67 @@ const PieCharts = ({ selectedDate, mainCurrency, API_BASE }) => {
     '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'
   ];
 
-  useEffect(() => {
-    loadPieChartData();
-  }, [selectedDate]);
 
-  const loadPieChartData = async () => {
-    setLoading(true);
-    try {
-      const promises = chartTypes.map(async (type) => {
-        try {
-          const response = await axios.get(`${API_BASE}/pie-chart/${type.key}`, {
-            params: { date: selectedDate }
-          });
-          return { type: type.key, data: response.data };
-        } catch (error) {
-          console.error(`Error loading ${type.key} pie chart:`, error);
-          return { type: type.key, data: { labels: [], data: [], total: 0 } };
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const newPieData = {};
-      results.forEach(result => {
-        newPieData[result.type] = result.data;
-      });
-      setPieData(newPieData);
-    } catch (error) {
-      console.error('Error loading pie chart data:', error);
-    } finally {
-      setLoading(false);
+  // Helper: interpolate value for a given date from accountData
+  const interpolateValue = (accountData, date) => {
+    if (!accountData) return 0;
+    const dates = Object.keys(accountData).sort();
+    if (dates.length === 0) return 0;
+    if (accountData[date]) return accountData[date].balance;
+    let prev = null, next = null;
+    for (let i = 0; i < dates.length; i++) {
+      if (dates[i] < date) prev = dates[i];
+      if (dates[i] > date) { next = dates[i]; break; }
+      if (dates[i] === date) { prev = dates[i]; next = dates[i]; break; }
     }
+    if (prev && next && prev !== next) {
+      const prevTime = moment(prev).valueOf();
+      const nextTime = moment(next).valueOf();
+      const currentTime = moment(date).valueOf();
+      const ratio = (currentTime - prevTime) / (nextTime - prevTime);
+      return accountData[prev].balance + (accountData[next].balance - accountData[prev].balance) * ratio;
+    } else if (prev && !next) {
+      return accountData[prev].balance;
+    } else if (!prev && next) {
+      // Do not extend backward
+      return 0;
+    }
+    return 0;
   };
+
+  // Build pie data for each chart type
+  const buildPieData = (type) => {
+    // Always use the groupMap's account list for each chart type
+    let groupMembers = [];
+    if (type === 'summary') {
+      // For summary, use all accounts in all groups (union of all groupMap values)
+      const allGroupAccounts = Object.values(groupMap).flat();
+      groupMembers = Array.from(new Set(allGroupAccounts));
+    } else {
+      // For other types, use groupMap[type] if present
+      groupMembers = groupMap[type] || [];
+    }
+    // Remove duplicates
+    groupMembers = Array.from(new Set(groupMembers));
+    // For each member, interpolate value for selectedDate
+    const labels = [];
+    const data = [];
+    let total = 0;
+    groupMembers.forEach(account => {
+      const value = interpolateValue(balances[account], selectedDate);
+      if (value !== 0) {
+        labels.push(account);
+        data.push(Math.abs(value));
+        total += Math.abs(value);
+      }
+    });
+    return { labels, data, total };
+  };
+
+  const pieData = {};
+  chartTypes.forEach(type => {
+    pieData[type.key] = buildPieData(type.key);
+  });
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -128,19 +157,7 @@ const PieCharts = ({ selectedDate, mainCurrency, API_BASE }) => {
     );
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        color: '#cccccc'
-      }}>
-        Loading pie charts...
-      </div>
-    );
-  }
+
 
   return (
     <div>

@@ -67,10 +67,10 @@ function App() {
 
   const loadBalances = async () => {
     try {
-      // Expand selectedAccounts to only real accounts
-      const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
+      // Always fetch balances for all accounts in all groups
+      const allGroupAccounts = Object.values(groupMap).flat();
       const params = {
-        accounts: Array.from(new Set(expandedAccounts)),
+        accounts: Array.from(new Set(allGroupAccounts)),
       };
       console.log('Requesting balances with params:', params);
       const response = await axios.get(`${API_BASE}/balances`, { params });
@@ -222,9 +222,11 @@ function App() {
             />
             
             <PieCharts
+              balances={balances}
+              selectedAccounts={selectedAccounts}
+              groupMap={groupMap}
               selectedDate={selectedDate}
               mainCurrency={mainCurrency}
-              API_BASE={API_BASE}
             />
           </div>
         </div>
