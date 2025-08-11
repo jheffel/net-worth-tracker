@@ -67,12 +67,10 @@ function App() {
 
   const loadBalances = async () => {
     try {
-  // Expand selectedAccounts to only real accounts
-  const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
+      // Expand selectedAccounts to only real accounts
+      const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
       const params = {
         accounts: Array.from(new Set(expandedAccounts)),
-        startDate,
-        endDate
       };
       console.log('Requesting balances with params:', params);
       const response = await axios.get(`${API_BASE}/balances`, { params });

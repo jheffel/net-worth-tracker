@@ -19,7 +19,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
       groupMap[acc] ? groupMap[acc] : acc
     );
 
-    // Get all unique dates
+    // Get all unique dates, but only display data in the selected timeframe
     const allDates = new Set();
     Object.values(balances).forEach(accountData => {
       Object.keys(accountData).forEach(date => {
@@ -27,23 +27,35 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
       });
     });
 
+
     // Use startDate and endDate props for the timeframe
-  const today = moment().format('YYYY-MM-DD');
-  const firstDataDate = allDates.size > 0 ? Array.from(allDates).sort()[0] : null;
-  // If timeframe is 'All Data', start at first data point; else use selected startDate
-  let rangeStart = startDate;
-  if (timeframe === 'All Data' && firstDataDate) {
-    rangeStart = firstDataDate;
-  }
-  const rangeEnd = endDate || today;
-  let sortedDates = [];
-  if (rangeStart && rangeEnd) {
-    let current = moment(rangeStart);
-    while (current.format('YYYY-MM-DD') <= rangeEnd) {
-      sortedDates.push(current.format('YYYY-MM-DD'));
-      current = current.add(1, 'day');
+    const today = moment().format('YYYY-MM-DD');
+    const firstDataDate = allDates.size > 0 ? Array.from(allDates).sort()[0] : null;
+    // If timeframe is 'All Data', start at first data point; else use selected startDate
+    let rangeStart = startDate;
+    if (timeframe === 'All Data' && firstDataDate) {
+      rangeStart = firstDataDate;
     }
-  }
+    const rangeEnd = endDate || today;
+    let sortedDates = [];
+    if (rangeStart && rangeEnd) {
+      let current = moment(rangeStart);
+      while (current.format('YYYY-MM-DD') <= rangeEnd) {
+        sortedDates.push(current.format('YYYY-MM-DD'));
+        current = current.add(1, 'day');
+      }
+    }
+
+    // Filter balances to only include data in the selected timeframe
+    const filteredBalances = {};
+    Object.entries(balances).forEach(([account, accountData]) => {
+      filteredBalances[account] = {};
+      Object.entries(accountData).forEach(([date, value]) => {
+        if (date >= rangeStart && date <= rangeEnd) {
+          filteredBalances[account][date] = value;
+        }
+      });
+    });
 
     // Helper function to interpolate between two values
     const interpolate = (value1, value2, ratio) => {
@@ -94,7 +106,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
           // This is a group, sum its members
           let groupSum = 0;
           groupMap[account].forEach(member => {
-            const accountData = balances[member];
+            const accountData = filteredBalances[member];
             if (accountData && accountData[date]) {
               groupSum += accountData[date].balance;
             } else if (accountData) {
@@ -124,7 +136,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
           total += groupSum;
         } else {
           // Individual account
-          const accountData = balances[account];
+          const accountData = filteredBalances[account];
           if (accountData && accountData[date]) {
             const balance = accountData[date].balance;
             dataPoint[account] = balance;
