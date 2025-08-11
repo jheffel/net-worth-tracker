@@ -4,7 +4,7 @@ const fs = require('fs');
 
 class Database {
   constructor() {
-    this.dbPath = path.join(__dirname, '../data/finance.db');
+  this.dbPath = path.join(__dirname, '../db/finance.db');
     this.ensureDataDirectory();
     this.init();
   }
@@ -158,24 +158,42 @@ class Database {
   }
 
   getAccountGroupsByType(type) {
-    const groups = {
-      operating: ['chequing', 'credit card', 'savings'],
-      investing: ['RRSP', 'Margin'],
-      crypto: ['Bitcoin', 'Eth'],
-      equity: ['mortgage', 'House value'],
-      summary: ['operating', 'investing', 'crypto', 'equity']
-    };
-    return groups[type] || [];
+    const fs = require('fs');
+    const path = require('path');
+    const configDir = path.join(__dirname, '../config');
+    const filePath = path.join(configDir, `${type}.txt`);
+    try {
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      }
+    } catch (e) {
+      console.error(`Error reading group file for ${type}:`, e);
+    }
+    return [];
   }
 
   async getAccountGroups() {
-    return {
-      operating: ['chequing', 'credit card', 'savings'],
-      investing: ['RRSP', 'Margin'],
-      crypto: ['Bitcoin', 'Eth'],
-      equity: ['mortgage', 'House value'],
-      summary: ['operating', 'investing', 'crypto', 'equity']
-    };
+    const fs = require('fs');
+    const path = require('path');
+    const configDir = path.join(__dirname, '../config');
+    const groupFiles = ['operating', 'investing', 'crypto', 'equity', 'summary'];
+    const groups = {};
+    for (const group of groupFiles) {
+      const filePath = path.join(configDir, `${group}.txt`);
+      try {
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          groups[group] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        } else {
+          groups[group] = [];
+        }
+      } catch (e) {
+        console.error(`Error reading group file for ${group}:`, e);
+        groups[group] = [];
+      }
+    }
+    return groups;
   }
 
   async getAvailableCurrencies() {

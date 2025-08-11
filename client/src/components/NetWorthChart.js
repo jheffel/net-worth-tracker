@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
-const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick }) => {
+const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick, startDate, endDate, groupMap }) => {
   console.log('NetWorthChart balances (full object):', JSON.stringify(balances, null, 2));
   console.log('Account keys:', Object.keys(balances));
   console.log('Selected accounts:', selectedAccounts);
@@ -12,14 +12,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
       return [];
     }
 
-    // Define group membership (should match backend logic)
-    const groupMap = {
-      operating: ['chequing', 'credit card', 'savings'],
-      investing: ['RRSP', 'Margin'],
-      crypto: ['Bitcoin', 'Eth'],
-      equity: ['mortgage', 'House value'],
-      summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
-    };
+  // Use groupMap from props (already destructured)
 
     // Expand selectedAccounts to include group members for synthetic group lines
     const expandedAccounts = selectedAccounts.flatMap(acc =>
@@ -34,17 +27,20 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
       });
     });
 
-    const today = moment().format('YYYY-MM-DD');
-    let minDate = today;
-    if (allDates.size > 0) {
-      minDate = Array.from(allDates).sort()[0];
-    }
-    let current = moment(minDate);
-    let sortedDates = [];
-    while (current.format('YYYY-MM-DD') <= today) {
+    // Use startDate and endDate props for the timeframe
+  const today = moment().format('YYYY-MM-DD');
+  const firstDataDate = allDates.size > 0 ? Array.from(allDates).sort()[0] : null;
+  // Always use the user's selected startDate and endDate for the range
+  const rangeStart = startDate;
+  const rangeEnd = endDate || today;
+  let sortedDates = [];
+  if (rangeStart && rangeEnd) {
+    let current = moment(rangeStart);
+    while (current.format('YYYY-MM-DD') <= rangeEnd) {
       sortedDates.push(current.format('YYYY-MM-DD'));
       current = current.add(1, 'day');
     }
+  }
 
     // Helper function to interpolate between two values
     const interpolate = (value1, value2, ratio) => {
@@ -116,7 +112,8 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
               } else if (prev && !next) {
                 groupSum += accountData[prev].balance;
               } else if (!prev && next) {
-                groupSum += accountData[next].balance;
+                // Do not extend backward before first data point
+                // no-op
               }
             }
           });
@@ -150,8 +147,8 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
               dataPoint[account] = accountData[prev].balance;
               total += accountData[prev].balance;
             } else if (!prev && next) {
-              dataPoint[account] = accountData[next].balance;
-              total += accountData[next].balance;
+              // Do not extend backward before first data point
+              // leave undefined so the line does not render
             } else {
               dataPoint[account] = 0;
             }
@@ -165,6 +162,66 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick 
       return dataPoint;
     });
 
+    // Check if all values in the selected range are missing (and only fill if the range is not the full data range)
+    const hasAnyDataInRange = chartRows.some(row =>
+      selectedAccounts.some(account => row[account] && row[account] !== 0)
+    );
+    // Only fill if there is no data in the range, and the selected range starts after the first data point
+    if (!hasAnyDataInRange && firstDataDate && moment(rangeStart).isAfter(firstDataDate)) {
+      // For each account, find the latest value before the start of the timeframe
+      let lastValues = {};
+      let hasAnyLastValue = false;
+      selectedAccounts.forEach(account => {
+        if (groupMap[account]) {
+          // Sum last values of group members
+          let sum = 0;
+          let memberHas = false;
+          groupMap[account].forEach(member => {
+            const accountData = balances[member];
+            if (accountData) {
+              const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+              const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+              if (lastDate) {
+                sum += accountData[lastDate].balance;
+                memberHas = true;
+              }
+            }
+          });
+          lastValues[account] = memberHas ? sum : 0;
+          hasAnyLastValue = hasAnyLastValue || memberHas;
+        } else {
+          const accountData = balances[account];
+          if (accountData) {
+            const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+            const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+            if (lastDate) {
+              lastValues[account] = accountData[lastDate].balance;
+              hasAnyLastValue = true;
+            } else {
+              lastValues[account] = 0;
+            }
+          } else {
+            lastValues[account] = 0;
+          }
+        }
+      });
+      if (hasAnyLastValue) {
+        // Fill every day in the range with the last value
+        chartRows = sortedDates.map(date => {
+          const dataPoint = { date };
+          let total = 0;
+          selectedAccounts.forEach(account => {
+            dataPoint[account] = lastValues[account];
+            total += lastValues[account];
+          });
+          dataPoint.total = total;
+          return dataPoint;
+        });
+      } else {
+        // No value before rangeStart, show nothing
+        chartRows = [];
+      }
+    }
     // Add a datapoint for today if it doesn't exist, using the last known value for each account
     if (!chartRows.find(row => row.date === today)) {
       const lastRow = chartRows.length > 0 ? chartRows[chartRows.length - 1] : null;

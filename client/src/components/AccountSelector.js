@@ -1,14 +1,6 @@
 import React from 'react';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll }) => {
-  // Define group membership (should match NetWorthChart.js)
-  const groupMap = {
-    operating: ['chequing', 'credit card', 'savings'],
-    investing: ['RRSP', 'Margin'],
-    crypto: ['Bitcoin', 'Eth'],
-    equity: ['mortgage', 'House value'],
-    summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
-  };
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap }) => {
   const groupNames = Object.keys(groupMap);
 
   return (

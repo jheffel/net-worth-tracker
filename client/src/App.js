@@ -17,6 +17,7 @@ function App() {
   const [endDate, setEndDate] = useState(moment().format('YYYY-MM-DD'));
   const [mainCurrency, setMainCurrency] = useState('CAD');
   const [currencies, setCurrencies] = useState([]);
+  const [groupMap, setGroupMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -27,7 +28,17 @@ function App() {
 
   useEffect(() => {
     loadInitialData();
+    loadGroupMap();
   }, []);
+  const loadGroupMap = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/account-groups`);
+      setGroupMap(res.data);
+    } catch (err) {
+      setGroupMap({});
+      setError('Failed to load account groups');
+    }
+  };
 
   useEffect(() => {
     if (accounts.length > 0) {
@@ -42,10 +53,10 @@ function App() {
         axios.get(`${API_BASE}/accounts`),
         axios.get(`${API_BASE}/currencies`)
       ]);
-      
       setAccounts(accountsRes.data);
       setCurrencies(currenciesRes.data);
-      setSelectedAccounts(accountsRes.data);
+      // Do not select any accounts by default
+      setSelectedAccounts([]);
     } catch (err) {
       setError('Failed to load initial data');
       console.error(err);
@@ -56,16 +67,8 @@ function App() {
 
   const loadBalances = async () => {
     try {
-      // Define group membership (should match NetWorthChart.js)
-      const groupMap = {
-        operating: ['chequing', 'credit card', 'savings'],
-        investing: ['RRSP', 'Margin'],
-        crypto: ['Bitcoin', 'Eth'],
-        equity: ['mortgage', 'House value'],
-        summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
-      };
-      // Expand selectedAccounts to only real accounts
-      const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
+  // Expand selectedAccounts to only real accounts
+  const expandedAccounts = selectedAccounts.flatMap(acc => groupMap[acc] ? groupMap[acc] : acc);
       const params = {
         accounts: Array.from(new Set(expandedAccounts)),
         startDate,
@@ -202,6 +205,7 @@ function App() {
               onAccountToggle={handleAccountToggle}
               onSelectAll={handleSelectAll}
               onDeselectAll={handleDeselectAll}
+              groupMap={groupMap}
             />
             
             <FileUpload onFileUpload={handleFileUpload} />
@@ -213,6 +217,9 @@ function App() {
               selectedAccounts={selectedAccounts}
               mainCurrency={mainCurrency}
               onPointClick={handleChartClick}
+              startDate={startDate}
+              endDate={endDate}
+              groupMap={groupMap}
             />
             
             <PieCharts
