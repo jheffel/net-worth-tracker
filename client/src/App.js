@@ -13,7 +13,7 @@ function App() {
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [balances, setBalances] = useState({});
   const [timeframe, setTimeframe] = useState('All Data');
-  const [startDate, setStartDate] = useState('2020-01-01');
+  const [startDate, setStartDate] = useState('1970-01-01');
   const [endDate, setEndDate] = useState(moment().format('YYYY-MM-DD'));
   const [mainCurrency, setMainCurrency] = useState('CAD');
   const [currencies, setCurrencies] = useState([]);
@@ -220,6 +220,7 @@ function App() {
               startDate={startDate}
               endDate={endDate}
               groupMap={groupMap}
+              timeframe={timeframe}
             />
             
             <PieCharts

@@ -24,7 +24,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </button>
       </div>
 
-      <div className="account-list">
+  <div className="account-list-scroll">
         {accounts.length === 0 ? (
           <p style={{ color: '#cccccc', textAlign: 'center' }}>
             No accounts available. Import data to get started.

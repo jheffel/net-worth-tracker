@@ -1,3 +1,23 @@
+/* Only the account list in the sidebar should scroll */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 220px;
+  max-width: 300px;
+  background: #232323;
+  padding: 16px 8px 8px 8px;
+  border-radius: 8px;
+}
+
+.account-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 350px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding-right: 4px;
+}
 /* Date picker styling */
 .react-datepicker-wrapper {
   width: 100%;

@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
-const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick, startDate, endDate, groupMap }) => {
+const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick, startDate, endDate, groupMap, timeframe }) => {
   console.log('NetWorthChart balances (full object):', JSON.stringify(balances, null, 2));
   console.log('Account keys:', Object.keys(balances));
   console.log('Selected accounts:', selectedAccounts);
@@ -30,8 +30,11 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
     // Use startDate and endDate props for the timeframe
   const today = moment().format('YYYY-MM-DD');
   const firstDataDate = allDates.size > 0 ? Array.from(allDates).sort()[0] : null;
-  // Always use the user's selected startDate and endDate for the range
-  const rangeStart = startDate;
+  // If timeframe is 'All Data', start at first data point; else use selected startDate
+  let rangeStart = startDate;
+  if (timeframe === 'All Data' && firstDataDate) {
+    rangeStart = firstDataDate;
+  }
   const rangeEnd = endDate || today;
   let sortedDates = [];
   if (rangeStart && rangeEnd) {
@@ -234,6 +237,54 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
         });
         todayRow.total = total;
         chartRows.push(todayRow);
+      }
+    }
+    // For non-'All Data' timeframes, prepend a data point at the start of the range with the last value before the range
+    if (timeframe !== 'All Data' && firstDataDate && moment(rangeStart).isAfter(firstDataDate)) {
+      let lastValues = {};
+      let hasAnyLastValue = false;
+      selectedAccounts.forEach(account => {
+        if (groupMap[account]) {
+          let sum = 0;
+          let memberHas = false;
+          groupMap[account].forEach(member => {
+            const accountData = balances[member];
+            if (accountData) {
+              const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+              const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+              if (lastDate) {
+                sum += accountData[lastDate].balance;
+                memberHas = true;
+              }
+            }
+          });
+          lastValues[account] = memberHas ? sum : 0;
+          hasAnyLastValue = hasAnyLastValue || memberHas;
+        } else {
+          const accountData = balances[account];
+          if (accountData) {
+            const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
+            const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
+            if (lastDate) {
+              lastValues[account] = accountData[lastDate].balance;
+              hasAnyLastValue = true;
+            } else {
+              lastValues[account] = 0;
+            }
+          } else {
+            lastValues[account] = 0;
+          }
+        }
+      });
+      if (hasAnyLastValue) {
+        const firstRow = { date: rangeStart };
+        let total = 0;
+        selectedAccounts.forEach(account => {
+          firstRow[account] = lastValues[account];
+          total += lastValues[account];
+        });
+        firstRow.total = total;
+        chartRows = [firstRow, ...chartRows];
       }
     }
     return chartRows;
