@@ -4,7 +4,17 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import moment from 'moment';
 
 
+import axios from 'axios';
 const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency }) => {
+
+  const [ignoreForTotal, setIgnoreForTotal] = useState([]);
+
+  useEffect(() => {
+    // Load ignoreForTotal.txt for 'total' group
+    axios.get('/config/ignoreForTotal.txt').then(res => {
+      setIgnoreForTotal(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+    }).catch(() => setIgnoreForTotal([]));
+  }, []);
 
   const chartTypes = [
     { key: 'operating', title: 'Operating Accounts' },
@@ -49,22 +59,22 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
   // Build pie data for each chart type
   const buildPieData = (type) => {
-    // Always use the groupMap's account list for each chart type
     let groupMembers = [];
     if (type === 'summary') {
-      // For summary, use all accounts in all groups (union of all groupMap values)
       const allGroupAccounts = Object.values(groupMap).flat();
       groupMembers = Array.from(new Set(allGroupAccounts));
+    } else if (type === 'networth') {
+      // All individual accounts (not groups)
+      groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap));
+    } else if (type === 'total') {
+      // All individual accounts not in ignoreForTotal
+      groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap) && !ignoreForTotal.includes(acc));
     } else {
-      // For other types, use groupMap[type] if present
       groupMembers = groupMap[type] || [];
     }
-    // Remove duplicates
     groupMembers = Array.from(new Set(groupMembers));
-    // For each member, interpolate value for selectedDate
     const labels = [];
     const data = [];
-    let total = 0;
     let signedTotal = 0;
     groupMembers.forEach(account => {
       const value = interpolateValue(balances[account], selectedDate);

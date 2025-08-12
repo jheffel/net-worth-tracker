@@ -13,6 +13,10 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+
+// Serve config directory statically for all environments
+app.use('/config', express.static(path.join(__dirname, '../config')));
+
 // Only serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));

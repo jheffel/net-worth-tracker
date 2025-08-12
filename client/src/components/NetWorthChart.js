@@ -7,17 +7,37 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
   console.log('NetWorthChart balances (full object):', JSON.stringify(balances, null, 2));
   console.log('Account keys:', Object.keys(balances));
   console.log('Selected accounts:', selectedAccounts);
+  // Add synthetic groups: networth (all individual accounts), total (all individual accounts minus ignoreForTotal)
+  const [ignoreForTotal, setIgnoreForTotal] = React.useState([]);
+  React.useEffect(() => {
+    fetch('/config/ignoreForTotal.txt').then(res => res.text()).then(txt => {
+      setIgnoreForTotal(txt.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+    }).catch(() => setIgnoreForTotal([]));
+  }, []);
+
   const chartData = useMemo(() => {
     if (!balances || Object.keys(balances).length === 0) {
       return [];
     }
 
-  // Use groupMap from props (already destructured)
+    // Use groupMap from props (already destructured)
 
-    // Expand selectedAccounts to include group members for synthetic group lines
-    const expandedAccounts = selectedAccounts.flatMap(acc =>
-      groupMap[acc] ? groupMap[acc] : acc
-    );
+    // Helper to get members for synthetic groups
+    // Helper to get all accounts not in any group
+    const getIndividualAccounts = (accounts, groupMap) => {
+      const groupNames = new Set(Object.keys(groupMap));
+      return accounts.filter(a => !groupNames.has(a));
+    };
+
+    const getSyntheticGroupMembers = (group) => {
+      const allAccounts = Object.keys(balances);
+      if (group === 'networth') {
+        return getIndividualAccounts(allAccounts, groupMap);
+      } else if (group === 'total') {
+        return getIndividualAccounts(allAccounts, groupMap).filter(a => !ignoreForTotal.includes(a));
+      }
+      return [];
+    };
 
     // Get all unique dates, but only display data in the selected timeframe
     const allDates = new Set();
@@ -100,32 +120,29 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
     // For each account, find the last value before rangeStart (if any)
     let lastValueBeforeRange = {};
     selectedAccounts.forEach(account => {
-      if (groupMap[account]) {
-        // For groups, sum last values of members
-        let sum = 0;
-        let memberHas = false;
-        groupMap[account].forEach(member => {
-          const accountData = balances[member];
-          if (accountData) {
-            const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
-            const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
-            if (lastDate) {
-              sum += accountData[lastDate].balance;
-              memberHas = true;
-            }
-          }
-        });
-        lastValueBeforeRange[account] = memberHas ? sum : undefined;
+      let members = [];
+      if (account === 'networth' || account === 'total') {
+        members = getSyntheticGroupMembers(account);
+      } else if (groupMap[account]) {
+        members = groupMap[account];
       } else {
-        const accountData = balances[account];
+        members = [account];
+      }
+      // For groups (real or synthetic), sum last values of members
+      let sum = 0;
+      let memberHas = false;
+      members.forEach(member => {
+        const accountData = balances[member];
         if (accountData) {
           const dates = Object.keys(accountData).filter(d => d < rangeStart).sort();
           const lastDate = dates.length > 0 ? dates[dates.length - 1] : null;
           if (lastDate) {
-            lastValueBeforeRange[account] = accountData[lastDate].balance;
+            sum += accountData[lastDate].balance;
+            memberHas = true;
           }
         }
-      }
+      });
+      lastValueBeforeRange[account] = memberHas ? sum : undefined;
     });
 
     let chartRows = sortedDates.map((date, idx) => {
@@ -133,10 +150,18 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
       let total = 0;
 
       selectedAccounts.forEach(account => {
-        if (groupMap[account]) {
-          // This is a group, sum its members
+        let members = [];
+        if (account === 'networth' || account === 'total') {
+          members = getSyntheticGroupMembers(account);
+        } else if (groupMap[account]) {
+          members = groupMap[account];
+        } else {
+          members = [account];
+        }
+        if (members.length > 1) {
+          // Group (real or synthetic)
           let groupSum = 0;
-          groupMap[account].forEach(member => {
+          members.forEach(member => {
             const accountData = filteredBalances[member];
             if (accountData && accountData[date]) {
               groupSum += accountData[date].balance;
@@ -345,7 +370,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
       }
     }
     return chartRows;
-  }, [balances, selectedAccounts]);
+  }, [balances, selectedAccounts, ignoreForTotal]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
