@@ -380,9 +380,11 @@ body {
   background: var(--container-bg);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  margin: 32px auto 0 auto;
+  margin-top: 32px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 32px 40px;
-  width: 90vw;
+  width: 70%;
   min-width: 320px;
   min-height: 80vh;
   display: flex;
@@ -402,7 +404,7 @@ body {
 @media (max-width: 900px) {
   .container {
     padding: 16px 8px;
-    max-width: 100vw;
+    /* max-width removed to allow 90% fill at all sizes */
   }
 }
 
