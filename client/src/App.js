@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import moment from 'moment';
 import NetWorthChart from './components/NetWorthChart';
@@ -23,6 +23,38 @@ function App() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
+  const [splitRatio, setSplitRatio] = useState(0.66); // portion of space for main graph (0-1)
+  const [dragging, setDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+  const handleDividerMouseDown = (e) => {
+    e.preventDefault();
+    setDragging(true);
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!dragging || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top; // distance from top of container
+    const ratio = offsetY / rect.height;
+    // enforce min / max to keep panels usable
+    setSplitRatio(clamp(ratio, 0.2, 0.85));
+  }, [dragging]);
+
+  const handleMouseUp = useCallback(() => {
+    if (dragging) setDragging(false);
+  }, [dragging]);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   // API base URL
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -205,8 +237,8 @@ function App() {
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-            <div className="chart-container vertical-split panel-split">
-              <div className="main-graph-panel panel-box">
+            <div className="chart-container vertical-split panel-split" ref={containerRef}>
+              <div className="main-graph-panel panel-box" style={{ flex: `${splitRatio} 1 0%` }}>
                 <NetWorthChart
                   balances={balances}
                   selectedAccounts={selectedAccounts}
@@ -219,8 +251,21 @@ function App() {
                   loading={loading}
                 />
               </div>
-              <div className="panel-gap" />
-              <div className="piecharts-panel panel-box">
+              <div
+                className={`panel-divider${dragging ? ' dragging' : ''}`}
+                onMouseDown={handleDividerMouseDown}
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize panels"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp') setSplitRatio(r => clamp(r - 0.02, 0.2, 0.85));
+                  if (e.key === 'ArrowDown') setSplitRatio(r => clamp(r + 0.02, 0.2, 0.85));
+                }}
+              >
+                <div className="grip" />
+              </div>
+              <div className="piecharts-panel panel-box" style={{ flex: `${1 - splitRatio} 1 0%` }}>
                 <PieCharts
                   balances={balances}
                   selectedAccounts={selectedAccounts}
