@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 
 class Database {
   constructor() {
@@ -26,8 +27,6 @@ class Database {
         CREATE TABLE IF NOT EXISTS account_balances (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           account_name TEXT NOT NULL,
-          date TEXT NOT NULL,
-          balance REAL NOT NULL,
           currency TEXT NOT NULL,
           ticker TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -196,12 +195,29 @@ class Database {
     return groups;
   }
 
+
   async getAvailableCurrencies() {
-    return [
-      'CAD', 'USD', 'INR', 'IDR', 'JPY', 'TWD', 'TRY', 'KRW', 'SEK', 'CHF',
-      'EUR', 'HKD', 'MXN', 'NZD', 'SAR', 'SGD', 'ZAR', 'GBP', 'NOK', 'PEN',
-      'RUB', 'AUD', 'BRL', 'CNY'
+    const currencyFiles = [
+      path.join(__dirname, '../config/available_currency.txt'),
+      path.join(__dirname, '../config/available_crypto.txt')
     ];
+    let all = [];
+    for (const file of currencyFiles) {
+      try {
+        console.log('[getAvailableCurrencies] Reading:', file);
+        const txt = await fsPromises.readFile(file, 'utf8');
+        console.log(`[getAvailableCurrencies] Content of ${file}:`, JSON.stringify(txt));
+        const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        console.log(`[getAvailableCurrencies] Parsed lines:`, lines);
+        all = all.concat(lines);
+      } catch (e) {
+        console.error(`[getAvailableCurrencies] Error reading ${file}:`, e.message);
+      }
+    }
+    // Remove duplicates and empty
+    const result = Array.from(new Set(all)).filter(Boolean);
+    console.log('[getAvailableCurrencies] Final result:', result);
+    return result;
   }
 
   async getMainCurrency() {

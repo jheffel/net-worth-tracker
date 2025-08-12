@@ -265,7 +265,7 @@ function App() {
               >
                 <div className="grip" />
               </div>
-              <div className="piecharts-panel panel-box" style={{ flex: `${1 - splitRatio} 1 0%` }}>
+              <div className="piecharts-panel panel-box" style={{ flex: `${Math.max(0.15, 1 - splitRatio)} 0.7 0%`, minHeight: '120px', maxHeight: '350px' }}>
                 <PieCharts
                   balances={balances}
                   selectedAccounts={selectedAccounts}
