@@ -7,6 +7,7 @@ import AccountSelector from './components/AccountSelector';
 import FileUpload from './components/FileUpload';
 import Controls from './components/Controls';
 import './App.css';
+import './chartLayout.css';
 
 function App() {
   const [accounts, setAccounts] = useState([]);
@@ -212,26 +213,29 @@ function App() {
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-          <div className="chart-container">
-            <NetWorthChart
-              balances={balances}
-              selectedAccounts={selectedAccounts}
-              mainCurrency={mainCurrency}
-              onPointClick={handleChartClick}
-              startDate={startDate}
-              endDate={endDate}
-              groupMap={groupMap}
-              timeframe={timeframe}
-            />
-            
-            <PieCharts
-              balances={balances}
-              selectedAccounts={selectedAccounts}
-              groupMap={groupMap}
-              selectedDate={selectedDate}
-              mainCurrency={mainCurrency}
-            />
-          </div>
+            <div className="chart-container vertical-split">
+              <div className="main-graph-area">
+                <NetWorthChart
+                  balances={balances}
+                  selectedAccounts={selectedAccounts}
+                  mainCurrency={mainCurrency}
+                  onPointClick={handleChartClick}
+                  startDate={startDate}
+                  endDate={endDate}
+                  groupMap={groupMap}
+                  timeframe={timeframe}
+                />
+              </div>
+              <div className="piecharts-area">
+                <PieCharts
+                  balances={balances}
+                  selectedAccounts={selectedAccounts}
+                  groupMap={groupMap}
+                  selectedDate={selectedDate}
+                  mainCurrency={mainCurrency}
+                />
+              </div>
+            </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,23 @@
+/* Vertical split for main graph and pie charts */
+.chart-container.vertical-split {
+  display: flex !important;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.main-graph-area {
+  flex: 2 1 0%;
+  min-height: 0;
+  height: 0;
+  /* Optionally add padding or border */
+}
+.piecharts-area {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
+  overflow: auto;
+  /* Optionally add padding or border */
+}

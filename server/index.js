@@ -32,7 +32,7 @@ const upload = multer({ storage: storage });
 
 // API Routes
 
-// FX rate endpoint for frontend interpolation (moved here after app initialization)
+// FX rate endpoint (moved here to ensure app is initialized)
 app.get('/api/fx-rate', async (req, res) => {
   try {
     const { date, base, target } = req.query;
@@ -42,6 +42,33 @@ app.get('/api/fx-rate', async (req, res) => {
     const fx = require('./fx');
     const rate = await fx.getRate(date, base, target);
     res.json({ rate });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Batch FX rates endpoint to reduce network overhead
+app.post('/api/fx-rates', async (req, res) => {
+  try {
+    const { requests } = req.body || {};
+    if (!Array.isArray(requests)) {
+      return res.status(400).json({ error: 'Body must contain array "requests"' });
+    }
+    const fx = require('./fx');
+    const unique = new Map(); // key -> {date, base, target}
+    requests.forEach(r => {
+      if (r && r.date && r.base && r.target) {
+        const key = `${r.date}_${r.base}_${r.target}`;
+        if (!unique.has(key)) unique.set(key, r);
+      }
+    });
+    const entries = Array.from(unique.entries());
+    const results = await Promise.all(entries.map(async ([key, r]) => {
+      const rate = await fx.getRate(r.date, r.base, r.target);
+      return [key, rate];
+    }));
+    const rates = Object.fromEntries(results);
+    res.json({ rates });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getFxRate } from '../utils/fx';
+import { getFxRate, getFxRatesBatch } from '../utils/fx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
@@ -74,6 +74,49 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         if (has) lastValueBeforeRange[account] = sum;
       });
 
+      // Collect needed FX requests for interpolation ahead of time
+      const neededRequests = [];
+      const neededKeys = new Set();
+      selectedAccounts.forEach(account => {
+        let members = [];
+        if (account === 'networth' || account === 'total') members = getSyntheticGroupMembers(account);
+        else if (groupMap[account]) members = groupMap[account];
+        else members = [account];
+        members.forEach(member => {
+          const accData = balances[member];
+          if (!accData) return;
+          const dateKeys = Object.keys(accData).sort();
+          // For every gap we might interpolate on sortedDates
+          sortedDates.forEach(date => {
+            if (accData[date]) return; // no interpolation needed
+            // find prev & next
+            let prev = null, next = null;
+            for (let k = 0; k < dateKeys.length; k++) {
+              const d = dateKeys[k];
+              if (d < date) prev = d;
+              if (d > date) { next = d; break; }
+            }
+            if (prev && next && prev !== next) {
+              const rawCurrency = accData[prev].raw_currency;
+              if (rawCurrency && rawCurrency !== mainCurrency) {
+                const key = `${date}_${rawCurrency}_${mainCurrency}`;
+                if (!fxCache[key] && !neededKeys.has(key)) {
+                  neededKeys.add(key);
+                  neededRequests.push({ date, base: rawCurrency, target: mainCurrency });
+                }
+              }
+            }
+          });
+        });
+      });
+
+      if (neededRequests.length) {
+        const batchRates = await getFxRatesBatch(neededRequests);
+        if (batchRates) {
+          setFxCache(prev => ({ ...prev, ...batchRates }));
+        }
+      }
+
       // Build chart rows
       let newChartRows = [];
       for (let i = 0; i < sortedDates.length; i++) {
@@ -89,10 +132,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
             const accData = balances[member];
             if (!accData) continue;
             if (accData[date]) {
-              groupSum += accData[date].balance; // already converted
+              groupSum += accData[date].balance;
               continue;
             }
-            // Need interpolation
             const dateKeys = Object.keys(accData).sort();
             let prev = null, next = null;
             for (let k = 0; k < dateKeys.length; k++) {
@@ -100,33 +142,27 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
               if (d < date) prev = d;
               if (d > date) { next = d; break; }
             }
-            if (prev && next) {
-              if (prev === next) {
-                groupSum += accData[prev].balance;
+            if (prev && next && prev !== next) {
+              const prevTime = moment(prev).valueOf();
+              const nextTime = moment(next).valueOf();
+              const curTime = moment(date).valueOf();
+              const ratio = (curTime - prevTime) / (nextTime - prevTime);
+              const prevRaw = accData[prev].raw_balance;
+              const nextRaw = accData[next].raw_balance;
+              const interpolatedRaw = interpolate(prevRaw, nextRaw, ratio);
+              const rawCurrency = accData[prev].raw_currency;
+              if (rawCurrency === mainCurrency) {
+                groupSum += interpolatedRaw;
               } else {
-                const prevTime = moment(prev).valueOf();
-                const nextTime = moment(next).valueOf();
-                const curTime = moment(date).valueOf();
-                const ratio = (curTime - prevTime) / (nextTime - prevTime);
-                const prevRaw = accData[prev].raw_balance;
-                const nextRaw = accData[next].raw_balance;
-                const interpolatedRaw = interpolate(prevRaw, nextRaw, ratio);
-                const rawCurrency = accData[prev].raw_currency; // assume stable within gap
                 const fxKey = `${date}_${rawCurrency}_${mainCurrency}`;
-                let fxRate = fxCache[fxKey];
-                if (fxRate === undefined) {
-                  fxRate = await getFxRate(date, rawCurrency, mainCurrency);
-                  setFxCache(prev => ({ ...prev, [fxKey]: fxRate }));
-                }
+                const fxRate = fxCache[fxKey];
                 if (fxRate != null) groupSum += interpolatedRaw * fxRate;
               }
             } else if (prev && !next) {
-              // forward fill after last known point
               groupSum += accData[prev].balance;
             } else if (!prev && next) {
-              // don't backfill before first point
+              // skip backfill
             } else if (i === 0 && lastValueBeforeRange[account] !== undefined) {
-              // starting from previous range's last value (group-level) only once
               groupSum += lastValueBeforeRange[account];
             }
           }
