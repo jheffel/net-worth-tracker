@@ -4,24 +4,29 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import moment from 'moment';
 
 
+
 import axios from 'axios';
 const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency }) => {
-
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
+  const [summaryGroups, setSummaryGroups] = useState([]);
 
   useEffect(() => {
     // Load ignoreForTotal.txt for 'total' group
     axios.get('/config/ignoreForTotal.txt').then(res => {
       setIgnoreForTotal(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
     }).catch(() => setIgnoreForTotal([]));
+    // Load summary.txt for summary pie chart
+    axios.get('/config/summary.txt').then(res => {
+      setSummaryGroups(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+    }).catch(() => setSummaryGroups(['operating','investing','crypto','equity']));
   }, []);
 
   const chartTypes = [
+    { key: 'summary', title: 'Summary Distribution' },
     { key: 'operating', title: 'Operating Accounts' },
     { key: 'investing', title: 'Investment Accounts' },
     { key: 'crypto', title: 'Crypto Accounts' },
-    { key: 'equity', title: 'Equity Accounts' },
-    { key: 'summary', title: 'Summary Distribution' }
+    { key: 'equity', title: 'Equity Accounts' }
   ];
 
   const colors = [
@@ -59,15 +64,31 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
   // Build pie data for each chart type
   const buildPieData = (type) => {
-    let groupMembers = [];
     if (type === 'summary') {
-      const allGroupAccounts = Object.values(groupMap).flat();
-      groupMembers = Array.from(new Set(allGroupAccounts));
-    } else if (type === 'networth') {
-      // All individual accounts (not groups)
+      // For summary, show one slice per group in summary.txt, each as the sum of its members
+      const labels = [];
+      const data = [];
+      let signedTotal = 0;
+      summaryGroups.forEach(group => {
+        const members = groupMap[group] || [];
+        let groupSum = 0;
+        members.forEach(account => {
+          const value = interpolateValue(balances[account], selectedDate);
+          groupSum += value;
+        });
+        if (groupSum !== 0) {
+          labels.push(group);
+          data.push(Math.abs(groupSum));
+          signedTotal += groupSum;
+        }
+      });
+      return { labels, data, total: signedTotal };
+    }
+    // ...existing code for other types...
+    let groupMembers = [];
+    if (type === 'networth') {
       groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap));
     } else if (type === 'total') {
-      // All individual accounts not in ignoreForTotal
       groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap) && !ignoreForTotal.includes(acc));
     } else {
       groupMembers = groupMap[type] || [];
