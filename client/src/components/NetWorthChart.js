@@ -243,8 +243,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
         }
       });
 
-      dataPoint.total = total;
-      return dataPoint;
+  return dataPoint;
     });
 
     // Check if all values in the selected range are missing (and only fill if the range is not the full data range)
@@ -299,7 +298,6 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
             dataPoint[account] = lastValues[account];
             total += lastValues[account];
           });
-          dataPoint.total = total;
           return dataPoint;
         });
       } else {
@@ -317,8 +315,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
           todayRow[account] = lastRow[account] || 0;
           total += todayRow[account];
         });
-        todayRow.total = total;
-        chartRows.push(todayRow);
+  chartRows.push(todayRow);
       }
     }
     // For non-'All Data' timeframes, prepend a data point at the start of the range with the last value before the range

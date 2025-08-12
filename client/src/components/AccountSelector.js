@@ -27,7 +27,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
     }).catch(() => setIgnoreForTotal([]));
   }, []);
 
-  const groupNames = [...Object.keys(groupMap), 'networth', 'total'];
+  // Exclude 'summary' from the account selector group list
+  const groupNames = [...Object.keys(groupMap).filter(g => g !== 'summary'), 'networth', 'total'];
 
   return (
     <div>
