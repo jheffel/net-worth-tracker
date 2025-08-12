@@ -1,5 +1,5 @@
 /* Vertical split for main graph and pie charts */
-.chart-container.vertical-split {
+.chart-container.vertical-split.panel-split {
   display: flex !important;
   flex-direction: column;
   height: 100%;
@@ -8,16 +8,34 @@
   padding: 0 !important;
   overflow: hidden !important;
 }
-.main-graph-area {
+.main-graph-panel.panel-box {
   flex: 2 1 0%;
   min-height: 0;
   height: 0;
-  /* Optionally add padding or border */
+  background: #232323;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  margin-bottom: 0;
+  padding: 18px 18px 10px 18px;
+  display: flex;
+  flex-direction: column;
 }
-.piecharts-area {
+.piecharts-panel.panel-box {
   flex: 1 1 0%;
   min-height: 0;
   height: 0;
+  background: #232323;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  margin-top: 0;
+  padding: 18px 18px 10px 18px;
   overflow: auto;
-  /* Optionally add padding or border */
+  display: flex;
+  flex-direction: column;
+}
+.panel-gap {
+  height: 32px;
+  width: 100%;
+  background: #181818;
+  flex-shrink: 0;
 }

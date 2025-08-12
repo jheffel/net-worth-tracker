@@ -213,8 +213,8 @@ function App() {
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-            <div className="chart-container vertical-split">
-              <div className="main-graph-area">
+            <div className="chart-container vertical-split panel-split">
+              <div className="main-graph-panel panel-box">
                 <NetWorthChart
                   balances={balances}
                   selectedAccounts={selectedAccounts}
@@ -226,7 +226,8 @@ function App() {
                   timeframe={timeframe}
                 />
               </div>
-              <div className="piecharts-area">
+              <div className="panel-gap" />
+              <div className="piecharts-panel panel-box">
                 <PieCharts
                   balances={balances}
                   selectedAccounts={selectedAccounts}
