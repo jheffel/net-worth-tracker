@@ -32,6 +32,21 @@ const upload = multer({ storage: storage });
 
 // API Routes
 
+// FX rate endpoint for frontend interpolation (moved here after app initialization)
+app.get('/api/fx-rate', async (req, res) => {
+  try {
+    const { date, base, target } = req.query;
+    if (!date || !base || !target) {
+      return res.status(400).json({ error: 'Missing date, base, or target' });
+    }
+    const fx = require('./fx');
+    const rate = await fx.getRate(date, base, target);
+    res.json({ rate });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all account data
 app.get('/api/accounts', async (req, res) => {
   try {
@@ -72,7 +87,9 @@ app.get('/api/balances', async (req, res) => {
         converted[account][date] = {
           ...entry,
           balance: convertedBalance,
-          currency: targetCurrency
+          currency: targetCurrency,
+          raw_balance: entry.balance, // original value from DB
+          raw_currency: entry.currency // original currency from DB
         };
       }
     }
