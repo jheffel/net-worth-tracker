@@ -6,7 +6,7 @@ import moment from 'moment';
 
 
 import axios from 'axios';
-const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency }) => {
+const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency, theme }) => {
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const [summaryGroups, setSummaryGroups] = useState([]);
 
@@ -29,10 +29,9 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     { key: 'equity', title: 'Equity Accounts' }
   ];
 
-  const colors = [
-    '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#ff0000',
-    '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'
-  ];
+  const colorsDark = ['#8884d8','#82ca9d','#ffc658','#ff7300','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];
+  const colorsLight = ['#3557b7','#1f8f5f','#c28a00','#d45800','#b83232','#2b9b2b','#2e5fa8','#d1a500','#a93ba9','#2796a9'];
+  const colors = theme === 'light' ? colorsLight : colorsDark;
 
 
   // Helper: interpolate value for a given date from accountData
@@ -127,11 +126,11 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
       const data = payload[0];
       return (
         <div style={{
-          backgroundColor: '#2d2d2d',
-          border: '1px solid #444',
+          backgroundColor: 'var(--tooltip-bg)',
+          border: '1px solid var(--control-border)',
           borderRadius: '4px',
           padding: '10px',
-          color: '#ffffff'
+          color: 'var(--text-primary)'
         }}>
           <p style={{ margin: '0', fontWeight: 'bold' }}>
             {data.name}
@@ -153,7 +152,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
           justifyContent: 'center',
           alignItems: 'center',
           height: '200px',
-          color: '#cccccc',
+          color: 'var(--text-secondary)',
           fontSize: '14px'
         }}>
           No data available for {moment(selectedDate).format('MMM DD, YYYY')}
@@ -193,7 +192,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 15px 0', color: '#ffffff' }}>
+  <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
         Portfolio Distribution - {moment(selectedDate).format('MMM DD, YYYY')}
       </h3>
       <div className="pie-charts">
@@ -201,11 +200,11 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
           <div key={type.key} className="pie-chart">
             <h3>{type.title}</h3>
             {renderPieChart(type.key, pieData[type.key])}
-            {pieData[type.key] && pieData[type.key].total > 0 && (
+      {pieData[type.key] && pieData[type.key].total > 0 && (
               <p style={{
                 textAlign: 'center',
                 margin: '10px 0 0 0',
-                color: '#cccccc',
+        color: 'var(--text-secondary)',
                 fontSize: '14px'
               }}>
                 Total: {formatCurrency(pieData[type.key].total)}

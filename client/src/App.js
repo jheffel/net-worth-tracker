@@ -25,6 +25,12 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
   const [splitRatio, setSplitRatio] = useState(0.66); // portion of space for main graph (0-1)
   const [dragging, setDragging] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'dark';
+    }
+    return 'dark';
+  });
   const containerRef = useRef(null);
 
   const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
@@ -63,6 +69,14 @@ function App() {
     loadInitialData();
     loadGroupMap();
   }, []);
+
+  // Apply theme to root element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('theme', theme); } catch (e) { /* ignore */ }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const loadGroupMap = async () => {
     try {
       const res = await axios.get(`${API_BASE}/account-groups`);
@@ -220,6 +234,8 @@ function App() {
           mainCurrency={mainCurrency}
           currencies={currencies}
           onCurrencyChange={handleCurrencyChange}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           //updateChartData={updateChartData}
         />
 
@@ -249,6 +265,7 @@ function App() {
                   groupMap={groupMap}
                   timeframe={timeframe}
                   loading={loading}
+                  theme={theme}
                 />
               </div>
               <div
@@ -272,6 +289,7 @@ function App() {
                   groupMap={groupMap}
                   selectedDate={selectedDate}
                   mainCurrency={mainCurrency}
+                  theme={theme}
                 />
               </div>
             </div>

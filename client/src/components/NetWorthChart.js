@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false }) => {
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme }) => {
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
@@ -263,7 +263,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div style={{ backgroundColor: '#2d2d2d', border: '1px solid #444', borderRadius: '4px', padding: '10px', color: '#ffffff' }}>
+        <div style={{ backgroundColor: 'var(--tooltip-bg)', border: '1px solid var(--control-border)', borderRadius: '4px', padding: '10px', color: 'var(--text-primary)' }}>
           <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>{formatDate(label)}</p>
           {payload.map((entry, i) => {
             const isRaw = balances[entry.dataKey] && balances[entry.dataKey][label];
@@ -305,26 +305,32 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           margin={{ top: 30, right: 60, left: 60, bottom: 40 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#d0d5dd' : '#444'} />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
             padding={{ left: 40, right: 40 }}
             minTickGap={15}
+            stroke={theme === 'light' ? '#384454' : '#aaa'}
+            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: 12 }}
           />
           <YAxis
             tickFormatter={v => formatCurrency(v)}
             padding={{ top: 40, bottom: 40 }}
             minTickGap={15}
+            stroke={theme === 'light' ? '#384454' : '#aaa'}
+            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: 12 }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
+          <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
           {selectedAccounts.map((acct, idx) => (
             <Line
               key={acct}
               type="monotone"
               dataKey={acct}
-              stroke={['#8884d8','#82ca9d','#ffc658','#ff7300','#0088FE','#00C49F','#FFBB28','#FF8042'][idx % 8]}
+              stroke={(theme === 'light'
+                ? ['#3557b7','#1f8f5f','#c28a00','#d45800','#005fb3','#009f7a','#b8860b','#cc5c28']
+                : ['#8884d8','#82ca9d','#ffc658','#ff7300','#0088FE','#00C49F','#FFBB28','#FF8042'])[idx % 8]}
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}
