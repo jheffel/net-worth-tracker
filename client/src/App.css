@@ -184,6 +184,18 @@ body, .App {
 }
 
 /* Header styling */
+:root[data-theme='light'] .header h1 {
+  background: linear-gradient(90deg,#2c3440,#4a5666);
+}
+
+.header-flex {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .header h1 {
   background: linear-gradient(90deg,#e0e0e0,#ffffff);
   -webkit-background-clip: text;
@@ -192,6 +204,12 @@ body, .App {
   font-weight: 600;
   letter-spacing: 0.5px;
   margin: 0;
+}
+
+.header-theme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 :root[data-theme='light'] .header h1 {
   background: linear-gradient(90deg,#2c3440,#4a5666);

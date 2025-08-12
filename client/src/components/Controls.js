@@ -105,12 +105,6 @@ const Controls = ({
           </select>
         </div>
       </div>
-      <div className="controls-theme">
-        <label style={{marginRight: 8}}>Theme:</label>
-        <button type="button" onClick={onToggleTheme} className="btn" style={{minWidth: '110px'}}>
-          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-        </button>
-      </div>
     </div>
   );
 };

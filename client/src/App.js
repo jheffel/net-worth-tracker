@@ -209,8 +209,15 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-        <div className="header">
+
+        <div className="header header-flex">
           <h1>Net Worth Tracker</h1>
+          <div className="header-theme">
+            <label style={{marginRight: 8}}>Theme:</label>
+            <button type="button" onClick={toggleTheme} className="btn" style={{minWidth: '110px'}}>
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -234,8 +241,6 @@ function App() {
           mainCurrency={mainCurrency}
           currencies={currencies}
           onCurrencyChange={handleCurrencyChange}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           //updateChartData={updateChartData}
         />
 
