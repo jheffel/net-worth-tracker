@@ -44,7 +44,7 @@ function App() {
     if (accounts.length > 0) {
       loadBalances();
     }
-  }, [accounts, selectedAccounts, timeframe, startDate, endDate]);
+  }, [accounts, selectedAccounts, timeframe, startDate, endDate, mainCurrency]);
 
   const loadInitialData = async () => {
     try {
@@ -65,12 +65,13 @@ function App() {
     }
   };
 
-  const loadBalances = async () => {
+  // Replace loadBalances with a version that accepts a currency override
+  const loadBalances = async (currencyOverride) => {
     try {
       // Always fetch balances for all accounts (including ungrouped)
       const params = {
         accounts: accounts, // use the full accounts list
-        currency: mainCurrency
+        currency: currencyOverride || mainCurrency
       };
       console.log('Requesting balances with params:', params);
       const response = await axios.get(`${API_BASE}/balances`, { params });
@@ -108,8 +109,10 @@ function App() {
       setSuccess('Currency updated successfully');
       setTimeout(() => setSuccess(null), 3000);
 
-      // Reload balances with new currency
-      await loadBalances();
+      // Clear balances immediately to avoid showing stale data
+      setBalances({});
+      // Reload balances with new currency, force using the new currency
+      await loadBalances(currency);
     } catch (err) {
       setError('Failed to update currency');
       console.error(err);

@@ -7,6 +7,14 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
   console.log('NetWorthChart balances (full object):', JSON.stringify(balances, null, 2));
   console.log('Account keys:', Object.keys(balances));
   console.log('Selected accounts:', selectedAccounts);
+  // Debug: Log currencies for each account/date
+  Object.entries(balances).forEach(([account, accountData]) => {
+    Object.entries(accountData).forEach(([date, value]) => {
+      if (value && value.currency) {
+        console.log(`[DEBUG] Account: ${account}, Date: ${date}, Balance: ${value.balance}, Currency: ${value.currency}`);
+      }
+    });
+  });
   // Add synthetic groups: networth (all individual accounts), total (all individual accounts minus ignoreForTotal)
   const [ignoreForTotal, setIgnoreForTotal] = React.useState([]);
   React.useEffect(() => {

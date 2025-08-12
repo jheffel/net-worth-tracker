@@ -5,19 +5,20 @@ const fx = require('./fx');
 
 async function convertBalance({ balance, currency, date }, targetCurrency) {
   if (balance == null || !currency || !date || !targetCurrency) {
-    console.warn(`convertBalance: missing value(s): balance=${balance}, currency=${currency}, date=${date}, targetCurrency=${targetCurrency}`);
+    console.warn(`[convertBalance] MISSING VALUE: balance=${balance}, currency=${currency}, date=${date}, targetCurrency=${targetCurrency}`);
     return null;
   }
   if (currency === targetCurrency) {
-    console.log(`convertBalance: no conversion needed for ${balance} ${currency} (target ${targetCurrency})`);
+    console.log(`[convertBalance] NO CONVERSION NEEDED: ${balance} ${currency} (target ${targetCurrency})`);
     return balance;
   }
+  console.log(`[convertBalance] Attempting to convert ${balance} from ${currency} to ${targetCurrency} on ${date}`);
   const rate = await fx.getRate(date, currency, targetCurrency);
   if (rate == null) {
-    console.warn(`convertBalance: no rate found for ${currency}->${targetCurrency} on ${date}`);
+    console.warn(`[convertBalance] NO RATE FOUND: ${currency}->${targetCurrency} on ${date}`);
     return null;
   }
-  console.log(`Converted ${balance} ${currency} to ${targetCurrency} at rate ${rate}`);
+  console.log(`[convertBalance] SUCCESS: ${balance} ${currency} to ${targetCurrency} at rate ${rate} = ${balance * rate}`);
   return balance * rate;
 }
 
