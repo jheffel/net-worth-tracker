@@ -58,6 +58,7 @@ app.get('/api/balances', async (req, res) => {
       // If not specified, get main currency from DB
       targetCurrency = await db.getMainCurrency();
     }
+    console.log(`[API] /api/balances using targetCurrency: ${targetCurrency}`);
     // Convert all balances to targetCurrency
     const converted = {};
     for (const [account, dates] of Object.entries(balances)) {

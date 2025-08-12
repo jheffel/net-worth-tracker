@@ -373,8 +373,8 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: mainCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -483,6 +483,7 @@ const NetWorthChart = ({ balances, selectedAccounts, mainCurrency, onPointClick,
                 const isActualData = balances[account] && balances[account][props.payload.date];
                 return isActualData ? (
                   <circle
+                    key={props.payload.date + '-' + account}
                     cx={props.cx}
                     cy={props.cy}
                     r={4}

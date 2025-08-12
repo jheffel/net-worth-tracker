@@ -16,7 +16,8 @@ function getRate(date, base, target) {
       (err, row) => {
         db.close();
         if (err) return reject(err);
-        if (row && row.rate) return resolve(row.rate);
+  if (row && row.rate) return resolve(row.rate);
+  if (!row) console.warn(`fx.getRate: No direct rate for ${base}->${target} on ${date}`);
         // Try nearest previous date
         const prevQuery = `SELECT rate FROM exchange_rates WHERE date <= ? AND base_currency = ? AND target_currency = ? ORDER BY date DESC LIMIT 1`;
         const db2 = new sqlite3.Database(DB_PATH);
@@ -24,6 +25,7 @@ function getRate(date, base, target) {
           db2.close();
           if (err2) return reject(err2);
           if (row2 && row2.rate) return resolve(row2.rate);
+          if (!row2) console.warn(`fx.getRate: No previous rate for ${base}->${target} before ${date}`);
           // Try nearest next date
           const nextQuery = `SELECT rate FROM exchange_rates WHERE date >= ? AND base_currency = ? AND target_currency = ? ORDER BY date ASC LIMIT 1`;
           const db3 = new sqlite3.Database(DB_PATH);
@@ -31,6 +33,7 @@ function getRate(date, base, target) {
             db3.close();
             if (err3) return reject(err3);
             if (row3 && row3.rate) return resolve(row3.rate);
+            if (!row3) console.warn(`fx.getRate: No next rate for ${base}->${target} after ${date}`);
             // No rate found
             resolve(null);
           });

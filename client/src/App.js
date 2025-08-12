@@ -67,10 +67,9 @@ function App() {
 
   const loadBalances = async () => {
     try {
-      // Always fetch balances for all accounts in all groups
-      const allGroupAccounts = Object.values(groupMap).flat();
+      // Always fetch balances for all accounts (including ungrouped)
       const params = {
-        accounts: Array.from(new Set(allGroupAccounts)),
+        accounts: accounts, // use the full accounts list
         currency: mainCurrency
       };
       console.log('Requesting balances with params:', params);
