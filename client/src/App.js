@@ -107,8 +107,7 @@ function App() {
     try {
       await axios.put(`${API_BASE}/currency`, { currency });
       setMainCurrency(currency);
-      setSuccess('Currency updated successfully');
-      setTimeout(() => setSuccess(null), 3000);
+
 
       // Clear balances immediately to avoid showing stale data
       setBalances({});
@@ -177,14 +176,7 @@ function App() {
           </div>
         )}
 
-        {success && (
-          <div className="success">
-            {success}
-            <button onClick={() => setSuccess(null)} style={{ marginLeft: '10px', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
-              ×
-            </button>
-          </div>
-        )}
+
 
         <Controls
           timeframe={timeframe}
@@ -224,6 +216,7 @@ function App() {
                   endDate={endDate}
                   groupMap={groupMap}
                   timeframe={timeframe}
+                  loading={loading}
                 />
               </div>
               <div className="panel-gap" />

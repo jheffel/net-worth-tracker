@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe }) => {
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false }) => {
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
@@ -282,7 +282,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {loading && (
+      {(loading || parentLoading) && (
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
