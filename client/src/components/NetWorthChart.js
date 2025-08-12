@@ -8,6 +8,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Load ignore list
   useEffect(() => {
@@ -16,7 +17,93 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     }).catch(() => setIgnoreForTotal([]));
   }, []);
 
+  // Effect 1: Fetch FX rates and update fxCache
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      if (!balances || Object.keys(balances).length === 0 || !startDate) {
+        setFxCache({});
+        setLoading(false);
+        return;
+      }
+
+      const today = moment().format('YYYY-MM-DD');
+      const allDatesSet = new Set();
+      Object.values(balances).forEach(acc => Object.keys(acc).forEach(d => allDatesSet.add(d)));
+      const allDatesSorted = Array.from(allDatesSet).sort();
+      const firstDataDate = allDatesSorted[0];
+      const rangeStart = (timeframe === 'All Data' && firstDataDate) ? firstDataDate : startDate;
+      const rangeEnd = endDate || today;
+      const sortedDates = [];
+      let cur = moment(rangeStart);
+      while (cur.format('YYYY-MM-DD') <= rangeEnd) {
+        sortedDates.push(cur.format('YYYY-MM-DD'));
+        cur = cur.add(1, 'day');
+      }
+
+      // Utility helpers
+      const getIndividualAccounts = (accounts, gmap) => {
+        const groupNames = new Set(Object.keys(gmap));
+        return accounts.filter(a => !groupNames.has(a));
+      };
+      const getSyntheticGroupMembers = (group) => {
+        const allAccounts = Object.keys(balances);
+        if (group === 'networth') return getIndividualAccounts(allAccounts, groupMap);
+        if (group === 'total') return getIndividualAccounts(allAccounts, groupMap).filter(a => !ignoreForTotal.includes(a));
+        return [];
+      };
+
+      // Collect needed FX requests for interpolation ahead of time
+      const neededRequests = [];
+      const neededKeys = new Set();
+      selectedAccounts.forEach(account => {
+        let members = [];
+        if (account === 'networth' || account === 'total') members = getSyntheticGroupMembers(account);
+        else if (groupMap[account]) members = groupMap[account];
+        else members = [account];
+        members.forEach(member => {
+          const accData = balances[member];
+          if (!accData) return;
+          const dateKeys = Object.keys(accData).sort();
+          sortedDates.forEach(date => {
+            if (accData[date]) return;
+            let prev = null, next = null;
+            for (let k = 0; k < dateKeys.length; k++) {
+              const d = dateKeys[k];
+              if (d < date) prev = d;
+              if (d > date) { next = d; break; }
+            }
+            if (prev && next && prev !== next) {
+              const rawCurrency = accData[prev].raw_currency;
+              if (rawCurrency && rawCurrency !== mainCurrency) {
+                const key = `${date}_${rawCurrency}_${mainCurrency}`;
+                if (!neededKeys.has(key)) {
+                  neededKeys.add(key);
+                  neededRequests.push({ date, base: rawCurrency, target: mainCurrency });
+                }
+              }
+            }
+          });
+        });
+      });
+
+      if (neededRequests.length) {
+        const batchRates = await getFxRatesBatch(neededRequests);
+        if (batchRates) {
+          if (!cancelled) setFxCache(prev => ({ ...prev, ...batchRates }));
+        }
+      } else {
+        if (!cancelled) setFxCache(prev => ({ ...prev }));
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal]);
+
+  // Effect 2: Build chartData after fxCache is updated
+  useEffect(() => {
+    let cancelled = false;
     (async () => {
       if (!balances || Object.keys(balances).length === 0 || !startDate) {
         setChartData([]);
@@ -24,17 +111,12 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       }
 
       const today = moment().format('YYYY-MM-DD');
-      // Collect all dates from balances
       const allDatesSet = new Set();
       Object.values(balances).forEach(acc => Object.keys(acc).forEach(d => allDatesSet.add(d)));
       const allDatesSorted = Array.from(allDatesSet).sort();
       const firstDataDate = allDatesSorted[0];
-
-      // Determine range start
       const rangeStart = (timeframe === 'All Data' && firstDataDate) ? firstDataDate : startDate;
       const rangeEnd = endDate || today;
-
-      // Build sorted date list inclusive
       const sortedDates = [];
       let cur = moment(rangeStart);
       while (cur.format('YYYY-MM-DD') <= rangeEnd) {
@@ -73,49 +155,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         });
         if (has) lastValueBeforeRange[account] = sum;
       });
-
-      // Collect needed FX requests for interpolation ahead of time
-      const neededRequests = [];
-      const neededKeys = new Set();
-      selectedAccounts.forEach(account => {
-        let members = [];
-        if (account === 'networth' || account === 'total') members = getSyntheticGroupMembers(account);
-        else if (groupMap[account]) members = groupMap[account];
-        else members = [account];
-        members.forEach(member => {
-          const accData = balances[member];
-          if (!accData) return;
-          const dateKeys = Object.keys(accData).sort();
-          // For every gap we might interpolate on sortedDates
-          sortedDates.forEach(date => {
-            if (accData[date]) return; // no interpolation needed
-            // find prev & next
-            let prev = null, next = null;
-            for (let k = 0; k < dateKeys.length; k++) {
-              const d = dateKeys[k];
-              if (d < date) prev = d;
-              if (d > date) { next = d; break; }
-            }
-            if (prev && next && prev !== next) {
-              const rawCurrency = accData[prev].raw_currency;
-              if (rawCurrency && rawCurrency !== mainCurrency) {
-                const key = `${date}_${rawCurrency}_${mainCurrency}`;
-                if (!fxCache[key] && !neededKeys.has(key)) {
-                  neededKeys.add(key);
-                  neededRequests.push({ date, base: rawCurrency, target: mainCurrency });
-                }
-              }
-            }
-          });
-        });
-      });
-
-      if (neededRequests.length) {
-        const batchRates = await getFxRatesBatch(neededRequests);
-        if (batchRates) {
-          setFxCache(prev => ({ ...prev, ...batchRates }));
-        }
-      }
 
       // Build chart rows
       let newChartRows = [];
@@ -210,9 +249,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         newChartRows.push(todayRow);
       }
 
-      setChartData(newChartRows);
+      if (!cancelled) setChartData(newChartRows);
     })();
-  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal]);
+    return () => { cancelled = true; };
+  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal, fxCache]);
 
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
     style: 'currency', currency: mainCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2
@@ -241,7 +281,24 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   };
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(30,30,30,0.7)', zIndex: 10
+        }}>
+          <div className="spinner" style={{
+            border: '6px solid #eee',
+            borderTop: '6px solid #8884d8',
+            borderRadius: '50%',
+            width: 48, height: 48,
+            animation: 'spin 1s linear infinite'
+          }} />
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
+        </div>
+      )}
       <ResponsiveContainer>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}>
