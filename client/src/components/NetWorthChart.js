@@ -300,17 +300,35 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         </div>
       )}
       <ResponsiveContainer>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}>
+        <LineChart
+          data={chartData}
+          margin={{ top: 30, right: 60, left: 60, bottom: 40 }}
+          onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
+        >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tickFormatter={formatDate} />
-            <YAxis tickFormatter={v => formatCurrency(v)} />
+          <XAxis
+            dataKey="date"
+            tickFormatter={formatDate}
+            padding={{ left: 40, right: 40 }}
+            minTickGap={15}
+          />
+          <YAxis
+            tickFormatter={v => formatCurrency(v)}
+            padding={{ top: 40, bottom: 40 }}
+            minTickGap={15}
+          />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
           {selectedAccounts.map((acct, idx) => (
-            <Line key={acct} type="monotone" dataKey={acct}
+            <Line
+              key={acct}
+              type="monotone"
+              dataKey={acct}
               stroke={['#8884d8','#82ca9d','#ffc658','#ff7300','#0088FE','#00C49F','#FFBB28','#FF8042'][idx % 8]}
-              strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6 }}
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>
