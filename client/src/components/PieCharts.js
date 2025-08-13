@@ -191,20 +191,20 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
 
   return (
-    <div>
-  <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
+    <>
+      <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
         Portfolio Distribution - {moment(selectedDate).format('MMM DD, YYYY')}
       </h3>
-      <div className="pie-charts">
+      <div className="pie-charts" style={{height: '100%', minHeight: 0}}>
         {chartTypes.map((type) => (
           <div key={type.key} className="pie-chart">
             <h3>{type.title}</h3>
             {renderPieChart(type.key, pieData[type.key])}
-      {pieData[type.key] && pieData[type.key].total > 0 && (
+            {pieData[type.key] && pieData[type.key].total > 0 && (
               <p style={{
                 textAlign: 'center',
                 margin: '10px 0 0 0',
-        color: 'var(--text-secondary)',
+                color: 'var(--text-secondary)',
                 fontSize: '14px'
               }}>
                 Total: {formatCurrency(pieData[type.key].total)}
@@ -213,7 +213,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 };
 
