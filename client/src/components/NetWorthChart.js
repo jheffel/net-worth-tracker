@@ -201,17 +201,17 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
                 if (fxRate != null) groupSum += interpolatedRaw * fxRate;
               }
             } else if (prev && !next) {
-              // Forward fill: use raw_balance and apply FX for the fill date
+              // Forward fill: use last known raw_balance, but always apply the FX rate for the current date (if available)
               const raw = accData[prev].raw_balance;
               const rawCurrency = accData[prev].raw_currency;
               if (rawCurrency === mainCurrency) {
                 groupSum += raw;
               } else {
+                // Use the FX rate for the current date, or the most recent previous FX rate if missing
                 let fxKey = `${date}_${rawCurrency}_${mainCurrency}`;
                 let fxRate = fxCache[fxKey];
-                // Fallback: search for most recent previous FX rate in cache
                 if (fxRate == null) {
-                  // Try previous dates in sortedDates order
+                  // Fallback: search for most recent previous FX rate in cache
                   for (let b = i - 1; b >= 0; b--) {
                     const prevDate = sortedDates[b];
                     const prevKey = `${prevDate}_${rawCurrency}_${mainCurrency}`;
