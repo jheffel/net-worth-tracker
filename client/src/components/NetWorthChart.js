@@ -66,22 +66,26 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           const accData = balances[member];
           if (!accData) return;
           const dateKeys = Object.keys(accData).sort();
+          // Always fetch FX rates for all chart dates up to today, even after last real data point
           sortedDates.forEach(date => {
-            if (accData[date]) return;
-            let prev = null, next = null;
-            for (let k = 0; k < dateKeys.length; k++) {
-              const d = dateKeys[k];
-              if (d < date) prev = d;
-              if (d > date) { next = d; break; }
-            }
-            if (prev && next && prev !== next) {
-              const rawCurrency = accData[prev].raw_currency;
-              if (rawCurrency && rawCurrency !== mainCurrency) {
-                const key = `${date}_${rawCurrency}_${mainCurrency}`;
-                if (!neededKeys.has(key)) {
-                  neededKeys.add(key);
-                  neededRequests.push({ date, base: rawCurrency, target: mainCurrency });
+            let rawCurrency = null;
+            if (accData[date] && accData[date].raw_currency) {
+              rawCurrency = accData[date].raw_currency;
+            } else if (dateKeys.length) {
+              // Use last known currency before this date
+              for (let k = dateKeys.length - 1; k >= 0; k--) {
+                const d = dateKeys[k];
+                if (d <= date && accData[d].raw_currency) {
+                  rawCurrency = accData[d].raw_currency;
+                  break;
                 }
+              }
+            }
+            if (rawCurrency && rawCurrency !== mainCurrency) {
+              const key = `${date}_${rawCurrency}_${mainCurrency}`;
+              if (!neededKeys.has(key)) {
+                neededKeys.add(key);
+                neededRequests.push({ date, base: rawCurrency, target: mainCurrency });
               }
             }
           });
@@ -201,17 +205,31 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
                 if (fxRate != null) groupSum += interpolatedRaw * fxRate;
               }
             } else if (prev && !next) {
-              // Forward fill: use last known raw_balance, but always apply the FX rate for the current date (if available)
+              // Forward fill: use last known raw_balance, always apply the FX rate for the current chart date
+              console.log(`Forward fill prev for ${date}: prev=${prev}, accData[prev]=`, accData[prev]);
               const raw = accData[prev].raw_balance;
               const rawCurrency = accData[prev].raw_currency;
               if (rawCurrency === mainCurrency) {
                 groupSum += raw;
               } else {
-                // Use the FX rate for the current date, or the most recent previous FX rate if missing
-                let fxKey = `${date}_${rawCurrency}_${mainCurrency}`;
+                // Use the FX rate for the current chart date
+                const formattedDate = moment(date).format('YYYY-MM-DD');
+                const fxKey = `${formattedDate}_${rawCurrency}_${mainCurrency}`;
                 let fxRate = fxCache[fxKey];
+                if (fxRate === undefined) {
+                  // Try reciprocal
+                  const reciprocalKey = `${formattedDate}_${mainCurrency}_${rawCurrency}`;
+                  const reciprocalRate = fxCache[reciprocalKey];
+                  if (reciprocalRate != null && reciprocalRate !== 0) {
+                    fxRate = 1.0 / reciprocalRate;
+                    console.log(`Used reciprocal FX rate for ${fxKey}:`, fxRate);
+                  }
+                }
+                console.log('Forward fill:', { date, formattedDate, rawCurrency, mainCurrency, fxKey, fxRate });
+                console.log('fxCache keys:', Object.keys(fxCache));
+                console.log(`fxCache[${fxKey}]:`, fxCache[fxKey], 'Type:', typeof fxCache[fxKey]);
+                // If not found, search backwards for the most recent available FX rate
                 if (fxRate == null) {
-                  // Fallback: search for most recent previous FX rate in cache
                   for (let b = i - 1; b >= 0; b--) {
                     const prevDate = sortedDates[b];
                     const prevKey = `${prevDate}_${rawCurrency}_${mainCurrency}`;
@@ -221,7 +239,12 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
                     }
                   }
                 }
-                if (fxRate != null) groupSum += raw * fxRate;
+                console.log('fxCache:', fxCache);
+                if (fxRate != null) {
+                  const computedValue = raw * fxRate;
+                  console.log(`Forward fill value for ${date}: raw=${raw}, fxRate=${fxRate}, computed=${computedValue}`);
+                  groupSum += computedValue;
+                }
                 // else leave as zero (no rate at all)
               }
             } else if (!prev && next) {
@@ -234,6 +257,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         }
         row._hasRealData = hasRealData;
         newChartRows.push(row);
+        if (i > 0 && !row._hasRealData) {
+          console.log(`Chart row for ${date}:`, row);
+        }
       }
 
       // Remove leading rows with only zero values (before any real data)
