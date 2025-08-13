@@ -156,11 +156,13 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         if (has) lastValueBeforeRange[account] = sum;
       });
 
+
       // Build chart rows
       let newChartRows = [];
       for (let i = 0; i < sortedDates.length; i++) {
         const date = sortedDates[i];
         const row = { date };
+        let hasRealData = false;
         for (const account of selectedAccounts) {
           let members = [];
           if (account === 'networth' || account === 'total') members = getSyntheticGroupMembers(account);
@@ -172,6 +174,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
             if (!accData) continue;
             if (accData[date]) {
               groupSum += accData[date].balance;
+              hasRealData = true;
               continue;
             }
             const dateKeys = Object.keys(accData).sort();
@@ -229,8 +232,16 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           }
           row[account] = groupSum;
         }
+        row._hasRealData = hasRealData;
         newChartRows.push(row);
       }
+
+      // Remove leading rows with only zero values (before any real data)
+      let firstRealIdx = newChartRows.findIndex(r => r._hasRealData);
+      if (firstRealIdx > 0) {
+        newChartRows = newChartRows.slice(firstRealIdx);
+      }
+      newChartRows.forEach(r => { delete r._hasRealData; });
 
       // Insert first rangeStart baseline if missing and timeframe not All Data
       if (timeframe !== 'All Data' && firstDataDate && moment(rangeStart).isAfter(firstDataDate)) {
