@@ -27,6 +27,8 @@ class Database {
         CREATE TABLE IF NOT EXISTS account_balances (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           account_name TEXT NOT NULL,
+          date TEXT NOT NULL,
+          balance REAL NOT NULL,
           currency TEXT NOT NULL,
           ticker TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP

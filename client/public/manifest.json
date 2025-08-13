@@ -1,0 +1,9 @@
+{
+  "name": "Net Worth Tracker",
+  "short_name": "NetWorth",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "description": "Track your net worth",
+  "icons": []
+}

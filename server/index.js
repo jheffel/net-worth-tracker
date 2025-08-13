@@ -159,13 +159,25 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
         // Each row after the header is a single account's data
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
+          console.log(`Processing row ${i}:`, row);
           const accountName = row[0];
           const dateCell = row[1];
           const balance = parseFloat(row[2]);
           const currency = row[3] || 'CAD';
           const ticker = row[4] || '';
           console.log('Raw dateCell:', dateCell, 'Type:', typeof dateCell);
-          if (!accountName || !dateCell || isNaN(balance)) continue;
+          if (!accountName) {
+            console.log(`Skipping row ${i}: missing accountName`, row);
+            continue;
+          }
+          if (dateCell === undefined || dateCell === null || dateCell === '') {
+            console.log(`Skipping row ${i}: missing dateCell`, row);
+            continue;
+          }
+          if (isNaN(balance)) {
+            console.log(`Skipping row ${i}: balance is not a number`, row);
+            continue;
+          }
           let date = null;
           // Try to handle Excel/ODS serial dates and string dates
           if (typeof dateCell === 'number') {
@@ -176,15 +188,24 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           } else if (moment(dateCell).isValid()) {
             date = moment(dateCell).format('YYYY-MM-DD');
           }
-          if (!date) continue;
-          await db.addBalance(accountName, date, balance, currency, ticker);
-          importedData.push({
-            account: accountName,
-            date,
-            balance,
-            currency,
-            ticker
-          });
+          console.log(`Parsed date for row ${i}:`, date);
+          if (!date) {
+            console.log(`Skipping row ${i}: could not parse date`, row);
+            continue;
+          }
+          try {
+            await db.addBalance(accountName, date, balance, currency, ticker);
+            importedData.push({
+              account: accountName,
+              date,
+              balance,
+              currency,
+              ticker
+            });
+            console.log(`Imported row ${i}:`, { account: accountName, date, balance, currency, ticker });
+          } catch (err) {
+            console.error(`Error importing row ${i}:`, err);
+          }
         }
       }
     }
