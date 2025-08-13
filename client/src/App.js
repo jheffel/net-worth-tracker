@@ -231,21 +231,20 @@ function App() {
 
 
 
-        <Controls
-          timeframe={timeframe}
-          setTimeframe={setTimeframe}
-          startDate={startDate}
-          setStartDate={setStartDate}
-          endDate={endDate}
-          setEndDate={setEndDate}
-          mainCurrency={mainCurrency}
-          currencies={currencies}
-          onCurrencyChange={handleCurrencyChange}
-          //updateChartData={updateChartData}
-        />
-
         <div className="main-content">
           <div className="sidebar">
+            <Controls
+              timeframe={timeframe}
+              setTimeframe={setTimeframe}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              mainCurrency={mainCurrency}
+              currencies={currencies}
+              onCurrencyChange={handleCurrencyChange}
+              //updateChartData={updateChartData}
+            />
             <AccountSelector
               accounts={accounts}
               selectedAccounts={selectedAccounts}
@@ -254,7 +253,6 @@ function App() {
               onDeselectAll={handleDeselectAll}
               groupMap={groupMap}
             />
-            
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
