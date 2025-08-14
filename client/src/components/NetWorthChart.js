@@ -3,6 +3,39 @@ import { getFxRate, getFxRatesBatch } from '../utils/fx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
+// Utility: fetch stock price for a ticker and date
+async function getStockPrice(ticker, date) {
+  // You may want to cache results for performance
+  try {
+    const res = await fetch(`/api/stock-price?ticker=${encodeURIComponent(ticker)}&date=${encodeURIComponent(date)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.price ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Utility: flatten and factor in stock prices
+async function flattenBalancesWithStock(balances) {
+  const rows = [];
+  for (const [account, currencies] of Object.entries(balances)) {
+    for (const [currency, tickers] of Object.entries(currencies)) {
+      for (const [ticker, dates] of Object.entries(tickers)) {
+        for (const [date, balance] of Object.entries(dates)) {
+          let value = balance;
+          if (ticker) {
+            const price = await getStockPrice(ticker, date);
+            if (price != null) value = balance * price;
+          }
+          rows.push({ account, currency, ticker, date, balance: value });
+        }
+      }
+    }
+  }
+  return rows;
+}
+
 // NetWorth / Total FX-aware interpolation chart
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme }) => {
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
