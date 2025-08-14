@@ -249,9 +249,14 @@ body, .App {
   align-items: center;
   gap: 8px;
 }
+
+
 :root[data-theme='light'] .header h1 {
   background: linear-gradient(90deg,#2c3440,#4a5666);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
+
 
 /* Controls layout improvements */
 .controls {
