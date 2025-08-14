@@ -324,11 +324,11 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(30,30,30,0.7)', zIndex: 10
+          background: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(30,30,30,0.7)', zIndex: 10
         }}>
           <div className="spinner" style={{
-            border: '6px solid #eee',
-            borderTop: '6px solid #8884d8',
+            border: theme === 'light' ? '6px solid #e0e6ef' : '6px solid #eee',
+            borderTop: theme === 'light' ? '6px solid #3557b7' : '6px solid #8884d8',
             borderRadius: '50%',
             width: 48, height: 48,
             animation: 'spin 1s linear infinite'

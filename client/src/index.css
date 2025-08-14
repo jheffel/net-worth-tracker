@@ -5,8 +5,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background: var(--bg-gradient-body);
+  color: var(--text-primary);
 }
 
 code {
@@ -20,8 +20,8 @@ code {
 
 .App {
   min-height: 100vh;
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background: var(--bg-gradient);
+  color: var(--text-primary);
 }
 
 .container {
@@ -30,16 +30,18 @@ code {
 }
 
 .header {
-  background-color: #2d2d2d;
+  background: var(--panel-bg);
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--panel-border);
 }
 
 .header h1 {
   margin: 0;
-  color: #ffffff;
+  /* color handled via App.css gradient; keep readable fallback */
+  color: var(--text-primary);
   font-size: 2rem;
   font-weight: 600;
 }
@@ -60,25 +62,25 @@ code {
 
 .control-group label {
   font-size: 0.9rem;
-  color: #cccccc;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .control-group select,
 .control-group input {
   padding: 8px 12px;
-  border: 1px solid #444;
+  border: 1px solid var(--control-border);
   border-radius: 4px;
-  background-color: #333;
-  color: #ffffff;
+  background-color: var(--control-bg);
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
 .control-group select:focus,
 .control-group input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--control-focus-ring);
 }
 
 .btn {
@@ -126,18 +128,20 @@ code {
 }
 
 .sidebar {
-  background-color: #2d2d2d;
+  background: var(--panel-bg);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
 }
 
 .chart-container {
-  background-color: #2d2d2d;
+  background: var(--panel-bg);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
 }
 
@@ -149,15 +153,16 @@ code {
 }
 
 .pie-chart {
-  background-color: #2d2d2d;
+  background: var(--panel-bg);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
 }
 
 .pie-chart h3 {
   margin: 0 0 15px 0;
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -184,7 +189,7 @@ code {
 
 .account-item label {
   cursor: pointer;
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
