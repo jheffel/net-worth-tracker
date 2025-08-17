@@ -19,6 +19,7 @@ function App() {
   const [mainCurrency, setMainCurrency] = useState('CAD');
   const [currencies, setCurrencies] = useState([]);
   const [groupMap, setGroupMap] = useState({});
+  const [netWorthMembers, setNetWorthMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -87,7 +88,11 @@ function App() {
   const loadGroupMap = async () => {
     try {
       const res = await axios.get(`${API_BASE}/account-groups`);
-      setGroupMap(res.data);
+      const groups = res.data;
+  // Dynamically set net worth and total members
+  const allAccounts = accounts;
+  const groupedAccounts = Object.values(groups).flat();
+  setGroupMap({ ...groups });
     } catch (err) {
       setGroupMap({});
       setError('Failed to load account groups');
@@ -250,7 +255,6 @@ function App() {
               mainCurrency={mainCurrency}
               currencies={currencies}
               onCurrencyChange={handleCurrencyChange}
-              //updateChartData={updateChartData}
             />
             <AccountSelector
               accounts={accounts}

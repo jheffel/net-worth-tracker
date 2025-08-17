@@ -194,6 +194,31 @@ class Database {
         groups[group] = [];
       }
     }
+
+    const allAccounts = this.getAllAccounts();
+    groups['networth'] = await allAccounts;
+    const tempList = {};
+    const ignoreFilePath = path.join(configDir, 'ignorefortotal.txt');
+    try {
+      if (fs.existsSync(ignoreFilePath)) {
+        const content = fs.readFileSync(ignoreFilePath, 'utf-8');
+        tempList['ignorefortotal'] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      } else {
+        tempList['ignorefortotal'] = [];
+      }
+    } catch (e) {
+      console.error(`Error reading group file for ignorefortotal:`, e);
+      tempList['ignorefortotal'] = [];
+    }
+
+    if (groups['networth'] && tempList['ignorefortotal']) {
+      groups['total'] = groups['networth'].filter(
+        account => !tempList['ignorefortotal'].includes(account)
+      );
+    } else {
+      groups['total'] = [];
+    }
+
     return groups;
   }
 

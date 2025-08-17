@@ -3,15 +3,7 @@ import React from 'react';
 
 const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal }) => {
   // Define group membership (should match NetWorthChart.js)
-  /*
-  const groupMap = {
-    operating: ['chequing', 'credit card', 'savings'],
-    investing: ['RRSP', 'Margin'],
-    crypto: ['Bitcoin', 'Eth'],
-    equity: ['mortgage', 'House value'],
-    summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
-  };
-  */
+
   const groupNames = Object.keys(groupMap);
 
   return (
@@ -41,24 +33,24 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             No accounts available. Import data to get started.
           </p>
         ) : (
-          [...accounts, 'net worth', 'total'].map(account => {
-            const isGroup = groupNames.includes(account);
-            const isSynthetic = account === 'net worth' || account === 'total';
-            let syntheticMembers = [];
-            if (isSynthetic) {
-              // net worth: all accounts not in any group
-              // total: all accounts not in any group and not in ignoreForTotal
+          [...accounts].map(account => {
+            // Treat 'net worth' and 'total' as groups
+            let members = [];
+            /*
+            if (account === 'net worth') {
               const allAccounts = [...accounts];
               const groupedAccounts = Object.values(groupMap).flat();
-              if (account === 'net worth') {
-                syntheticMembers = allAccounts.filter(a => !groupedAccounts.includes(a));
-               
-              } else if (account === 'total') {
-                // If you have an ignoreForTotal list, filter here; otherwise, just show ungrouped
-                
-                syntheticMembers = allAccounts.filter(a => !groupedAccounts.includes(a) && !ignoreForTotal.includes(a));
-              } 
+              members = allAccounts.filter(a => !groupedAccounts.includes(a));
+            } else if (account === 'total') {
+              const allAccounts = [...accounts];
+              const groupedAccounts = Object.values(groupMap).flat();
+              members = allAccounts.filter(a => !groupedAccounts.includes(a) && !(typeof ignoreForTotal !== 'undefined' && ignoreForTotal.includes(a)));
+            } else if (groupMap[account]) {
+              members = groupMap[account];
             }
+            */
+            members = groupMap[account] || [];
+            const isGroupLike = account === 'net worth' || account === 'total' || groupMap[account];
             return (
               <React.Fragment key={account}>
                 <div className="account-item">
@@ -68,31 +60,13 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
                     checked={selectedAccounts.includes(account)}
                     onChange={() => onAccountToggle(account)}
                   />
-                  <label htmlFor={account} style={isGroup ? { fontWeight: 'bold', color: '#ffd700' } : isSynthetic ? { fontWeight: 'bold', color: '#4361ee' } : {}}>
-                    {account} {isGroup && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
-                    {isSynthetic && <span style={{ fontSize: '11px', color: '#aaa' }}>(Synthetic)</span>}
+                  <label htmlFor={account} style={isGroupLike ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
+                    {account} {isGroupLike && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
                   </label>
                 </div>
-                {isGroup && selectedAccounts.includes(account) && (
+                {isGroupLike && selectedAccounts.includes(account) && members.length > 0 && (
                   <div style={{ marginLeft: 24, marginBottom: 4 }}>
-                    {groupMap[account]?.map(member => (
-                      <div key={member} className="account-item">
-                        <input
-                          type="checkbox"
-                          id={account + '-' + member}
-                          checked={true}
-                          disabled
-                        />
-                        <label htmlFor={account + '-' + member} style={{ color: '#aaa', fontStyle: 'italic' }}>
-                          {member}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {isSynthetic && selectedAccounts.includes(account) && syntheticMembers.length > 0 && (
-                  <div style={{ marginLeft: 24, marginBottom: 4 }}>
-                    {syntheticMembers.map(member => (
+                    {members.map(member => (
                       <div key={account + '-' + member} className="account-item">
                         <input
                           type="checkbox"
