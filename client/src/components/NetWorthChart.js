@@ -82,8 +82,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       };
       const getSyntheticGroupMembers = (group) => {
         const allAccounts = Object.keys(balances);
-        if (group === 'networth') return getIndividualAccounts(allAccounts, groupMap);
-        if (group === 'total') return getIndividualAccounts(allAccounts, groupMap).filter(a => !ignoreForTotal.includes(a));
+        if (group === 'networth') return Object.keys(balances);
+        //if (group === 'networth') return getIndividualAccounts(allAccounts, groupMap);
+        if (group === 'total') return Object.keys(balances).filter(a => !ignoreForTotal.includes(a));
+        //if (group === 'total') return getIndividualAccounts(allAccounts, groupMap).filter(a => !ignoreForTotal.includes(a));
         return [];
       };
 
@@ -138,6 +140,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return () => { cancelled = true; };
   }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal]);
 
+
+  
+
+
   // Effect 2: Build chartData after fxCache is updated
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +180,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       };
       const interpolate = (v1, v2, r) => v1 + (v2 - v1) * r;
 
+      /*
       // Pre-calc last value before range for each selected account/group
       const lastValueBeforeRange = {};
       selectedAccounts.forEach(account => {
@@ -192,7 +199,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         });
         if (has) lastValueBeforeRange[account] = sum;
       });
-
+      */
 
       // Build chart rows
       let newChartRows = [];
@@ -282,10 +289,29 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
               }
             } else if (!prev && next) {
               // skip backfill
-            } else if (i === 0 && lastValueBeforeRange[account] !== undefined) {
-              groupSum += lastValueBeforeRange[account];
+            //} else if (i === 0 && lastValueBeforeRange[account] !== undefined) {
+            //  groupSum += lastValueBeforeRange[account];
             }
           }
+
+
+
+          for (const member of members) {
+            const accData = balances[member];
+            if (!accData) continue;
+            if (accData[date] && accData[date].ticker && accData[date].raw_balance != null) {
+              // If there's a ticker, fetch its price and add to groupSum
+              const ticker = accData[date].ticker;
+              const rawBalance = accData[date].raw_balance;
+              const price = accData[date].price; // Assume price is pre-fetched and present in accData
+              if (price != null) {
+                groupSum += rawBalance * price;
+                hasRealData = true;
+              }
+            }
+          }
+
+
           row[account] = groupSum;
         }
         row._hasRealData = hasRealData;
@@ -302,6 +328,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       }
       newChartRows.forEach(r => { delete r._hasRealData; });
 
+      /*
       // Insert first rangeStart baseline if missing and timeframe not All Data
       if (timeframe !== 'All Data' && firstDataDate && moment(rangeStart).isAfter(firstDataDate)) {
         if (!newChartRows.find(r => r.date === rangeStart)) {
@@ -310,7 +337,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           newChartRows = [baseRow, ...newChartRows];
         }
       }
+      */
 
+      /*
       // Append today if missing
       if (!newChartRows.find(r => r.date === today) && newChartRows.length) {
         const last = newChartRows[newChartRows.length - 1];
@@ -318,6 +347,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         selectedAccounts.forEach(a => { todayRow[a] = last[a] || 0; });
         newChartRows.push(todayRow);
       }
+        */
 
       if (!cancelled) setChartData(newChartRows);
     })();

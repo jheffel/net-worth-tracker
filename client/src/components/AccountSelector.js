@@ -1,4 +1,5 @@
 import React from 'react';
+import { ignoreForTotal } from '../constants/ignoreForTotal';
 
 const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll }) => {
   // Define group membership (should match NetWorthChart.js)
@@ -49,10 +50,12 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
               const groupedAccounts = Object.values(groupMap).flat();
               if (account === 'net worth') {
                 syntheticMembers = allAccounts.filter(a => !groupedAccounts.includes(a));
+               
               } else if (account === 'total') {
                 // If you have an ignoreForTotal list, filter here; otherwise, just show ungrouped
-                syntheticMembers = allAccounts.filter(a => !groupedAccounts.includes(a));
-              }
+                
+                syntheticMembers = allAccounts.filter(a => !groupedAccounts.includes(a) && !ignoreForTotal.includes(a));
+              } 
             }
             return (
               <React.Fragment key={account}>
