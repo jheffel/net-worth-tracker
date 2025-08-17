@@ -105,22 +105,39 @@ class Database {
 
       query += ' ORDER BY date, account_name';
 
-      this.db.all(query, params, (err, rows) => {
+      this.db.all(query, params, async (err, rows) => {
         if (err) reject(err);
         else {
-          // Group by account
+          // Group by account, currency, ticker, and date
           const grouped = {};
-          rows.forEach(row => {
-            if (!grouped[row.account_name]) {
-              grouped[row.account_name] = {};
+          for (const row of rows) {
+            if (!grouped[row.account_name]) grouped[row.account_name] = {};
+            const key = `${row.currency}|${row.ticker || ''}|${row.date}`;
+            if (!grouped[row.account_name][key]) grouped[row.account_name][key] = [];
+            grouped[row.account_name][key].push(row);
+          }
+          // Now convert and sum
+          const convertBalance = require('./convert').convertBalance;
+          const result = {};
+          for (const [account, groups] of Object.entries(grouped)) {
+            result[account] = {};
+            for (const [key, entries] of Object.entries(groups)) {
+              // key format: currency|ticker|date
+              const [currency, ticker, date] = key.split('|');
+              let sum = 0;
+              let rawEntries = [];
+              for (const entry of entries) {
+                const converted = await convertBalance({ balance: entry.balance, currency: entry.currency, date }, entry.targetCurrency || 'CAD');
+                if (converted != null) sum += converted;
+                rawEntries.push({ balance: entry.balance, currency: entry.currency, ticker: entry.ticker });
+              }
+              if (!result[account][date]) result[account][date] = { balance: 0, currency: 'CAD', raw_entries: [] };
+              result[account][date].balance += sum;
+              result[account][date].currency = entries[0].targetCurrency || entries[0].currency || 'CAD';
+              result[account][date].raw_entries = result[account][date].raw_entries.concat(rawEntries);
             }
-            grouped[row.account_name][row.date] = {
-              balance: row.balance,
-              currency: row.currency,
-              ticker: row.ticker
-            };
-          });
-          resolve(grouped);
+          }
+          resolve(result);
         }
       });
     });

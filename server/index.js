@@ -91,36 +91,19 @@ app.get('/api/accounts', async (req, res) => {
 });
 
 // Get account balances for a specific date range
+
 app.get('/api/balances', async (req, res) => {
   try {
     const { startDate, endDate, accounts, currency } = req.query;
-    const balances = await db.getAccountBalances(startDate, endDate, accounts);
     let targetCurrency = currency;
     if (!targetCurrency) {
       // If not specified, get main currency from DB
       targetCurrency = await db.getMainCurrency();
     }
     console.log(`[API] /api/balances using targetCurrency: ${targetCurrency}`);
-    // Convert all balances to targetCurrency
-    const converted = {};
-    for (const [account, dates] of Object.entries(balances)) {
-      converted[account] = {};
-      for (const [date, entry] of Object.entries(dates)) {
-        const convertedBalance = await convertBalance({
-          balance: entry.balance,
-          currency: entry.currency,
-          date
-        }, targetCurrency);
-        converted[account][date] = {
-          ...entry,
-          balance: convertedBalance,
-          currency: targetCurrency,
-          raw_balance: entry.balance, // original value from DB
-          raw_currency: entry.currency // original currency from DB
-        };
-      }
-    }
-    res.json(converted);
+    // Pass targetCurrency to db.getAccountBalances
+    const balances = await db.getAccountBalances(startDate, endDate, accounts, targetCurrency);
+    res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
