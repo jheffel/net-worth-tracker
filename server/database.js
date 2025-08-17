@@ -77,7 +77,7 @@ class Database {
     });
   }
 
-  async getAccountBalances(startDate = null, endDate = null, accounts = null) {
+  async getAccountBalances(startDate = null, endDate = null, accounts = null, targetCurrency = 'CAD') {
     return new Promise((resolve, reject) => {
       let query = 'SELECT account_name, date, balance, currency, ticker FROM account_balances';
       let params = [];
@@ -127,13 +127,13 @@ class Database {
               let sum = 0;
               let rawEntries = [];
               for (const entry of entries) {
-                const converted = await convertBalance({ balance: entry.balance, currency: entry.currency, date }, entry.targetCurrency || 'CAD');
+                const converted = await convertBalance({ balance: entry.balance, currency: entry.currency, date }, targetCurrency);
                 if (converted != null) sum += converted;
                 rawEntries.push({ balance: entry.balance, currency: entry.currency, ticker: entry.ticker });
               }
-              if (!result[account][date]) result[account][date] = { balance: 0, currency: 'CAD', raw_entries: [] };
+              if (!result[account][date]) result[account][date] = { balance: 0, currency: targetCurrency, raw_entries: [] };
               result[account][date].balance += sum;
-              result[account][date].currency = entries[0].targetCurrency || entries[0].currency || 'CAD';
+              result[account][date].currency = targetCurrency;
               result[account][date].raw_entries = result[account][date].raw_entries.concat(rawEntries);
             }
           }
@@ -291,8 +291,8 @@ class Database {
   }
 
   async getNetWorthSummary(startDate = null, endDate = null, accounts = null) {
-    const balances = await this.getAccountBalances(startDate, endDate, accounts);
-    
+    const balances = await this.getAccountBalances(startDate, endDate, accounts, targetCurrency = this.getMainCurrency());
+
     // Calculate totals for each date
     const summary = {};
     Object.keys(balances).forEach(account => {
