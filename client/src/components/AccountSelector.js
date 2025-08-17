@@ -1,8 +1,9 @@
 import React from 'react';
-import { ignoreForTotal } from '../constants/ignoreForTotal';
+//import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal }) => {
   // Define group membership (should match NetWorthChart.js)
+  /*
   const groupMap = {
     operating: ['chequing', 'credit card', 'savings'],
     investing: ['RRSP', 'Margin'],
@@ -10,6 +11,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
     equity: ['mortgage', 'House value'],
     summary: ['chequing', 'credit card', 'savings', 'RRSP', 'Margin', 'Bitcoin', 'Eth', 'mortgage', 'House value']
   };
+  */
   const groupNames = Object.keys(groupMap);
 
   return (

@@ -37,18 +37,11 @@ async function flattenBalancesWithStock(balances) {
 }
 
 // NetWorth / Total FX-aware interpolation chart
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme }) => {
-  const [ignoreForTotal, setIgnoreForTotal] = useState([]);
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [] }) => {
   const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Load ignore list
-  useEffect(() => {
-    fetch('/config/ignoreForTotal.txt').then(r => r.text()).then(txt => {
-      setIgnoreForTotal(txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean));
-    }).catch(() => setIgnoreForTotal([]));
-  }, []);
 
   // Effect 1: Fetch FX rates and update fxCache
   useEffect(() => {

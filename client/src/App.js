@@ -31,7 +31,14 @@ function App() {
     }
     return 'dark';
   });
+  const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const containerRef = useRef(null);
+  // Load ignoreForTotal list
+  useEffect(() => {
+    fetch('/config/ignoreForTotal.txt').then(r => r.text()).then(txt => {
+      setIgnoreForTotal(txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean));
+    }).catch(() => setIgnoreForTotal([]));
+  }, []);
 
   const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
@@ -252,6 +259,7 @@ function App() {
               onSelectAll={handleSelectAll}
               onDeselectAll={handleDeselectAll}
               groupMap={groupMap}
+              ignoreForTotal={ignoreForTotal}
             />
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
@@ -269,6 +277,7 @@ function App() {
                   timeframe={timeframe}
                   loading={loading}
                   theme={theme}
+                  ignoreForTotal={ignoreForTotal}
                 />
               </div>
               <div
