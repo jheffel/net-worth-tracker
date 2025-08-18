@@ -7,7 +7,8 @@ const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 
 class Database {
   constructor() {
-  this.dbPath = path.join(__dirname, '../db/finance.db');
+    this._accountBalancesCache = new Map();
+    this.dbPath = path.join(__dirname, '../db/finance.db');
     this.ensureDataDirectory();
     this.init();
   }
@@ -17,6 +18,11 @@ class Database {
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
+  }
+
+  // Invalidate the cache
+  invalidateCache() {
+    this._accountBalancesCache.clear();
   }
 
   init() {
@@ -63,6 +69,9 @@ class Database {
           else resolve(this.lastID);
         }
       );
+    }).then((result) => {
+      this.invalidateCache();
+      return result;
     });
   }
 
@@ -80,6 +89,13 @@ class Database {
   }
 
   async getAccountBalances(startDate = null, endDate = null, accounts = null, targetCurrency = 'CAD') {
+
+    const cacheKey = JSON.stringify({ startDate, endDate, accounts, targetCurrency });
+    if (this._accountBalancesCache.has(cacheKey)) {
+      console.log('Returning cached data for key:', cacheKey);
+      return this._accountBalancesCache.get(cacheKey);
+    }
+
     return new Promise((resolve, reject) => {
       let query = 'SELECT account_name, date, balance, currency, ticker FROM account_balances';
       let params = [];
@@ -256,11 +272,14 @@ class Database {
 
                   // Multiply balance by ticker rate
                   balance *= tickerRate;
-                  
 
-                  
+                  //initialize the date
+                  if (!result[account][date]) {
+                    result[account][date] = 0;
+                  }
+
                   if (currency == 'CAD'){
-                    result[account][date] = balance;
+                    result[account][date] += balance;
                   }
                   else {
                     //convert to CAD
@@ -271,14 +290,15 @@ class Database {
                     }
 
                     //convert to main currency from CAD
-                    targetCurrency = await this.getMainCurrency();
+                    //targetCurrency = await this.getMainCurrency();
+                    
                     console.log('target currency: ', targetCurrency);
                     const converted2 = await convertBalance({ balance, currency: 'CAD', date }, targetCurrency);
                     if (converted2 != null) {
                       balance = converted2;
                     }
 
-                    result[account][date] = balance;
+                    result[account][date] += balance;
 
 
                   }
@@ -322,7 +342,9 @@ class Database {
           }
           */
 
-
+          // Cache the result
+          this._accountBalancesCache.set(cacheKey, result);
+          
           resolve(result);
         }
       });
