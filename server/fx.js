@@ -16,12 +16,12 @@ async function getRate(date, base, target) {
   // Otherwise, use CAD as intermediary: base->CAD, then CAD->target
   const toCad = await directOrNearest(date, base, 'CAD');
   if (toCad == null) {
-    console.warn(`fx.getRate: No rate for ${base}->CAD on ${date}`);
+    //console.warn(`fx.getRate: No rate for ${base}->CAD on ${date}`);
     return null;
   }
   const fromCad = await directOrNearest(date, 'CAD', target);
   if (fromCad == null) {
-    console.warn(`fx.getRate: No rate for CAD->${target} on ${date}`);
+    //console.warn(`fx.getRate: No rate for CAD->${target} on ${date}`);
     return null;
   }
   return toCad * fromCad;
@@ -48,7 +48,7 @@ function directOrNearest(date, base, target) {
             dbRev.close();
             if (errRev) return reject(errRev);
             if (rowRev && rowRev.rate) {
-              console.warn(`fx.getRate: Using reciprocal for ${base}->${target} on ${date}`);
+              //console.warn(`fx.getRate: Using reciprocal for ${base}->${target} on ${date}`);
               return resolve(1.0 / rowRev.rate);
             }
             // Try nearest previous date
@@ -64,7 +64,7 @@ function directOrNearest(date, base, target) {
                 db2Rev.close();
                 if (err2r) return reject(err2r);
                 if (row2r && row2r.rate) {
-                  console.warn(`fx.getRate: Using reciprocal for previous ${base}->${target} before ${date}`);
+                  //console.warn(`fx.getRate: Using reciprocal for previous ${base}->${target} before ${date}`);
                   return resolve(1.0 / row2r.rate);
                 }
                 // Try nearest next date
@@ -80,7 +80,7 @@ function directOrNearest(date, base, target) {
                     db3Rev.close();
                     if (err3r) return reject(err3r);
                     if (row3r && row3r.rate) {
-                      console.warn(`fx.getRate: Using reciprocal for next ${base}->${target} after ${date}`);
+                      //console.warn(`fx.getRate: Using reciprocal for next ${base}->${target} after ${date}`);
                       return resolve(1.0 / row3r.rate);
                     }
                     // No rate found

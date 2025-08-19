@@ -137,7 +137,7 @@ class Database {
             if (!grouped[row.account_name][key]) grouped[row.account_name][key] = [];
             grouped[row.account_name][key].push(row);
             
-            console.log(`Processing row: ${row.account_name}, ${row.date}, ${row.balance}, ${row.currency}, ${row.ticker}`);
+            //console.log(`Processing row: ${row.account_name}, ${row.date}, ${row.balance}, ${row.currency}, ${row.ticker}`);
           }
 
           const myData = {};
@@ -231,15 +231,15 @@ class Database {
                 const daysSincePrev = (new Date(date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
                 const interpolated = prev.balance + (next.balance - prev.balance) * (daysSincePrev / totalDays);
                 myData[account][currency][ticker][date] = [interpolated];
-                console.log(`Interpolated (smooth) balance for ${account} ${currency} ${ticker} on ${date}: ${interpolated}`);
+                //console.log(`Interpolated (smooth) balance for ${account} ${currency} ${ticker} on ${date}: ${interpolated}`);
                 } else if (prevIdx !== -1) {
                 // Use previous balance (forward fill)
                 myData[account][currency][ticker][date] = [points[prevIdx].balance];
-                console.log(`Forward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[prevIdx].balance}`);
+                //console.log(`Forward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[prevIdx].balance}`);
                 } else if (nextIdx !== -1) {
                 // Use next balance (backward fill)
                 myData[account][currency][ticker][date] = [points[nextIdx].balance];
-                console.log(`Backward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[nextIdx].balance}`);
+                //console.log(`Backward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[nextIdx].balance}`);
                 }
               }
               }
@@ -253,14 +253,14 @@ class Database {
           let result = {};
           //Calculate all chart data
           for (const account in myData) {
-            console.log(`Account: ${account}`);
+            //console.log(`Account: ${account}`);
 
             if (!result[account]) result[account] = {};
 
             for (const currency in myData[account]) {
-              console.log(`  Currency: ${currency}`);
+              //console.log(`  Currency: ${currency}`);
               for (const ticker in myData[account][currency]) {
-                console.log(`    Ticker: ${ticker}`);
+                //console.log(`    Ticker: ${ticker}`);
                   //const tickerData = await getAllPricesForSymbol(ticker);
                   //console.log(`    Ticker Data: ${JSON.stringify(tickerData).slice(0, 100)}`);
 
@@ -315,7 +315,7 @@ class Database {
                     //convert to main currency from CAD
                     //targetCurrency = await this.getMainCurrency();
                     
-                    console.log('target currency: ', targetCurrency);
+                    //console.log('target currency: ', targetCurrency);
                     const converted2 = await convertBalance({ balance, currency: 'CAD', date }, targetCurrency);
                     if (converted2 != null) {
                       balance = converted2;
@@ -342,7 +342,7 @@ class Database {
           // Cache the result
           this._accountBalancesCache.set(cacheKey, result);
           
-          console.log('Groups and their members:', groups);
+          //console.log('Groups and their members:', groups);
 
           resolve(result);
         }
