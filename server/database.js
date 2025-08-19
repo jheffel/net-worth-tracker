@@ -152,28 +152,36 @@ class Database {
             myData[row.account_name][row.currency][row.ticker][row.date].push(row.balance);
 
           }
-          /*
-          console.log("_____________________________\n\n\n\n\n\n\n\n\n")
+          
+          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
 
-          console.log("_____________________________\n\n\n\n\n\n\n\n\n")
+          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
 
           for (const account in myData) {
-            console.log(`Account: ${account}`);
+            //console.log(`Account: ${account}`);
             for (const currency in myData[account]) {
-              console.log(`  Currency: ${currency}`);
+              //console.log(`  Currency: ${currency}`);
               for (const ticker in myData[account][currency]) {
-                console.log(`    Ticker: ${ticker}`);
-                for (const date in myData[account][currency][ticker]) {
-                  console.log(`      Date: ${date}`);
-                  const balance = myData[account][currency][ticker][date];
-                  console.log(`         Balances: ${balance}`);
+                //console.log(`    Ticker: ${ticker}`);
+
+                //copy the last date and create a duplicate with todays date
+                const today = new Date().toISOString().slice(0, 10);
+
+                const dates = Object.keys(myData[account][currency][ticker]);
+                const lastDate = dates[dates.length - 1];
+                const lastBalance = myData[account][currency][ticker][lastDate][0];
+
+                if (!myData[account][currency][ticker][today]) {
+                  myData[account][currency][ticker][today] = [lastBalance];
                 }
+
+
               }
             }
           }
 
-          console.log("_____________________________\n\n\n\n\n\n\n\n\n")
-          */
+          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
+          
 
           const interpolateDates = (dates) => {
             // dates: array of date strings, e.g. ['2024-06-01', '2024-06-03']
@@ -239,6 +247,9 @@ class Database {
           }
 
           
+          const groups = await this.getAccountGroups();
+          
+
           let result = {};
           //Calculate all chart data
           for (const account in myData) {
@@ -280,6 +291,18 @@ class Database {
 
                   if (currency == 'CAD'){
                     result[account][date] += balance;
+
+
+                    //if account is in groups add to balance
+                    for (const group in groups) {
+                      if (groups[group].includes(account)) {
+                        if (!result[group]) result[group] = {};
+                        if (!result[group][date]) result[group][date] = 0;
+                        result[group][date] += balance;
+                      }
+                    }
+
+
                   }
                   else {
                     //convert to CAD
@@ -299,8 +322,16 @@ class Database {
                     }
 
                     result[account][date] += balance;
+                    //if account is in groups add to balance
+                    for (const group in groups) {
+                      if (groups[group].includes(account)) {
+                        if (!result[group]) result[group] = {};
+                        if (!result[group][date]) result[group][date] = 0;
+                        result[group][date] += balance;
+                      }
+                    }
 
-
+                    
                   }
 
                 }
@@ -308,7 +339,7 @@ class Database {
             }
           }
 
-          
+
 
 
 
@@ -345,6 +376,8 @@ class Database {
           // Cache the result
           this._accountBalancesCache.set(cacheKey, result);
           
+          console.log('Groups and their members:', groups);
+
           resolve(result);
         }
       });
@@ -425,22 +458,22 @@ class Database {
     const allAccounts = this.getAllAccounts();
     groups['networth'] = await allAccounts;
     const tempList = {};
-    const ignoreFilePath = path.join(configDir, 'ignorefortotal.txt');
+    const ignoreFilePath = path.join(configDir, 'ignoreForTotal.txt');
     try {
       if (fs.existsSync(ignoreFilePath)) {
         const content = fs.readFileSync(ignoreFilePath, 'utf-8');
-        tempList['ignorefortotal'] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        tempList['ignoreForTotal'] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       } else {
-        tempList['ignorefortotal'] = [];
+        tempList['ignoreForTotal'] = [];
       }
     } catch (e) {
-      console.error(`Error reading group file for ignorefortotal:`, e);
-      tempList['ignorefortotal'] = [];
+      console.error(`Error reading group file for ignoreForTotal:`, e);
+      tempList['ignoreForTotal'] = [];
     }
 
-    if (groups['networth'] && tempList['ignorefortotal']) {
+    if (groups['networth'] && tempList['ignoreForTotal']) {
       groups['total'] = groups['networth'].filter(
-        account => !tempList['ignorefortotal'].includes(account)
+        account => !tempList['ignoreForTotal'].includes(account)
       );
     } else {
       groups['total'] = [];

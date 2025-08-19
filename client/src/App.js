@@ -128,8 +128,10 @@ function App() {
   const loadBalances = async (currencyOverride) => {
     try {
       // Always fetch balances for all accounts (including ungrouped)
+      
       const params = {
         accounts: accounts, // use the full accounts list
+
         currency: currencyOverride || mainCurrency
       };
       console.log('Requesting balances with params:', params);
