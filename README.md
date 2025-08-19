@@ -1,59 +1,191 @@
-# net-worth-tracker
-## Description
-Net Worth Tracker is a simple application to help you track your net worth over time. It allows you to input your financial accounts and calculates your net worth, and "total" based on the provided data.
+# Net Worth Tracker
 
-## Exchange Rate Data
-Exchange rate data was sourced from https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/
-
-https://coinmarketcap.com/currencies/bitcoin/historical-data/
-
-coinmarketcap api for cron job daily rate collection
-
-## Screenshot
-![Snap Shot](<images/finance tracker.png>)
+A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Python (PyQt6) and Web (React + Node.js) versions.
 
 ## Features
-- Add accounts from ods data
-- Calculate net worth
-- View net worth history
 
-## Installation
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/jheffel/net-worth-tracker.git
-    ```
+### Core Features
+- **Interactive Charts**: Line charts for net worth tracking with clickable data points
+- **Pie Charts**: Portfolio distribution visualization for different account types
+- **Account Management**: Select/deselect accounts for analysis
+- **Data Import**: Import Excel/ODS files with drag-and-drop support
+- **Currency Support**: Multiple currency support with conversion
+- **Time Filtering**: Custom date ranges and predefined timeframes
+- **Real-time Updates**: Dynamic chart updates based on selections
 
-## Usage
-1. Navigate to the cloned directory:
-    ```bash
-    cd net-worth-tracker
-    ```
-2. Execute the main.py:
-    ```bash
-    python main.py
-    ```
-3. click the "Import ODS" button to load the test data at [example data](example_data/example_data.ods)
-## Config
+### Account Types
+- **Operating**: Checking, savings, credit cards
+- **Investing**: RRSP, margin accounts
+- **Crypto**: Bitcoin, Ethereum, and other cryptocurrencies
+- **Equity**: Mortgages, property values
+- **Summary**: Overall portfolio distribution
 
-Text files in the config folder allow you to designate desired accounts into some different categories. They are populated by default for the test data, modify them with your own accounts as desired.  Removing any of the .txt's in the config folder will cause them not to be calculated or displayed in the app. They include:
+## Python Version (PyQt6)
 
-1. [crypto](config/crypto.txt) -> Crypto accounts
+### Requirements
+- Python 3.8+
+- PyQt6
+- pandas
+- matplotlib
+- sqlite3
 
-2. [equity](config/equity.txt) -> Your mortgage and property value
+### Installation
+```bash
+# Install dependencies
+pip install PyQt6 pandas matplotlib
 
-3. [total](config/ignoreForTotal.txt) -> A custom category that removes any account listed from the total - by default it removes the property value so you can see net worth minus the property value
+# Run the application
+python main.py
+```
 
-4. [investing](config/investing.txt) -> investing accounts
+### Features
+- Desktop application with native UI
+- Interactive matplotlib charts
+- SQLite database storage
+- Excel/ODS file import
+- Real-time data processing
 
-5. [operating](config/operating.txt) -> all liquid cash or credit accounts
+## Web Version (React + Node.js)
 
+### Requirements
+- Node.js 16+
+- npm or yarn
 
-## Notes
-1. click the "Import ODS" button to load the test data at [example data](example_data/example_data.ods)
+### Installation
 
-2. Replace the example data with your own account data in ods format, one sheet per account
+1. **Install dependencies:**
+```bash
+# Install server dependencies
+npm install
 
-3. Delete the [db](db/finance.db) database to start over with fresh data
+# Install client dependencies
+cd client
+npm install
+cd ..
+```
+
+2. **Start the development server:**
+```bash
+# Start both server and client (recommended)
+npm run dev
+
+# Or start them separately:
+npm run server    # Backend on port 5000
+npm run client    # Frontend on port 3000
+```
+
+3. **Build for production:**
+```bash
+npm run build
+npm start
+```
+
+### Features
+- Modern web interface with dark theme
+- Responsive design for mobile/desktop
+- Interactive Recharts visualizations
+- Drag-and-drop file upload
+- RESTful API backend
+- SQLite database with Node.js
+
+## Data Format
+
+Both versions support importing Excel/ODS files with the following structure:
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| Account | Account name | "chequing" |
+| Date | Date (YYYY-MM-DD) | "2024-01-15" |
+| Balance | Amount | 5000.00 |
+| Currency | Currency code | "CAD" |
+| Ticker | Stock/crypto ticker (optional) | "AAPL" |
+
+### File Structure
+- Each sheet represents an account
+- First row contains column headers
+- Data starts from second row
+- Supported formats: .xlsx, .xls, .ods, .csv
+
+## API Endpoints (Web Version)
+
+### GET `/api/accounts`
+Get all available accounts
+
+### GET `/api/balances`
+Get account balances with optional filtering
+- `startDate`: Start date filter
+- `endDate`: End date filter  
+- `accounts`: Comma-separated account names
+
+### GET `/api/pie-chart/:type`
+Get pie chart data for specific account type
+- `type`: operating, investing, crypto, equity, summary
+- `date`: Date for pie chart data
+
+### POST `/api/import`
+Upload Excel/ODS file for data import
+
+### GET `/api/currencies`
+Get available currencies
+
+### PUT `/api/currency`
+Update main currency
+
+## Recent Optimizations
+
+### Performance Improvements
+1. **Database Connection Optimization**
+   - Connection pooling with context managers
+   - Reduced database connection overhead
+   - Proper connection cleanup
+
+2. **Caching System**
+   - LRU cache for expensive operations
+   - Account balance caching
+   - Exchange rate caching
+
+3. **Data Processing Optimization**
+   - Vectorized operations with pandas
+   - Optimized data loading
+   - Memory-efficient data structures
+
+4. **UI Responsiveness**
+   - Non-blocking operations
+   - Efficient chart rendering
+   - Optimized event handling
+
+## File Structure
+
+```
+net-worth-tracker/
+├── main.py                 # Python app entry point
+├── controller.py           # Python app controller
+├── model.py               # Python app data model
+├── view.py                # Python app UI
+├── exchange_rates.py      # Exchange rate handling
+├── stocks.py              # Stock price handling
+├── package.json           # Web app dependencies
+├── server/
+│   ├── index.js           # Express server
+│   └── database.js        # Database operations
+├── client/
+│   ├── package.json       # React dependencies
+│   ├── public/
+│   └── src/
+│       ├── App.js         # Main React component
+│       ├── components/    # React components
+│       └── index.css      # Styling
+└── config/                # Configuration files
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
-This project is licensed under the MIT License.
+
+MIT License - see LICENSE file for details.

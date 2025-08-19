@@ -41,9 +41,8 @@ class FinanceView(QWidget):
         self.setLayout(self.hbox)
 
 
-        # Left panel for account selection
-        self.account_frame = QFrame(self.topleft)
-        self.account_layout = QVBoxLayout(self.account_frame)
+        # Left panel for account selection - use topleft directly
+        self.account_layout = QVBoxLayout(self.topleft)
         self.topleft.setLayout(self.account_layout)
 
         #timeframe frame
@@ -53,15 +52,15 @@ class FinanceView(QWidget):
         self.account_layout.addWidget(self.timeframe_frame)
 
         # Time filter dropdown
-        self.time_filter_label = QLabel("Select Timeframe:", self.account_frame)
+        self.time_filter_label = QLabel("Select Timeframe:", self.topleft)
         self.timeframe_layout.addWidget(self.time_filter_label)
-        self.time_filter_var = QComboBox(self.account_frame)
+        self.time_filter_var = QComboBox(self.topleft)
         self.time_filter_var.addItems(["All Data", "Last Year", "Last 6 Months", "Last 3 Months", "Last Month", "Custom"])
         self.time_filter_var.currentIndexChanged.connect(self.controller.plot_net_worth)
         self.timeframe_layout.addWidget(self.time_filter_var)
 
         # Custom date input
-        self.custom_label = QLabel("Select Custom Date Range:", self.account_frame)
+        self.custom_label = QLabel("Select Custom Date Range:", self.topleft)
         self.timeframe_layout.addWidget(self.custom_label)
 
         self.custom_label.setVisible(False)
@@ -115,8 +114,6 @@ class FinanceView(QWidget):
         currency_layout = QHBoxLayout(self.currency_frame)
         currency_layout.addWidget(currency_label)
         currency_layout.addWidget(self.currency_selector)
-        #self.view.layout().insertLayout(0, layout)
-        #self.account_layout.addLayout(currency_layout) 
         self.account_layout.addWidget(self.currency_frame)
 
        # "Check/Uncheck All" Button
@@ -125,7 +122,7 @@ class FinanceView(QWidget):
 
         self.tool_layout = QHBoxLayout(self.tool_frame)
 
-        self.toggle_button = QPushButton("Check/Uncheck All", self.account_frame)
+        self.toggle_button = QPushButton("Check/Uncheck All", self.topleft)
         self.toggle_button.clicked.connect(self.controller.toggle_all_accounts)
         
         self.tool_layout.addWidget(self.toggle_button)
@@ -133,7 +130,7 @@ class FinanceView(QWidget):
         self.account_layout.addWidget(self.tool_frame)
 
         # Create a scroll area for the account subframe
-        self.scroll_area = QScrollArea(self.account_frame)
+        self.scroll_area = QScrollArea(self.topleft)
         self.scroll_area.setWidgetResizable(True)
         self.account_subframe = QWidget()
         self.account_subframe_layout = QVBoxLayout(self.account_subframe)
@@ -149,7 +146,7 @@ class FinanceView(QWidget):
 
         self.import_layout = QHBoxLayout(self.import_frame)
 
-        self.import_button = QPushButton("Import ODS", self.account_frame)
+        self.import_button = QPushButton("Import ODS", self.topleft)
         self.import_button.clicked.connect(self.controller.import_from_ods)
         
         self.import_layout.addWidget(self.import_button)
@@ -160,7 +157,8 @@ class FinanceView(QWidget):
         # Right panel for graph
         self.graph_frame = QFrame(self.splitter1)
         self.graph_layout = QVBoxLayout(self.graph_frame)
-        self.topleft.setLayout(self.graph_layout)
+        # Set the layout for graph_frame so it can resize properly
+        self.graph_frame.setLayout(self.graph_layout)
         
         self.splitter1.addWidget(self.graph_frame)
         self.splitter1.setStretchFactor(0, 1)  # 10% for left panel
@@ -226,10 +224,8 @@ class FinanceView(QWidget):
 
     def display_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.graph_layout.count())):
-            widget = self.graph_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
+        # Clear existing widgets more efficiently
+        self._clear_layout(self.graph_layout)
 
         # Set the figure and axes background to transparent
         fig.patch.set_facecolor('black')
@@ -240,7 +236,6 @@ class FinanceView(QWidget):
             text.set_color('white')
             text.set_alpha(1.0)
 
-
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.1)
@@ -250,17 +245,19 @@ class FinanceView(QWidget):
         canvas = FigureCanvas(fig)
         self.graph_layout.addWidget(canvas)
 
-    def display_investing_graph(self, fig):
-        """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.investing_layout.count())):
-            widget = self.investing_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
+    def _clear_layout(self, layout):
+        """Efficiently clear all widgets from a layout."""
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
-        # Set the figure and axes background to transparent            
+    def _setup_figure_style(self, fig):
+        """Common figure styling to reduce code duplication."""
         fig.patch.set_facecolor('black')
         fig.patch.set_alpha(0.75)
         fig.patch.set_edgecolor('none')
+        
         for ax in fig.get_axes():
             ax.patch.set_facecolor('black')
             ax.patch.set_alpha(0.5)
@@ -270,102 +267,38 @@ class FinanceView(QWidget):
                 text.set_color(self.txtColor)
                 text.set_alpha(self.txtAlpha)
 
-
+    def display_investing_graph(self, fig):
+        """Displays the Matplotlib graph inside the PyQt GUI."""
+        self._clear_layout(self.investing_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.investing_layout.addWidget(canvas)
 
     def display_crypto_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.crypto_layout.count())):
-            widget = self.crypto_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
+        self._clear_layout(self.crypto_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.crypto_layout.addWidget(canvas)
 
     def display_operating_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.operating_layout.count())):
-            widget = self.operating_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
+        self._clear_layout(self.operating_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.operating_layout.addWidget(canvas)
 
     def display_equity_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.equity_layout.count())):
-            widget = self.equity_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
+        self._clear_layout(self.equity_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.equity_layout.addWidget(canvas)
 
-
     def display_summary_graph(self, fig):
         """Displays the Matplotlib graph inside the PyQt GUI."""
-        for i in reversed(range(self.summary_layout.count())):
-            widget = self.summary_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Set the figure and axes background to transparent
-        fig.patch.set_facecolor('black')
-        fig.patch.set_alpha(0.75)
-        fig.patch.set_edgecolor('none')
-        for ax in fig.get_axes():
-
-            for text in ax.texts:
-                text.set_color(self.txtColor)
-                text.set_alpha(self.txtAlpha)
-
-            ax.patch.set_facecolor('black')
-            ax.patch.set_alpha(0.5)
-            ax.patch.set_edgecolor('none')
-
+        self._clear_layout(self.summary_layout)
+        self._setup_figure_style(fig)
         canvas = FigureCanvas(fig)
         self.summary_layout.addWidget(canvas)
 
@@ -379,3 +312,43 @@ class FinanceView(QWidget):
         label = QLabel(message)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.graph_layout.addWidget(label)
+
+    def display_crypto_empty(self, message):
+        """Display empty state for crypto graph area."""
+        self._clear_layout(self.crypto_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.crypto_layout.addWidget(label)
+
+    def display_operating_empty(self, message):
+        """Display empty state for operating graph area."""
+        self._clear_layout(self.operating_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.operating_layout.addWidget(label)
+
+    def display_investing_empty(self, message):
+        """Display empty state for investing graph area."""
+        self._clear_layout(self.investing_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.investing_layout.addWidget(label)
+
+    def display_equity_empty(self, message):
+        """Display empty state for equity graph area."""
+        self._clear_layout(self.equity_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.equity_layout.addWidget(label)
+
+    def display_summary_empty(self, message):
+        """Display empty state for summary graph area."""
+        self._clear_layout(self.summary_layout)
+        label = QLabel(message)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("color: white; background-color: transparent;")
+        self.summary_layout.addWidget(label)

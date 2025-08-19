@@ -1,17 +1,36 @@
 import pandas as pd
+import numpy as np
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QMainWindow
 from datetime import datetime, timedelta
 import mplcursors  # Import for interactive tooltips
 from model import FinanceModel
 from view import FinanceView
+from functools import lru_cache
+import time
+import logging
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+
+# Set up logging for performance monitoring
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def autopct_format(pct, allvals, currency):
     absolute = int(round(pct/100.*sum(allvals)))
     return f"{pct:.1f}%\n({currency} {absolute:,})"
+
+
+def performance_monitor(func):
+    """Decorator to monitor function performance."""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logger.info(f"{func.__name__} took {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
 
 
 class FinanceController(QMainWindow):
@@ -20,6 +39,7 @@ class FinanceController(QMainWindow):
         self.model = FinanceModel()
 
         self._cached_account_data = None  # Cache for account data
+        self._cached_plot_data = {}  # Cache for plot calculations
         self.get_account_data()
 
         self.view = FinanceView(self)
@@ -31,7 +51,6 @@ class FinanceController(QMainWindow):
 
         self.setCentralWidget(self.view)
         self.setWindowTitle("Net Worth Tracker")
-
 
         self.update_checkboxes()
         self.plot_net_worth()
@@ -51,6 +70,7 @@ class FinanceController(QMainWindow):
         if self.model.summaryList:
             self.plot_summary_pie_chart()
 
+    @performance_monitor
     def get_account_data(self):
         if self._cached_account_data is None:
             self._cached_account_data = self.model.load_data()
@@ -59,6 +79,7 @@ class FinanceController(QMainWindow):
     def set_main_currency(self, currency):
         self.model.main_currency = currency
         self._cached_account_data = None  # Invalidate cache
+        self._cached_plot_data.clear()  # Clear plot cache
         self.plot_net_worth()
         self.plot_crypto_pie_chart()
         self.plot_operating_pie_chart()
@@ -66,7 +87,44 @@ class FinanceController(QMainWindow):
         self.plot_equity_pie_chart()
         self.plot_summary_pie_chart()
 
-
+    @lru_cache(maxsize=128)
+    def _get_account_balance_at_date(self, account, date_str):
+        """Cached method to get account balance at a specific date."""
+        account_data = self.get_account_data()
+        if account not in account_data:
+            return 0
+        
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        account_dates = account_data[account]
+        
+        if date in account_dates:
+            return account_dates[date]
+        
+        # Interpolate if date not found
+        dates = sorted(account_dates.keys())
+        if not dates:
+            return 0
+            
+        # Find closest dates for interpolation
+        for i in range(len(dates) - 1):
+            prev_date, next_date = dates[i].date(), dates[i + 1].date()
+            if prev_date <= date <= next_date:
+                prev_balance, next_balance = account_dates[dates[i]], account_dates[dates[i + 1]]
+                days_diff = (next_date - prev_date).days
+                if days_diff == 0:
+                    return prev_balance
+                balance_diff = next_balance - prev_balance
+                days_to_target = (date - prev_date).days
+                return prev_balance + (balance_diff / days_diff) * days_to_target
+        
+        # If date is before first date or after last date, return closest value
+        if dates:
+            if date < dates[0].date():
+                return account_dates[dates[0]]
+            elif date > dates[-1].date():
+                return account_dates[dates[-1]]
+        
+        return 0
 
 
     def update_checkboxes(self):
@@ -142,9 +200,10 @@ class FinanceController(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error importing ODS: {e}")
 
-
         # invalidate the cache
         self._cached_account_data = None 
+        self._cached_plot_data.clear()
+        self._get_account_balance_at_date.cache_clear()
 
         # Update checkboxes after importing data
         self.update_checkboxes()
@@ -154,6 +213,21 @@ class FinanceController(QMainWindow):
         self.plot_investment_pie_chart()
         self.plot_equity_pie_chart()
         self.plot_summary_pie_chart()
+
+    def cleanup_memory(self):
+        """Clean up memory by clearing caches and unused objects."""
+        self._cached_account_data = None
+        self._cached_plot_data.clear()
+        self._get_account_balance_at_date.cache_clear()
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+
+    def closeEvent(self, event):
+        """Handle application closure and cleanup."""
+        self.cleanup_memory()
+        super().closeEvent(event)
 
 
     def toggle_all_accounts(self):
@@ -193,148 +267,90 @@ class FinanceController(QMainWindow):
                 var.setChecked(False)
 
     def plot_crypto_pie_chart(self, *args):
-        account_balances = {}
         date = args[0] if args else datetime.today().date()
-
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
-
-        account_data = self.get_account_data()
+        
+        # Use cached method for better performance
+        account_balances = {}
+        date_str = date.strftime("%Y-%m-%d") if isinstance(date, datetime) else str(date)
+        
         if self.model.cryptoList:
             for account in self.model.cryptoList:
-                if account in account_data:
-                    if date in account_data[account]:
-                        account_balances[account] = account_data[account][date]
-                    else:
-                        #interpolate
-                        dates = list(account_data[account].keys())
-
-                        balances = list(account_data[account].values())
-                        
-                        for i in range(len(dates) - 1):
-                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
-
-                            if isinstance(date, datetime):
-                                date = date.date()
-
-
-                            if prev_date < date < next_date:
-                                prev_balance, next_balance = balances[i], balances[i + 1]
-                                days_diff = (next_date - prev_date).days
-                                balance_diff = next_balance - prev_balance
-                                days_to_target = (date - prev_date).days
-                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                                account_balances[account] = interpolated_balance
-                                break
-
+                balance = self._get_account_balance_at_date(account, date_str)
+                if balance != 0:
+                    account_balances[account] = abs(balance)
 
             # Sum all account balances for the crypto pie chart
             total_balance = sum(account_balances.values())
 
-            removeZeroKeys = []
+            # Only create pie chart if there are balances to show
+            if account_balances and total_balance > 0:
+                labels = list(account_balances.keys())
+                sizes = list(account_balances.values())
+                fig, ax = plt.subplots()
+                ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
+                ax.axis('equal')
+                ax.set_title("Crypto Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
-            for key, value in account_balances.items():
-                if value < 0:
-                    account_balances[key] = value * -1
-                if value == 0:
-                    removeZeroKeys.append(key)
+                fig.text(
+                    0.5, 0.01,
+                    f"Balance: {self.model.main_currency} {total_balance:,.2f}",
+                    ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+                )
 
-            for key in removeZeroKeys:
-                if key in account_balances:        
-                    del account_balances[key]
+                # Add event to run a function when the pie chart is clicked anywhere
+                fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.cryptoList))
 
-            labels = account_balances.keys()
-            sizes = account_balances.values()
-            fig, ax = plt.subplots()
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
-            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.axis('equal')
-            ax.set_title("Crypto Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
-
-            fig.text(
-                0.5, 0.01,
-                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
-                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
-            )
-
-            # Add event to run a function when the pie chart is clicked anywhere
-            #mplcursors.cursor(fig).connect("add", lambda sel: self.select_crypto_accounts())
-            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.cryptoList))
-
-            self.view.display_crypto_graph(fig)
-            plt.close(fig)
+                self.view.display_crypto_graph(fig)
+                plt.close(fig)
+            else:
+                # Display empty state message
+                self.view.display_crypto_empty("No crypto data available for selected date")
 
 
 
     def plot_operating_pie_chart(self, *args):
-        account_balances = {}
         date = args[0] if args else datetime.today().date()
-
         if isinstance(date, str):
             date = datetime.strptime(date, "%Y-%m-%d")
-
-        account_data = self.get_account_data()
+        
+        # Use cached method for better performance
+        account_balances = {}
+        date_str = date.strftime("%Y-%m-%d") if isinstance(date, datetime) else str(date)
+        
         if self.model.operatingList:
             for account in self.model.operatingList:
-                if account in account_data:
-                    if date in account_data[account]:
-                        account_balances[account] = account_data[account][date]
-                    else:
-                        #interpolate
-                        dates = list(account_data[account].keys())
+                balance = self._get_account_balance_at_date(account, date_str)
+                if balance != 0:
+                    account_balances[account] = abs(balance)
 
-                        balances = list(account_data[account].values())
-                        
-                        for i in range(len(dates) - 1):
-                            prev_date, next_date = dates[i].date(), dates[i + 1].date()
-
-                            if isinstance(date, datetime):
-                                date = date.date()
-
-
-                            if prev_date < date < next_date:
-                                prev_balance, next_balance = balances[i], balances[i + 1]
-                                days_diff = (next_date - prev_date).days
-                                balance_diff = next_balance - prev_balance
-                                days_to_target = (date - prev_date).days
-                                interpolated_balance = prev_balance + (balance_diff / days_diff) * days_to_target
-                                account_balances[account] = interpolated_balance
-                                break
-
+            # Sum all account balances for the operating pie chart
             total_balance = sum(account_balances.values())
-            
-            removeZeroKeys = []
 
-            for key, value in account_balances.items():
-                if value < 0:
-                    account_balances[key] = value * -1
-                if value == 0:
-                    removeZeroKeys.append(key)
+            # Only create pie chart if there are balances to show
+            if account_balances and total_balance > 0:
+                labels = list(account_balances.keys())
+                sizes = list(account_balances.values())
+                fig, ax = plt.subplots()
+                ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
+                ax.axis('equal')
+                ax.set_title("Operating Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
 
-            for key in removeZeroKeys:
-                if key in account_balances:        
-                    del account_balances[key]
+                fig.text(
+                    0.5, 0.01,
+                    f"Balance: {self.model.main_currency} {total_balance:,.2f}",
+                    ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
+                )
 
+                # Add event to run a function when the pie chart is clicked anywhere
+                fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.operatingList))
 
-            labels = account_balances.keys()
-            sizes = account_balances.values()
-            fig, ax = plt.subplots()
-            #ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.pie(sizes, labels=labels, autopct=lambda pct: autopct_format(pct, sizes, self.model.main_currency), startangle=90)
-            ax.axis('equal')
-            ax.set_title("Operating Accounts Distribution", color=self.txtColor, alpha=self.txtAlpha)
-
-            fig.text(
-                0.5, 0.01,
-                f"Balance: {self.model.main_currency} {total_balance:,.2f}",
-                ha='center', va='bottom', fontsize=10, color=self.txtColor, alpha=self.txtAlpha
-            )
-
-
-            fig.canvas.mpl_connect("button_press_event", lambda event: self.select_grouped_accounts(self.model.operatingList))
-
-            self.view.display_operating_graph(fig)
-            plt.close(fig)
+                self.view.display_operating_graph(fig)
+                plt.close(fig)
+            else:
+                # Display empty state message
+                self.view.display_operating_empty("No operating data available for selected date")
 
     def plot_investment_pie_chart(self, *args):
         account_balances = {}

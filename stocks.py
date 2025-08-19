@@ -174,7 +174,8 @@ def test(symbol, date):
 
 
 def main():
-    #populate_stock_data("MSFT", "2023-01-01")
+    #populate_stock_data("MSFT", "2022-11-01")
+    #populate_stock_data("AAPL", "2022-11-01")
 
     #print(fetch_stock_price("AAPL", "2023-10-01"))
     #print(fetch_stock_price("AAPL", "2025-07-17"))
