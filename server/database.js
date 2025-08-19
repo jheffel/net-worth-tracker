@@ -239,6 +239,8 @@ class Database {
                 balance = leftVal + (rightVal - leftVal) * (daysSinceLeft / totalDays);
               }
             }
+              // Only output for dates >= firstKnown
+              if (d < firstKnown) continue;
 
             // Apply ticker price if present
             const tickerRate = ticker ? await getTickerRatePrev(ticker, d) : 1;
