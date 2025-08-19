@@ -184,68 +184,119 @@ class Database {
           
 
           const interpolateDates = (dates) => {
+
+            console.log("\n\n")
+
+            //print all dates one line per date
+            dates.forEach(date => {
+              console.log(date);
+            });
+
             // dates: array of date strings, e.g. ['2024-06-01', '2024-06-03']
             const result = [];
             if (dates.length === 0) return result;
+
+
+            const sortedDates = dates.slice().sort();
+            const start = new Date(sortedDates[0]);
+            const end = new Date(sortedDates[sortedDates.length - 1]);
+            let d = new Date(start);
+
+            while (d <= end) {
+              result.push(d.toISOString().slice(0, 10));
+              // Always create a new date object for the next day
+              d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+            }
+            /*
+            const sortedDates = dates.sort();
+            const start = new Date(sortedDates[0]);
+            const end = new Date(sortedDates[sortedDates.length - 1]);
+            let d = new Date(start);
+            while (d <= end) {
+              result.push(d.toISOString().slice(0, 10));
+              d = new Date(d); // create a new date object
+              d.setDate(d.getDate() + 1);
+              console.log("Adding date:", d.toISOString().slice(0, 10));
+            }
+            */
+            /*
             const sortedDates = dates.sort();
             const start = new Date(sortedDates[0]);
             const end = new Date(sortedDates[sortedDates.length - 1]);
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
               result.push(d.toISOString().slice(0, 10));
             }
+            */
+
+            //Check if a certain date exists in result
+            const checkDateExists = (date) => {
+              return result.includes(date);
+            };
+
+            console.log('2024-11-01', checkDateExists('2024-11-01'));
+            console.log('2024-11-02', checkDateExists('2024-11-02'));
+            console.log('2024-11-03', checkDateExists('2024-11-03'));
+            console.log('2024-11-04', checkDateExists('2024-11-04'));
+            console.log('2024-11-05', checkDateExists('2024-11-05'));
+
             return result;
           };
 
           for (const account in myData) {
             for (const currency in myData[account]) {
               for (const ticker in myData[account][currency]) {
-              const dateKeys = Object.keys(myData[account][currency][ticker]);
-              const allDates = interpolateDates(dateKeys);
+                const dateKeys = Object.keys(myData[account][currency][ticker]);
+                const allDates = interpolateDates(dateKeys);
 
-              // Get actual data points as sorted array of {date, balance}
-              const points = dateKeys
-                .map(date => ({
-                date,
-                balance: myData[account][currency][ticker][date][0]
-                }))
-                .sort((a, b) => a.date.localeCompare(b.date));
+                // Get actual data points as sorted array of {date, balance}
+                const points = dateKeys
+                  .map(date => ({
+                    date,
+                    balance: myData[account][currency][ticker][date][0]
+                  }))
+                  .sort((a, b) => a.date.localeCompare(b.date));
 
-              for (let i = 0; i < allDates.length; i++) {
-                const date = allDates[i];
+                for (let i = 0; i < allDates.length; i++) {
+                  const date = allDates[i];
 
-                // If actual data point, continue
-                if (myData[account][currency][ticker][date]) continue;
+                  // If actual data point, continue
+                  if (myData[account][currency][ticker][date]) continue;
 
-                // Find previous and next actual data points
-                let prevIdx = -1, nextIdx = -1;
-                for (let j = 0; j < points.length; j++) {
-                if (points[j].date < date) prevIdx = j;
-                if (points[j].date > date && nextIdx === -1) nextIdx = j;
+                  // Find previous and next actual data points
+                  let prevIdx = -1, nextIdx = -1;
+                  for (let j = 0; j < points.length; j++) {
+                    if (points[j].date < date) prevIdx = j;
+                    if (points[j].date > date && nextIdx === -1) nextIdx = j;
+                  }
+
+                  if (prevIdx !== -1 && nextIdx !== -1) {
+                    // Linear interpolation
+                    const prev = points[prevIdx];
+                    const next = points[nextIdx];
+                    const totalDays = (new Date(next.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
+                    const daysSincePrev = (new Date(date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
+                    const interpolated = prev.balance + (next.balance - prev.balance) * (daysSincePrev / totalDays);
+                    myData[account][currency][ticker][date] = [interpolated];
+                  } else if (prevIdx !== -1) {
+                    // Forward fill: use previous balance
+                    myData[account][currency][ticker][date] = [points[prevIdx].balance];
+                  } else if (nextIdx !== -1) {
+                    // Backward fill: use next balance
+                    myData[account][currency][ticker][date] = [points[nextIdx].balance];
+                  } else if (points.length > 0) {
+                    // If no previous or next, fill with first known value
+                    myData[account][currency][ticker][date] = [points[0].balance];
+                  }
                 }
-
-                if (prevIdx !== -1 && nextIdx !== -1) {
-                // Linear interpolation
-                const prev = points[prevIdx];
-                const next = points[nextIdx];
-                const totalDays = (new Date(next.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
-                const daysSincePrev = (new Date(date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
-                const interpolated = prev.balance + (next.balance - prev.balance) * (daysSincePrev / totalDays);
-                myData[account][currency][ticker][date] = [interpolated];
-                //console.log(`Interpolated (smooth) balance for ${account} ${currency} ${ticker} on ${date}: ${interpolated}`);
-                } else if (prevIdx !== -1) {
-                // Use previous balance (forward fill)
-                myData[account][currency][ticker][date] = [points[prevIdx].balance];
-                //console.log(`Forward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[prevIdx].balance}`);
-                } else if (nextIdx !== -1) {
-                // Use next balance (backward fill)
-                myData[account][currency][ticker][date] = [points[nextIdx].balance];
-                //console.log(`Backward filled balance for ${account} ${currency} ${ticker} on ${date}: ${points[nextIdx].balance}`);
-                }
-              }
               }
             }
           }
 
+          console.log("CAD no ticker:")
+          console.log(myData['RRSP']['CAD']['']['2024-11-02']);
+          console.log(myData['RRSP']['CAD']['']['2024-11-03']);
+          console.log(myData['RRSP']['CAD']['']['2024-11-04']);
+          console.log(myData['RRSP']['CAD']['']['2024-11-05']);
           
           const groups = await this.getAccountGroups();
           
