@@ -32,6 +32,17 @@ function App() {
     }
     return 'dark';
   });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const containerRef = useRef(null);
   // Load ignoreForTotal list
@@ -231,6 +242,9 @@ function App() {
             <label style={{marginRight: 8}}>Theme:</label>
             <button type="button" onClick={toggleTheme} className="btn" style={{minWidth: '110px'}}>
               {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
+            <button type="button" onClick={handleToggleFullscreen} className="btn" style={{minWidth: '110px', marginLeft: '8px'}}>
+              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             </button>
           </div>
         </div>
