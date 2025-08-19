@@ -339,40 +339,6 @@ class Database {
             }
           }
 
-
-
-
-
-          /*
-          // Now convert and sum
-          const convertBalance = require('./convert').convertBalance;
-          const result = {};
-          for (const [account, groups] of Object.entries(grouped)) {
-            result[account] = {};
-            for (const [key, entries] of Object.entries(groups)) {
-              // key format: currency|ticker|date
-              const [currency, ticker, date] = key.split('|');
-              let sum = 0;
-              let rawEntries = [];
-              for (const entry of entries) {
-                const converted = await convertBalance({ balance: entry.balance, currency: entry.currency, date }, targetCurrency);
-                if (converted != null) sum += converted;
-                rawEntries.push({ balance: entry.balance, currency: entry.currency, ticker: entry.ticker });
-              }
-              
-              //if (!result[account][date]) result[account][date] = { balance: 0, currency: targetCurrency, raw_entries: [] };
-              if(!result[account][date]){
-                result[account][date] = { balance: 0, currency: targetCurrency, raw_entries: [] };
-              }
-
-
-              result[account][date].balance += sum;
-              result[account][date].currency = targetCurrency;
-              result[account][date].raw_entries = result[account][date].raw_entries.concat(rawEntries);
-            }
-          }
-          */
-
           // Cache the result
           this._accountBalancesCache.set(cacheKey, result);
           
@@ -387,8 +353,9 @@ class Database {
   async getPieChartData(type, date) {
     return new Promise((resolve, reject) => {
       // Get account groups based on type
-      const accountGroups = this.getAccountGroupsByType(type);
-      
+      //const accountGroups = this.getAccountGroupsByType(type);
+      const accountGroups = this.getAccountGroups(type);
+
       if (!accountGroups || accountGroups.length === 0) {
         resolve({ labels: [], data: [], total: 0 });
         return;
