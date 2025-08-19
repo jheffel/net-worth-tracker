@@ -41,6 +41,52 @@ async function flattenBalancesWithStock(balances) {
 
 // NetWorth / Total FX-aware interpolation chart
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [] }) => {
+  // Utility: get the earliest and latest date in chartData
+  const getDateRange = (data) => {
+    if (!data.length) return [null, null];
+    const dates = data.map(row => row.date).sort();
+    return [dates[0], dates[dates.length - 1]];
+  };
+
+  // Utility: clip chartData to timeframe
+  const clipChartData = (data, timeframe, selectedAccounts) => {
+    if (!data.length || !timeframe || timeframe === 'ALL') return data;
+
+    const filteredData = data.map(row => {
+      const newRow = { date: row.date };
+      selectedAccounts.forEach(account => {
+        if (row.hasOwnProperty(account)) {
+          newRow[account] = row[account];
+        }
+      });
+      return newRow;
+    }).filter(row => selectedAccounts.some(account => row.hasOwnProperty(account)));
+    //return filteredData;
+    data = filteredData;
+
+    const [_, latest] = getDateRange(data);
+    if (!latest) return data;
+    let startMoment = moment(latest);
+    switch (timeframe) {
+      case 'Last Month': startMoment = startMoment.subtract(1, 'months'); break;
+      case 'Last 3 Months': startMoment = startMoment.subtract(3, 'months'); break;
+      case 'Last 6 Months': startMoment = startMoment.subtract(6, 'months'); break;
+      case 'Last Year': startMoment = startMoment.subtract(1, 'years'); break;
+      case 'All Data': startMoment = startMoment.subtract(2, 'years'); break;
+      default: return data;
+    }
+
+    if (timeframe === 'Custom') {
+      if (startDate && endDate) {
+        return data.filter(row =>
+          moment(row.date).isSameOrAfter(moment(startDate)) &&
+          moment(row.date).isSameOrBefore(moment(endDate))
+        );
+      }
+    } else {
+      return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
+    }
+  };
   //const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
 
@@ -91,7 +137,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
-  // Busy bar component
+ /* // Busy bar component
   const BusyBar = () => (
     <div style={{
       position: 'absolute',
@@ -111,10 +157,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       `}</style>
     </div>
   );
-
+*/
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {parentLoading && <BusyBar />}
       {parentLoading && (
         <div style={{
           position: 'absolute',
@@ -134,7 +179,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       )}
       <ResponsiveContainer>
         <LineChart
-          data={chartData}
+          data={clipChartData(chartData, timeframe, selectedAccounts)}
           margin={{ top: 30, right: 60, left: 60, bottom: 40 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
         >
