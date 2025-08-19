@@ -11,10 +11,12 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
   const [summaryGroups, setSummaryGroups] = useState([]);
 
   useEffect(() => {
+    /*
     // Load ignoreForTotal.txt for 'total' group
     axios.get('/config/ignoreForTotal.txt').then(res => {
       setIgnoreForTotal(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
     }).catch(() => setIgnoreForTotal([]));
+    */
     // Load summary.txt for summary pie chart
     axios.get('/config/summary.txt').then(res => {
       setSummaryGroups(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
@@ -33,7 +35,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
   const colorsLight = ['#3557b7','#1f8f5f','#c28a00','#d45800','#b83232','#2b9b2b','#2e5fa8','#d1a500','#a93ba9','#2796a9'];
   const colors = theme === 'light' ? colorsLight : colorsDark;
 
-
+/*
   // Helper: interpolate value for a given date from accountData
   const interpolateValue = (accountData, date) => {
     if (!accountData) return 0;
@@ -60,9 +62,17 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     }
     return 0;
   };
-
+*/
   // Build pie data for each chart type
+
   const buildPieData = (type) => {
+
+    //console.log('pie balances:', balances);
+    //console.log('pie selectedAccounts:', selectedAccounts);
+    //console.log('pie groupMap:', groupMap);
+    //console.log('pie selectedDate:', selectedDate);
+
+
     if (type === 'summary') {
       // For summary, show one slice per group in summary.txt, each as the sum of its members
       const labels = [];
@@ -72,7 +82,10 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
         const members = groupMap[group] || [];
         let groupSum = 0;
         members.forEach(account => {
-          const value = interpolateValue(balances[account], selectedDate);
+          //const value = interpolateValue(balances[account], selectedDate);
+          //if (!selectedAccounts.includes(account)) return;
+          if (!balances[account]) return;
+          const value = balances[account][selectedDate];
           groupSum += value;
         });
         if (groupSum !== 0) {
@@ -97,7 +110,10 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     const data = [];
     let signedTotal = 0;
     groupMembers.forEach(account => {
-      const value = interpolateValue(balances[account], selectedDate);
+      //const value = interpolateValue(balances[account], selectedDate);
+      //if (!selectedAccounts.includes(account)) return;
+      if (!balances[account]) return;
+      const value = balances[account][selectedDate];
       if (value !== 0) {
         labels.push(account);
         data.push(Math.abs(value));
