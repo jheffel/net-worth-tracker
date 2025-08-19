@@ -72,22 +72,27 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       case 'Last 3 Months': startMoment = startMoment.subtract(3, 'months'); break;
       case 'Last 6 Months': startMoment = startMoment.subtract(6, 'months'); break;
       case 'Last Year': startMoment = startMoment.subtract(1, 'years'); break;
-      case 'All Data': startMoment = startMoment.subtract(2, 'years'); break;
       default: return data;
     }
 
     if (timeframe === 'Custom') {
+      console.log("startDate: ", startDate, " endDate: ", endDate);
       if (startDate && endDate) {
         return data.filter(row =>
           moment(row.date).isSameOrAfter(moment(startDate)) &&
           moment(row.date).isSameOrBefore(moment(endDate))
         );
       }
+    }else if(timeframe === 'All Data'){
+      console.log("All Data timeframe selected");
+      return data;
+
     } else {
+      console.log("Filtering data from: ", startMoment.format('YYYY-MM-DD'));
       return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
     }
   };
-  //const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
+
   const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
