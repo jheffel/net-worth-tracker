@@ -1,5 +1,7 @@
 # Net Worth Tracker
 
+![Net Worth Tracker Screenshot](images/finance tracker.png)
+
 A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Python (PyQt6) and Web (React + Node.js) versions.
 
 ## Features
@@ -10,8 +12,10 @@ A comprehensive financial tracking application for monitoring net worth, investm
 - **Account Management**: Select/deselect accounts for analysis
 - **Data Import**: Import Excel/ODS files with drag-and-drop support
 - **Currency Support**: Multiple currency support with conversion
+- **Stock/Crypto Ticker Support**: Track balances in shares/units and price them daily using market data
 - **Time Filtering**: Custom date ranges and predefined timeframes
 - **Real-time Updates**: Dynamic chart updates based on selections
+- **Caching**: Fast repeated queries with automatic cache invalidation on data import
 
 ### Account Types
 - **Operating**: Checking, savings, credit cards
@@ -44,6 +48,8 @@ python main.py
 - SQLite database storage
 - Excel/ODS file import
 - Real-time data processing
+- Currency conversion and ticker pricing
+- Interpolated/fill logic for missing dates
 
 ## Web Version (React + Node.js)
 
@@ -87,18 +93,20 @@ npm start
 - Drag-and-drop file upload
 - RESTful API backend
 - SQLite database with Node.js
+- Currency and ticker support
+- Fast chart rendering with caching and optimized backend
 
 ## Data Format
 
 Both versions support importing Excel/ODS files with the following structure:
 
-| Column | Description | Example |
-|--------|-------------|---------|
-| Account | Account name | "chequing" |
-| Date | Date (YYYY-MM-DD) | "2024-01-15" |
-| Balance | Amount | 5000.00 |
-| Currency | Currency code | "CAD" |
-| Ticker | Stock/crypto ticker (optional) | "AAPL" |
+| Column   | Description                | Example      |
+|----------|----------------------------|--------------|
+| Account  | Account name               | "chequing"   |
+| Date     | Date (YYYY-MM-DD)          | "2024-01-15" |
+| Balance  | Amount (number or shares)  | 5000.00      |
+| Currency | Currency code              | "CAD"        |
+| Ticker   | Stock/crypto ticker (opt.) | "AAPL"       |
 
 ### File Structure
 - Each sheet represents an account
@@ -116,6 +124,7 @@ Get account balances with optional filtering
 - `startDate`: Start date filter
 - `endDate`: End date filter  
 - `accounts`: Comma-separated account names
+- `currency`: Target currency for conversion
 
 ### GET `/api/pie-chart/:type`
 Get pie chart data for specific account type
@@ -131,28 +140,30 @@ Get available currencies
 ### PUT `/api/currency`
 Update main currency
 
-## Recent Optimizations
+## Recent Optimizations & Logic
 
-### Performance Improvements
-1. **Database Connection Optimization**
-   - Connection pooling with context managers
-   - Reduced database connection overhead
-   - Proper connection cleanup
+### Backend Logic
+- **Caching**: Results of balance queries are cached in-memory and invalidated on new data import or balance addition.
+- **Interpolation & Fill**: For each account/currency/ticker series, missing dates between first and last known are filled:
+  - Non-ticker: Linear interpolation between known points.
+  - Ticker: Step/forward-fill (shares/units constant until next entry).
+  - No backward fill before first known date; no forward fill after last known date.
+- **Ticker Pricing**: For accounts with tickers, daily values are computed as (shares/units) × (last known price on or before that date).
+- **Currency Conversion**: All balances are converted to the requested currency using memoized FX rates for speed.
+- **Group Totals**: Group (e.g., investing, crypto) totals are computed after per-account totals for efficiency.
 
-2. **Caching System**
-   - LRU cache for expensive operations
-   - Account balance caching
-   - Exchange rate caching
+### Frontend Logic
+- **Chart Data Shape**: Line charts expect `{ date, Account1, Account2, ... }` objects; pie charts expect `{ labels, data, total }`.
+- **Date Range**: Only dates with real data for each account are shown; no extension before first entry.
+- **Fullscreen Toggle**: Added to header for improved UX.
+- **Error Handling**: Guards for missing balances, undefined accounts, and empty data.
 
-3. **Data Processing Optimization**
-   - Vectorized operations with pandas
-   - Optimized data loading
-   - Memory-efficient data structures
-
-4. **UI Responsiveness**
-   - Non-blocking operations
-   - Efficient chart rendering
-   - Optimized event handling
+### Troubleshooting
+- If charts show unexpected dips or gaps, check:
+  - DB for missing dates or prices
+  - FX/ticker rates for those dates
+  - Data import format (see above)
+- If performance is slow, verify caching is enabled and not invalidated too frequently.
 
 ## File Structure
 
@@ -160,22 +171,22 @@ Update main currency
 net-worth-tracker/
 ├── main.py                 # Python app entry point
 ├── controller.py           # Python app controller
-├── model.py               # Python app data model
-├── view.py                # Python app UI
-├── exchange_rates.py      # Exchange rate handling
-├── stocks.py              # Stock price handling
-├── package.json           # Web app dependencies
+├── model.py                # Python app data model
+├── view.py                 # Python app UI
+├── exchange_rates.py       # Exchange rate handling
+├── stocks.py               # Stock price handling
+├── package.json            # Web app dependencies
 ├── server/
-│   ├── index.js           # Express server
-│   └── database.js        # Database operations
+│   ├── index.js            # Express server
+│   └── database.js         # Database operations
 ├── client/
-│   ├── package.json       # React dependencies
+│   ├── package.json        # React dependencies
 │   ├── public/
 │   └── src/
-│       ├── App.js         # Main React component
-│       ├── components/    # React components
-│       └── index.css      # Styling
-└── config/                # Configuration files
+│       ├── App.js          # Main React component
+│       ├── components/     # React components
+│       └── index.css       # Styling
+└── config/                 # Configuration files
 ```
 
 ## Contributing
