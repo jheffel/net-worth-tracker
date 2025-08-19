@@ -188,9 +188,9 @@ class Database {
             console.log("\n\n")
 
             //print all dates one line per date
-            dates.forEach(date => {
-              console.log(date);
-            });
+            //dates.forEach(date => {
+            //  console.log(date);
+            //});
 
             // dates: array of date strings, e.g. ['2024-06-01', '2024-06-03']
             const result = [];
@@ -229,15 +229,15 @@ class Database {
             */
 
             //Check if a certain date exists in result
-            const checkDateExists = (date) => {
-              return result.includes(date);
-            };
+            //const checkDateExists = (date) => {
+            //  return result.includes(date);
+            //};
 
-            console.log('2024-11-01', checkDateExists('2024-11-01'));
-            console.log('2024-11-02', checkDateExists('2024-11-02'));
-            console.log('2024-11-03', checkDateExists('2024-11-03'));
-            console.log('2024-11-04', checkDateExists('2024-11-04'));
-            console.log('2024-11-05', checkDateExists('2024-11-05'));
+            //console.log('2024-11-01', checkDateExists('2024-11-01'));
+            //console.log('2024-11-02', checkDateExists('2024-11-02'));
+            //console.log('2024-11-03', checkDateExists('2024-11-03'));
+            //console.log('2024-11-04', checkDateExists('2024-11-04'));
+            //console.log('2024-11-05', checkDateExists('2024-11-05'));
 
             return result;
           };
