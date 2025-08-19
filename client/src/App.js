@@ -126,12 +126,11 @@ function App() {
 
   // Replace loadBalances with a version that accepts a currency override
   const loadBalances = async (currencyOverride) => {
+    setLoading(true);
     try {
       // Always fetch balances for all accounts (including ungrouped)
-      
       const params = {
         accounts: accounts, // use the full accounts list
-
         currency: currencyOverride || mainCurrency
       };
       console.log('Requesting balances with params:', params);
@@ -144,6 +143,8 @@ function App() {
       } else {
         console.error('Network or other error:', err);
       }
+    } finally {
+      setLoading(false);
     }
   };
 

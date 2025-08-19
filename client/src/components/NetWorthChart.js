@@ -43,16 +43,10 @@ async function flattenBalancesWithStock(balances) {
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [] }) => {
   //const [fxCache, setFxCache] = useState({}); // key: date_base_target -> rate
   const [chartData, setChartData] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
-      setLoading(true);
-      
-      console.log('balances: ', balances)
-
-
       //build the chart rows in Recharts format
       const dateAccountMap = {};
       for (const [account, dates] of Object.entries(balances)) {
@@ -62,16 +56,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
         }
       }
 
-
-      console.log('dateAccountMap: ', dateAccountMap)
-
       // Convert map to sorted array
       const newChartRows = Object.values(dateAccountMap).sort((a, b) => a.date.localeCompare(b.date));
-
-      console.log(newChartRows)
-
       if (!cancelled) setChartData(newChartRows);
-      setLoading(false);
     };
     fetchData();
     return () => { cancelled = true; };
@@ -104,9 +91,31 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
+  // Busy bar component
+  const BusyBar = () => (
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 6,
+      background: 'linear-gradient(90deg, #4361ee 0%, #6d89ff 100%)',
+      zIndex: 20,
+      animation: 'busybar-move 1.2s linear infinite'
+    }}>
+      <style>{`
+        @keyframes busybar-move {
+          0% { background-position: 0% 0; }
+          100% { background-position: 100% 0; }
+        }
+      `}</style>
+    </div>
+  );
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {(loading || parentLoading) && (
+      {parentLoading && <BusyBar />}
+      {parentLoading && (
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,

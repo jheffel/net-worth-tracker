@@ -289,7 +289,7 @@ class Database {
                     result[account][date] = 0;
                   }
 
-                  if (currency == 'CAD'){
+                  if (currency == targetCurrency){
                     result[account][date] += balance;
 
 
