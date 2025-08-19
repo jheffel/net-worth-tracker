@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
+const { convertBalance } = require('./convert');
 
 class Database {
   constructor() {
@@ -89,314 +90,194 @@ class Database {
   }
 
   async getAccountBalances(startDate = null, endDate = null, accounts = null, targetCurrency = 'CAD') {
-
     const cacheKey = JSON.stringify({ startDate, endDate, accounts, targetCurrency });
     if (this._accountBalancesCache.has(cacheKey)) {
-      console.log('Returning cached data for key:', cacheKey);
       return this._accountBalancesCache.get(cacheKey);
     }
 
+    // Small helpers for dates
+    const toISO = (d) => new Date(d).toISOString().slice(0, 10);
+    const addDaysStr = (dateStr, days) => {
+      const t = new Date(dateStr).getTime() + days * 24 * 60 * 60 * 1000;
+      return new Date(t).toISOString().slice(0, 10);
+    };
+
+    // Memoized FX rates and ticker prices for this invocation
+    const fxRateCache = new Map(); // key: from|to|date => rate (for balance=1)
+    const getFxRate = async (from, to, date) => {
+      if (from === to) return 1;
+      const key = `${from}|${to}|${date}`;
+      if (fxRateCache.has(key)) return fxRateCache.get(key);
+      const rate = await convertBalance({ balance: 1, currency: from, date }, to);
+      fxRateCache.set(key, rate);
+      return rate;
+    };
+
+    // Load all prices for a ticker once, then binary search the last known <= date (strictly previous)
+    const tickerCache = new Map(); // ticker => { dates: string[], prices: number[] }
+    const getTickerRatePrev = async (ticker, date) => {
+      if (!ticker) return 1;
+      if (!tickerCache.has(ticker)) {
+        const rows = await getAllPricesForSymbol(ticker);
+        const sorted = (rows || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        tickerCache.set(
+          ticker,
+          {
+            dates: sorted.map(r => String(r.date)),
+            prices: sorted.map(r => Number(r.price))
+          }
+        );
+      }
+      const { dates, prices } = tickerCache.get(ticker);
+      if (!dates.length) return 1;
+      // binary search for last index <= date
+      let lo = 0, hi = dates.length - 1, ans = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (dates[mid] <= date) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
+      }
+      if (ans < 0) return 1; // no previous price exists; avoid future lookahead
+      return prices[ans];
+    };
+
     return new Promise((resolve, reject) => {
       let query = 'SELECT account_name, date, balance, currency, ticker FROM account_balances';
-      let params = [];
-      let conditions = [];
+      const params = [];
+      const conditions = [];
 
       if (startDate) {
         conditions.push('date >= ?');
         params.push(startDate);
       }
-
       if (endDate) {
         conditions.push('date <= ?');
         params.push(endDate);
       }
-
       if (accounts && accounts.length > 0) {
         const placeholders = accounts.map(() => '?').join(',');
         conditions.push(`account_name IN (${placeholders})`);
         params.push(...accounts);
       }
-
       if (conditions.length > 0) {
         query += ' WHERE ' + conditions.join(' AND ');
       }
-
-      query += ' ORDER BY date, account_name';
-
-
-      console.log('Executing query:', query, 'with params:', params);
+      query += ' ORDER BY account_name, date';
 
       this.db.all(query, params, async (err, rows) => {
-        if (err) reject(err);
-        else {
-          // Group by account, currency, ticker, and date
-          const grouped = {};
-          for (const row of rows) {
-            if (!grouped[row.account_name]) grouped[row.account_name] = {};
-            const key = `${row.currency}|${row.ticker || ''}|${row.date}`;
-            if (!grouped[row.account_name][key]) grouped[row.account_name][key] = [];
-            grouped[row.account_name][key].push(row);
-            
-            //console.log(`Processing row: ${row.account_name}, ${row.date}, ${row.balance}, ${row.currency}, ${row.ticker}`);
-          }
+        if (err) return reject(err);
 
-          const myData = {};
-          for (const row of rows) {
+        if (!rows || rows.length === 0) {
+          this._accountBalancesCache.set(cacheKey, {});
+          return resolve({});
+        }
 
-            //initialize myData
-            if (!myData[row.account_name]) myData[row.account_name] = {};
-            if (!myData[row.account_name][row.currency]) myData[row.account_name][row.currency] = [];
-            if (!myData[row.account_name][row.currency][row.ticker]) myData[row.account_name][row.currency][row.ticker] = [];
-            if (!myData[row.account_name][row.currency][row.ticker][row.date]) myData[row.account_name][row.currency][row.ticker][row.date] = [];
+        // Determine effective range
+        const today = new Date().toISOString().slice(0, 10);
+        const minRowDate = rows.reduce((m, r) => (m && m < r.date ? m : r.date), rows[0].date);
+        const maxRowDate = rows.reduce((m, r) => (m && m > r.date ? m : r.date), rows[0].date);
+        const rangeStart = startDate || minRowDate;
+        const rangeEnd = endDate || (today > maxRowDate ? today : maxRowDate);
 
-            myData[row.account_name][row.currency][row.ticker][row.date].push(row.balance);
+        // Build per-series maps: (account|currency|ticker) -> Map(date => balance sum)
+        const seriesMap = new Map();
+        const seriesKey = (a, c, t) => `${a}|||${c}|||${t || ''}`;
+        for (const r of rows) {
+          const key = seriesKey(r.account_name, r.currency, r.ticker || '');
+          let m = seriesMap.get(key);
+          if (!m) { m = new Map(); seriesMap.set(key, m); }
+          m.set(r.date, (m.get(r.date) || 0) + Number(r.balance));
+        }
 
-          }
-          
-          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
+        // Preload groups once
+        const groups = await this.getAccountGroups();
 
-          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
+        const result = {};
 
-          for (const account in myData) {
-            //console.log(`Account: ${account}`);
-            for (const currency in myData[account]) {
-              //console.log(`  Currency: ${currency}`);
-              for (const ticker in myData[account][currency]) {
-                //console.log(`    Ticker: ${ticker}`);
+        // Iterate each series and accumulate into account totals with linear interpolation and memoized rates
+        for (const [key, dateMap] of seriesMap) {
+          const [account, currency, ticker] = key.split('|||');
 
-                //copy the last date and create a duplicate with todays date
-                const today = new Date().toISOString().slice(0, 10);
+          // Sort known dates for this series
+          const knownDates = Array.from(dateMap.keys()).sort();
+          if (knownDates.length === 0) continue;
+          const firstKnown = knownDates[0];
+          const lastKnownDate = knownDates[knownDates.length - 1];
+          const knownBalances = knownDates.map(d => Number(dateMap.get(d)));
+          // j points to segment [knownDates[j], knownDates[j+1]] containing d (if any)
+          let j = 0;
 
-                const dates = Object.keys(myData[account][currency][ticker]);
-                const lastDate = dates[dates.length - 1];
-                const lastBalance = myData[account][currency][ticker][lastDate][0];
-
-                if (!myData[account][currency][ticker][today]) {
-                  myData[account][currency][ticker][today] = [lastBalance];
-                }
-
-
+          // Sweep the requested date range:
+          // - For non-ticker series: linear interpolation between known points
+          // - For ticker series: step (forward-fill) between known points (shares/units stay constant until a trade)
+          for (let d = rangeStart; d <= rangeEnd; d = addDaysStr(d, 1)) {
+            let balance;
+            if (dateMap.has(d)) {
+              balance = Number(dateMap.get(d));
+              // keep j in sync if we just hit a knot
+              while (j < knownDates.length - 1 && knownDates[j + 1] <= d) j++;
+            } else if (d <= firstKnown) {
+              // backward fill to start
+              balance = knownBalances[0];
+            } else if (d >= lastKnownDate) {
+              // forward fill after last known
+              balance = knownBalances[knownBalances.length - 1];
+            } else {
+              // ensure j is the left index for segment containing d
+              while (j < knownDates.length - 1 && knownDates[j + 1] <= d) j++;
+              // now knownDates[j] < d < knownDates[j+1]
+              const leftDate = knownDates[j];
+              const rightDate = knownDates[j + 1];
+              const leftVal = knownBalances[j];
+              const rightVal = knownBalances[j + 1];
+              if (ticker) {
+                // Step behavior: keep previous quantity until next known point
+                balance = leftVal;
+              } else {
+                // Linear interpolation for non-ticker series
+                const totalDays = (new Date(rightDate) - new Date(leftDate)) / (1000 * 60 * 60 * 24);
+                const daysSinceLeft = (new Date(d) - new Date(leftDate)) / (1000 * 60 * 60 * 24);
+                balance = leftVal + (rightVal - leftVal) * (daysSinceLeft / totalDays);
               }
             }
-          }
 
-          //console.log("_____________________________\n\n\n\n\n\n\n\n\n")
-          
+            // Apply ticker price if present
+            const tickerRate = ticker ? await getTickerRatePrev(ticker, d) : 1;
+            let converted = balance * tickerRate;
 
-          const interpolateDates = (dates) => {
-
-            console.log("\n\n")
-
-            //print all dates one line per date
-            //dates.forEach(date => {
-            //  console.log(date);
-            //});
-
-            // dates: array of date strings, e.g. ['2024-06-01', '2024-06-03']
-            const result = [];
-            if (dates.length === 0) return result;
-
-
-            const sortedDates = dates.slice().sort();
-            const start = new Date(sortedDates[0]);
-            const end = new Date(sortedDates[sortedDates.length - 1]);
-            let d = new Date(start);
-
-            while (d <= end) {
-              result.push(d.toISOString().slice(0, 10));
-              // Always create a new date object for the next day
-              d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+            // Convert to target currency with memoized FX
+            if (currency !== targetCurrency) {
+              const toCad = await getFxRate(currency, 'CAD', d);
+              const cadToTarget = await getFxRate('CAD', targetCurrency, d);
+              if (toCad != null && cadToTarget != null) {
+                converted = converted * toCad * cadToTarget;
+              } else if (toCad != null && targetCurrency === 'CAD') {
+                converted = converted * toCad;
+              } else if (cadToTarget != null && currency === 'CAD') {
+                converted = converted * cadToTarget;
+              } // else leave as-is (best-effort fallback)
             }
-            /*
-            const sortedDates = dates.sort();
-            const start = new Date(sortedDates[0]);
-            const end = new Date(sortedDates[sortedDates.length - 1]);
-            let d = new Date(start);
-            while (d <= end) {
-              result.push(d.toISOString().slice(0, 10));
-              d = new Date(d); // create a new date object
-              d.setDate(d.getDate() + 1);
-              console.log("Adding date:", d.toISOString().slice(0, 10));
-            }
-            */
-            /*
-            const sortedDates = dates.sort();
-            const start = new Date(sortedDates[0]);
-            const end = new Date(sortedDates[sortedDates.length - 1]);
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-              result.push(d.toISOString().slice(0, 10));
-            }
-            */
-
-            //Check if a certain date exists in result
-            //const checkDateExists = (date) => {
-            //  return result.includes(date);
-            //};
-
-            //console.log('2024-11-01', checkDateExists('2024-11-01'));
-            //console.log('2024-11-02', checkDateExists('2024-11-02'));
-            //console.log('2024-11-03', checkDateExists('2024-11-03'));
-            //console.log('2024-11-04', checkDateExists('2024-11-04'));
-            //console.log('2024-11-05', checkDateExists('2024-11-05'));
-
-            return result;
-          };
-
-          for (const account in myData) {
-            for (const currency in myData[account]) {
-              for (const ticker in myData[account][currency]) {
-                const dateKeys = Object.keys(myData[account][currency][ticker]);
-                const allDates = interpolateDates(dateKeys);
-
-                // Get actual data points as sorted array of {date, balance}
-                const points = dateKeys
-                  .map(date => ({
-                    date,
-                    balance: myData[account][currency][ticker][date][0]
-                  }))
-                  .sort((a, b) => a.date.localeCompare(b.date));
-
-                for (let i = 0; i < allDates.length; i++) {
-                  const date = allDates[i];
-
-                  // If actual data point, continue
-                  if (myData[account][currency][ticker][date]) continue;
-
-                  // Find previous and next actual data points
-                  let prevIdx = -1, nextIdx = -1;
-                  for (let j = 0; j < points.length; j++) {
-                    if (points[j].date < date) prevIdx = j;
-                    if (points[j].date > date && nextIdx === -1) nextIdx = j;
-                  }
-
-                  if (prevIdx !== -1 && nextIdx !== -1) {
-                    // Linear interpolation
-                    const prev = points[prevIdx];
-                    const next = points[nextIdx];
-                    const totalDays = (new Date(next.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
-                    const daysSincePrev = (new Date(date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
-                    const interpolated = prev.balance + (next.balance - prev.balance) * (daysSincePrev / totalDays);
-                    myData[account][currency][ticker][date] = [interpolated];
-                  } else if (prevIdx !== -1) {
-                    // Forward fill: use previous balance
-                    myData[account][currency][ticker][date] = [points[prevIdx].balance];
-                  } else if (nextIdx !== -1) {
-                    // Backward fill: use next balance
-                    myData[account][currency][ticker][date] = [points[nextIdx].balance];
-                  } else if (points.length > 0) {
-                    // If no previous or next, fill with first known value
-                    myData[account][currency][ticker][date] = [points[0].balance];
-                  }
-                }
-              }
-            }
-          }
-
-          console.log("CAD no ticker:")
-          console.log(myData['RRSP']['CAD']['']['2024-11-02']);
-          console.log(myData['RRSP']['CAD']['']['2024-11-03']);
-          console.log(myData['RRSP']['CAD']['']['2024-11-04']);
-          console.log(myData['RRSP']['CAD']['']['2024-11-05']);
-          
-          const groups = await this.getAccountGroups();
-          
-
-          let result = {};
-          //Calculate all chart data
-          for (const account in myData) {
-            //console.log(`Account: ${account}`);
 
             if (!result[account]) result[account] = {};
+            result[account][d] = (result[account][d] || 0) + converted;
+          }
+        }
 
-            for (const currency in myData[account]) {
-              //console.log(`  Currency: ${currency}`);
-              for (const ticker in myData[account][currency]) {
-                //console.log(`    Ticker: ${ticker}`);
-                  //const tickerData = await getAllPricesForSymbol(ticker);
-                  //console.log(`    Ticker Data: ${JSON.stringify(tickerData).slice(0, 100)}`);
-
-
-                for (const date in myData[account][currency][ticker]) {
-                  // Get the nearest ticker rate for this ticker and date
-                  let tickerRate = null;
-                  if (ticker !== "") {
-                    tickerRate = await getNearestPrice(date, ticker);
-
-                  }else{
-                    //this is not a ticker so set it to 1 == no effect to balance
-                    tickerRate = 1;
-                  }
-                  //console.log(`      Date: ${date}, Ticker Rate: ${tickerRate}`);
-
-                  //console.log(`      Date: ${date}`);
-                  let balance = myData[account][currency][ticker][date];
-                  //console.log(`         Balances: ${balance}`);
-
-                  // Multiply balance by ticker rate
-                  balance *= tickerRate;
-
-                  //initialize the date
-                  if (!result[account][date]) {
-                    result[account][date] = 0;
-                  }
-
-                  if (currency == targetCurrency){
-                    result[account][date] += balance;
-
-
-                    //if account is in groups add to balance
-                    for (const group in groups) {
-                      if (groups[group].includes(account)) {
-                        if (!result[group]) result[group] = {};
-                        if (!result[group][date]) result[group][date] = 0;
-                        result[group][date] += balance;
-                      }
-                    }
-
-
-                  }
-                  else {
-                    //convert to CAD
-                    const { convertBalance } = require('./convert');
-                    const converted = await convertBalance({ balance, currency, date }, 'CAD');
-                    if (converted != null) {
-                      balance = converted;
-                    }
-
-                    //convert to main currency from CAD
-                    //targetCurrency = await this.getMainCurrency();
-                    
-                    //console.log('target currency: ', targetCurrency);
-                    const converted2 = await convertBalance({ balance, currency: 'CAD', date }, targetCurrency);
-                    if (converted2 != null) {
-                      balance = converted2;
-                    }
-
-                    result[account][date] += balance;
-                    //if account is in groups add to balance
-                    for (const group in groups) {
-                      if (groups[group].includes(account)) {
-                        if (!result[group]) result[group] = {};
-                        if (!result[group][date]) result[group][date] = 0;
-                        result[group][date] += balance;
-                      }
-                    }
-
-                    
-                  }
-
-                }
-              }
+        // Compute group totals after account totals (faster, one pass per group)
+        for (const groupName of Object.keys(groups)) {
+          const members = groups[groupName] || [];
+          if (!members.length) continue;
+          for (const member of members) {
+            const accDates = result[member];
+            if (!accDates) continue;
+            for (const [d, val] of Object.entries(accDates)) {
+              if (!result[groupName]) result[groupName] = {};
+              result[groupName][d] = (result[groupName][d] || 0) + val;
             }
           }
-
-          // Cache the result
-          this._accountBalancesCache.set(cacheKey, result);
-          
-          //console.log('Groups and their members:', groups);
-
-          resolve(result);
         }
+
+        this._accountBalancesCache.set(cacheKey, result);
+        return resolve(result);
       });
     });
   }
@@ -552,20 +433,17 @@ class Database {
   }
 
   async getNetWorthSummary(startDate = null, endDate = null, accounts = null) {
-    const balances = await this.getAccountBalances(startDate, endDate, accounts, targetCurrency = this.getMainCurrency());
-
-    // Calculate totals for each date
+    const main = await this.getMainCurrency();
+    const balances = await this.getAccountBalances(startDate, endDate, accounts, main);
+    // Calculate totals for each date (balances shape: { account: { date: number } })
     const summary = {};
-    Object.keys(balances).forEach(account => {
-      Object.keys(balances[account]).forEach(date => {
-        if (!summary[date]) {
-          summary[date] = { total: 0, accounts: {} };
-        }
-        summary[date].total += balances[account][date].balance;
-        summary[date].accounts[account] = balances[account][date].balance;
-      });
-    });
-
+    for (const [account, dates] of Object.entries(balances)) {
+      for (const [date, value] of Object.entries(dates)) {
+        if (!summary[date]) summary[date] = { total: 0, accounts: {} };
+        summary[date].total += Number(value) || 0;
+        summary[date].accounts[account] = Number(value) || 0;
+      }
+    }
     return summary;
   }
 
