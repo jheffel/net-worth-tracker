@@ -122,6 +122,16 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   
   const formatDate = (date) => moment(date).format('MMM DD, YYYY');
 
+  // Calculate amount changed for the displayed range (main scope)
+  const displayedData = clipChartData(chartData, timeframe, selectedAccounts);
+  let firstVal = null, lastVal = null;
+  if (displayedData.length) {
+    // Sum balances for selected accounts
+    firstVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[0][acct] || 0), 0);
+    lastVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[displayedData.length-1][acct] || 0), 0);
+  }
+  const amountChanged = (firstVal !== null && lastVal !== null) ? lastVal - firstVal : null;
+
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -221,6 +231,23 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           ))}
         </LineChart>
       </ResponsiveContainer>
+        {/* Amount changed label */}
+        {amountChanged !== null && (
+          <div style={{
+            position: 'absolute',
+            left: 12,
+            bottom: 8,
+            fontSize: 15,
+            color: theme === 'light' ? '#384454' : '#eee',
+            background: theme === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)',
+            padding: '4px 12px',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+            zIndex: 5
+          }}>
+            Amount changed: <span style={{ fontWeight: 600 }}>{formatCurrency(amountChanged)}</span>
+          </div>
+        )}
     </div>
   );
 };
