@@ -145,7 +145,12 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           console.log(`Processing row ${i}:`, row);
           const accountName = row[0];
           const dateCell = row[1];
-          const balance = parseFloat(row[2]);
+          // Strip out $ and any non-numeric characters except . and -
+          let balanceStr = row[2];
+          if (typeof balanceStr === 'string') {
+            balanceStr = balanceStr.replace(/[^0-9.-]/g, '');
+          }
+          const balance = parseFloat(balanceStr);
           const currency = row[3] || 'CAD';
           const ticker = row[4] || '';
           console.log('Raw dateCell:', dateCell, 'Type:', typeof dateCell);
