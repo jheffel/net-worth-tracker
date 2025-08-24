@@ -2,42 +2,6 @@ import React, { useState, useEffect } from 'react';
 //import { getFxRate, getFxRatesBatch } from '../utils/fx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
-/*
-// Utility: fetch stock price for a ticker and date
-async function getStockPrice(ticker, date) {
-  // You may want to cache results for performance
-  try {
-    const res = await fetch(`/api/stock-price?ticker=${encodeURIComponent(ticker)}&date=${encodeURIComponent(date)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.price ?? null;
-  } catch {
-    return null;
-  }
-}
-*/
-
-/*
-// Utility: flatten and factor in stock prices
-async function flattenBalancesWithStock(balances) {
-  const rows = [];
-  for (const [account, currencies] of Object.entries(balances)) {
-    for (const [currency, tickers] of Object.entries(currencies)) {
-      for (const [ticker, dates] of Object.entries(tickers)) {
-        for (const [date, balance] of Object.entries(dates)) {
-          let value = balance;
-          if (ticker) {
-            const price = await getStockPrice(ticker, date);
-            if (price != null) value = balance * price;
-          }
-          rows.push({ account, currency, ticker, date, balance: value });
-        }
-      }
-    }
-  }
-  return rows;
-}
-*/
 
 // NetWorth / Total FX-aware interpolation chart
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [] }) => {
@@ -61,8 +25,18 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       });
       return newRow;
     }).filter(row => selectedAccounts.some(account => row.hasOwnProperty(account)));
-    //return filteredData;
     data = filteredData;
+
+    // Custom timeframe takes precedence
+    if (timeframe === 'Custom') {
+      if (startDate && endDate) {
+        return data.filter(row =>
+          moment(row.date).isSameOrAfter(moment(startDate)) &&
+          moment(row.date).isSameOrBefore(moment(endDate))
+        );
+      }
+      return data;
+    }
 
     const [_, latest] = getDateRange(data);
     if (!latest) return data;
@@ -72,25 +46,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       case 'Last 3 Months': startMoment = startMoment.subtract(3, 'months'); break;
       case 'Last 6 Months': startMoment = startMoment.subtract(6, 'months'); break;
       case 'Last Year': startMoment = startMoment.subtract(1, 'years'); break;
+      case 'All Data': return data;
       default: return data;
     }
-
-    if (timeframe === 'Custom') {
-      console.log("startDate: ", startDate, " endDate: ", endDate);
-      if (startDate && endDate) {
-        return data.filter(row =>
-          moment(row.date).isSameOrAfter(moment(startDate)) &&
-          moment(row.date).isSameOrBefore(moment(endDate))
-        );
-      }
-    }else if(timeframe === 'All Data'){
-      console.log("All Data timeframe selected");
-      return data;
-
-    } else {
-      console.log("Filtering data from: ", startMoment.format('YYYY-MM-DD'));
-      return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
-    }
+    return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
   };
 
   const [chartData, setChartData] = useState([]);
@@ -122,6 +81,24 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   
   const formatDate = (date) => moment(date).format('MMM DD, YYYY');
 
+  // Calculate amount changed for the displayed range (main scope)
+  // If custom timeframe, clip by startDate and endDate
+  let displayedData;
+  if (timeframe === 'Custom') {
+    displayedData = chartData.filter(row => {
+      return moment(row.date).isSameOrAfter(moment(startDate)) && moment(row.date).isSameOrBefore(moment(endDate));
+    });
+  } else {
+    displayedData = clipChartData(chartData, timeframe, selectedAccounts);
+  }
+  let firstVal = null, lastVal = null;
+  if (displayedData.length) {
+    // Sum balances for selected accounts
+    firstVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[0][acct] || 0), 0);
+    lastVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[displayedData.length-1][acct] || 0), 0);
+  }
+  const amountChanged = (firstVal !== null && lastVal !== null) ? lastVal - firstVal : null;
+
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -142,27 +119,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
- /* // Busy bar component
-  const BusyBar = () => (
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 6,
-      background: 'linear-gradient(90deg, #4361ee 0%, #6d89ff 100%)',
-      zIndex: 20,
-      animation: 'busybar-move 1.2s linear infinite'
-    }}>
-      <style>{`
-        @keyframes busybar-move {
-          0% { background-position: 0% 0; }
-          100% { background-position: 100% 0; }
-        }
-      `}</style>
-    </div>
-  );
-*/
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {parentLoading && (
@@ -221,6 +177,23 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           ))}
         </LineChart>
       </ResponsiveContainer>
+        {/* Amount changed label */}
+        {amountChanged !== null && (
+          <div style={{
+            position: 'absolute',
+            left: 12,
+            bottom: 8,
+            fontSize: 15,
+            color: theme === 'light' ? '#384454' : '#eee',
+            background: theme === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)',
+            padding: '4px 12px',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+            zIndex: 5
+          }}>
+            Amount changed: <span style={{ fontWeight: 600 }}>{formatCurrency(amountChanged)}</span>
+          </div>
+        )}
     </div>
   );
 };
