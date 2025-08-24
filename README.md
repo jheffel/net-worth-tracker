@@ -1,6 +1,6 @@
 # Net Worth Tracker
 
-![Net Worth Tracker Screenshot](images/finance tracker.png)
+![Net Worth Tracker Screenshot](images/finance_tracker.png)
 
 A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Python (PyQt6) and Web (React + Node.js) versions.
 
