@@ -122,6 +122,7 @@ app.get('/api/pie-chart/:type', async (req, res) => {
 });
 
 // Import Excel/ODS file
+/* Disabled for web demo
 app.post('/api/import', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -209,7 +210,7 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+*/
 // Get available currencies
 app.get('/api/currencies', async (req, res) => {
   try {
