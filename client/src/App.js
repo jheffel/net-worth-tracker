@@ -194,24 +194,25 @@ function App() {
   const handleFileUpload = async (file) => {
     try {
       setLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
+      //const formData = new FormData();
+      //formData.append('file', file);
 
-      const response = await axios.post(`${API_BASE}/import`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      //const response = await axios.post(`${API_BASE}/import`, formData, {
+      //  headers: {
+      //    'Content-Type': 'multipart/form-data',
+      //  },
+      //});
 
-      setSuccess(`Successfully imported ${response.data.importedCount} records`);
+      //setSuccess(`Successfully imported ${response.data.importedCount} records`);
       setTimeout(() => setSuccess(null), 5000);
       
       // Reload data
-      await loadInitialData();
+      //await loadInitialData();
     } catch (err) {
-      setError('Failed to import file');
+      setError('Failed to import file data import disabled for demo');
       console.error(err);
     } finally {
+      setError('File import disabled for demo')
       setLoading(false);
     }
   };
