@@ -10,6 +10,13 @@ import './App.css';
 import './chartLayout.css';
 
 function App() {
+  // Sidebar drawer state (slides in on desktop and mobile)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 900;
+
+  // Close sidebar on navigation or overlay click
+  const handleSidebarClose = () => setSidebarOpen(false);
+
   const [accounts, setAccounts] = useState([]);
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [balances, setBalances] = useState({});
@@ -54,17 +61,25 @@ function App() {
 
   const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
+  // Support both mouse and touch for divider drag
   const handleDividerMouseDown = (e) => {
     e.preventDefault();
+    setDragging(true);
+  };
+  const handleDividerTouchStart = (e) => {
     setDragging(true);
   };
 
   const handleMouseMove = useCallback((e) => {
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top; // distance from top of container
+    let offsetY;
+    if (e.touches && e.touches.length) {
+      offsetY = e.touches[0].clientY - rect.top;
+    } else {
+      offsetY = e.clientY - rect.top;
+    }
     const ratio = offsetY / rect.height;
-    // enforce min / max to keep panels usable
     setSplitRatio(clamp(ratio, 0.2, 0.85));
   }, [dragging]);
 
@@ -75,9 +90,13 @@ function App() {
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove);
+    window.addEventListener('touchend', handleMouseUp);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
     };
   }, [handleMouseMove, handleMouseUp]);
 
@@ -165,14 +184,17 @@ function App() {
         ? prev.filter(acc => acc !== account)
         : [...prev, account]
     );
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleSelectAll = () => {
     setSelectedAccounts(accounts);
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleDeselectAll = () => {
     setSelectedAccounts([]);
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleCurrencyChange = async (currency) => {
@@ -235,16 +257,14 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-
         <div className="header header-flex">
-          <h1>Net Worth Tracker</h1>
+          <div />
           <div className="header-theme">
-            <label style={{marginRight: 8}}>Theme:</label>
-            <button type="button" onClick={toggleTheme} className="btn" style={{minWidth: '110px'}}>
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            </button>
-            <button type="button" onClick={handleToggleFullscreen} className="btn" style={{minWidth: '110px', marginLeft: '8px'}}>
-              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            {/* Menu button only - title moved into sidebar */}
+            <button aria-label="Open menu" title="Open menu" type="button" className="btn mobile-menu-btn icon-btn" onClick={() => setSidebarOpen(true)} style={{marginLeft: '8px'}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+              </svg>
             </button>
           </div>
         </div>
@@ -258,11 +278,42 @@ function App() {
           </div>
         )}
 
-
-
         <div className="main-content">
-          <div className="sidebar">
-            <Controls
+          {/* Mobile sidebar overlay */}
+          {sidebarOpen && (
+            <div className="sidebar-overlay" onClick={handleSidebarClose} />
+          )}
+          {/* Sidebar drawer */}
+          <div className={`sidebar drawer${sidebarOpen ? ' open' : ''}`}>
+            <div className="sidebar-header">
+              <button className="btn close-sidebar-btn" onClick={handleSidebarClose} aria-label="Close menu">&times;</button>
+              <h1 style={{ margin: 0 }}>Net Worth Tracker</h1>
+              <div className="sidebar-actions">
+                <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn icon-btn small">
+                  {theme === 'dark' ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm7.24-2.84l1.79 1.79 1.79-1.79-1.79-1.8-1.79 1.8zM20 11v2h3v-2h-3zM4.22 19.78l1.79-1.79-1.79-1.79L2.43 18l1.79 1.78zM12 5a7 7 0 100 14 7 7 0 000-14z" fill="currentColor"/>
+                    </svg>
+                  )}
+                </button>
+                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn icon-btn small">
+                  {isFullscreen ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+              <Controls
               timeframe={timeframe}
               setTimeframe={setTimeframe}
               startDate={startDate}
@@ -285,47 +336,50 @@ function App() {
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-            <div className="chart-container vertical-split panel-split" ref={containerRef}>
-              <div className="main-graph-panel panel-box" style={{ flex: `${splitRatio} 1 0%` }}>
-                <NetWorthChart
-                  balances={balances}
-                  selectedAccounts={selectedAccounts}
-                  mainCurrency={mainCurrency}
-                  onPointClick={handleChartClick}
-                  startDate={startDate}
-                  endDate={endDate}
-                  groupMap={groupMap}
-                  timeframe={timeframe}
-                  loading={loading}
-                  theme={theme}
-                  ignoreForTotal={ignoreForTotal}
-                />
-              </div>
-              <div
-                className={`panel-divider${dragging ? ' dragging' : ''}`}
-                onMouseDown={handleDividerMouseDown}
-                role="separator"
-                aria-orientation="horizontal"
-                aria-label="Resize panels"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowUp') setSplitRatio(r => clamp(r - 0.02, 0.2, 0.85));
-                  if (e.key === 'ArrowDown') setSplitRatio(r => clamp(r + 0.02, 0.2, 0.85));
-                }}
-              >
-                <div className="grip" />
-              </div>
-              <div className="piecharts-panel panel-box" style={{ flex: `${Math.max(0.15, 1 - splitRatio)} 0.7 0%`, minHeight: '120px', maxHeight: '350px' }}>
-                <PieCharts
-                  balances={balances}
-                  selectedAccounts={selectedAccounts}
-                  groupMap={groupMap}
-                  selectedDate={selectedDate}
-                  mainCurrency={mainCurrency}
-                  theme={theme}
-                />
-              </div>
+        <div className="chart-container vertical-split panel-split" ref={containerRef}>
+            <div className="main-graph-panel panel-box" style={{ flex: `${splitRatio} 1 0%` }}>
+              <NetWorthChart
+                balances={balances}
+                selectedAccounts={selectedAccounts}
+                mainCurrency={mainCurrency}
+                onPointClick={handleChartClick}
+                startDate={startDate}
+                endDate={endDate}
+                groupMap={groupMap}
+                timeframe={timeframe}
+                loading={loading}
+                theme={theme}
+                ignoreForTotal={ignoreForTotal}
+                compact={isMobile}
+              />
             </div>
+            <div
+              className={`panel-divider${dragging ? ' dragging' : ''}`}
+              onMouseDown={handleDividerMouseDown}
+              onTouchStart={handleDividerTouchStart}
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize panels"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp') setSplitRatio(r => clamp(r - 0.02, 0.2, 0.85));
+                if (e.key === 'ArrowDown') setSplitRatio(r => clamp(r + 0.02, 0.2, 0.85));
+              }}
+            >
+              <div className="grip" />
+            </div>
+            <div className="piecharts-panel panel-box" style={{ flex: `${Math.max(0.15, 1 - splitRatio)} 0.7 0%`, minHeight: isMobile ? '80px' : '120px', maxHeight: isMobile ? '180px' : '350px' }}>
+              <PieCharts
+                balances={balances}
+                selectedAccounts={selectedAccounts}
+                groupMap={groupMap}
+                selectedDate={selectedDate}
+                mainCurrency={mainCurrency}
+                theme={theme}
+                compact={isMobile}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

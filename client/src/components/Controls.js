@@ -15,6 +15,7 @@ const Controls = ({
   onCurrencyChange,
   theme,
   onToggleTheme,
+  compact = false,
   //updateChartData // new prop
 }) => {
   const timeframes = [
@@ -27,7 +28,7 @@ const Controls = ({
   ];
 
   return (
-    <div className="controls controls-flex">
+  <div className={`controls controls-flex ${compact ? 'compact' : ''}`}>
       <div className="controls-main">
         <div className="control-group">
           <label>Timeframe:</label>
@@ -94,10 +95,11 @@ const Controls = ({
         )}
 
         <div className="control-group">
-          <label>Main Currency:</label>
+          <label style={{ fontSize: compact ? '0.95em' : undefined }}>Main Currency:</label>
           <select
             value={mainCurrency}
             onChange={(e) => onCurrencyChange(e.target.value)}
+            style={{ padding: compact ? '6px 8px' : undefined }}
           >
             {currencies.map(currency => (
               <option key={currency} value={currency}>{currency}</option>

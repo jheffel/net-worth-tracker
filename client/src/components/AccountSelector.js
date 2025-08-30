@@ -1,7 +1,7 @@
 import React from 'react';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false }) => {
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
@@ -27,7 +27,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </button>
       </div>
 
-      <div className="account-list">
+  <div className={`account-list ${compact ? 'compact' : ''}`}>
         {(accounts.length === 0) ? (
           <p style={{ color: '#cccccc', textAlign: 'center' }}>
             No accounts available. Import data to get started.
@@ -59,9 +59,10 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
                     id={account}
                     checked={selectedAccounts.includes(account)}
                     onChange={() => onAccountToggle(account)}
+                    style={compact ? { width: 22, height: 22 } : {}}
                   />
                   <label htmlFor={account} style={isGroupLike ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
-                    {account} {isGroupLike && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
+                    {account} {isGroupLike && <span style={{ fontSize: compact ? '10px' : '11px', color: '#aaa' }}>(Group)</span>}
                   </label>
                 </div>
                 {isGroupLike && selectedAccounts.includes(account) && members.length > 0 && (

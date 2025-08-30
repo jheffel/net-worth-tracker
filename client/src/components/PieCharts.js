@@ -6,7 +6,7 @@ import moment from 'moment';
 
 
 import axios from 'axios';
-const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency, theme }) => {
+const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency, theme, compact = false }) => {
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
   const [summaryGroups, setSummaryGroups] = useState([]);
 
@@ -182,7 +182,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     }));
 
     return (
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={compact ? 120 : 200}>
         <PieChart>
           <Pie
             data={chartData}
@@ -190,7 +190,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
             cy="50%"
             labelLine={false}
             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={80}
+            outerRadius={compact ? 48 : 80}
             fill="#8884d8"
             dataKey="value"
           >
@@ -198,7 +198,7 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
               <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
         </PieChart>
       </ResponsiveContainer>
     );
@@ -208,20 +208,20 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
   return (
     <>
-      <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
+      <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)', fontSize: compact ? '1em' : undefined }}>
         Portfolio Distribution - {moment(selectedDate).format('MMM DD, YYYY')}
       </h3>
       <div className="pie-charts" style={{height: '100%', minHeight: 0}}>
         {chartTypes.map((type) => (
           <div key={type.key} className="pie-chart">
-            <h3>{type.title}</h3>
+            <h3 style={{ fontSize: compact ? '1em' : undefined }}>{type.title}</h3>
             {renderPieChart(type.key, pieData[type.key])}
             {pieData[type.key] && pieData[type.key].total > 0 && (
               <p style={{
                 textAlign: 'center',
                 margin: '10px 0 0 0',
                 color: 'var(--text-secondary)',
-                fontSize: '14px'
+                fontSize: compact ? '12px' : '14px'
               }}>
                 Total: {formatCurrency(pieData[type.key].total)}
               </p>
