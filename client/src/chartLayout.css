@@ -1,66 +1,20 @@
-/* Vertical split for main graph and pie charts */
-.chart-container.vertical-split.panel-split {
-  display: flex !important;
+/* Main graph panel styling (single panel) */
+.chart-container.panel-split {
+  display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   flex: 1 1 0%;
-  padding: 0 !important;
-  overflow: hidden !important;
+  padding: 0;
 }
 .main-graph-panel.panel-box {
-  flex: 2 1 0%;
+  width: 100%;
   min-height: 0;
-  height: 0;
   background: var(--panel-bg);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   margin-bottom: 0;
-  padding: 18px 18px 10px 18px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-}
-.piecharts-panel.panel-box {
-  flex: 1 1 0%;
-  min-height: 0;
-  max-height: none !important;
-  background: var(--panel-bg);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  margin-top: 0;
-  padding: 18px 18px 10px 18px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-}
-.panel-gap {
-  height: 32px;
-  width: 100%;
-  flex-shrink: 0;
-}
-
-/* Draggable divider between panels */
-.panel-divider {
-  height: 10px;
-  width: 100%;
-  cursor: row-resize;
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease;
-}
-.panel-divider:hover, .panel-divider.dragging {
-  background: rgba(0,0,0,0.06);
-}
-.panel-divider .grip {
-  width: 60px;
-  height: 4px;
-  background: var(--divider-grip);
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px var(--panel-border);
-}
-.panel-divider.dragging .grip {
-  background: var(--divider-grip-hover);
 }

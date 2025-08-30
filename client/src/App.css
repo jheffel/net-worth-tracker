@@ -457,15 +457,7 @@ body {
   }
 }
 
-/* Piecharts / graph splitter grips */
-.panel-divider .grip {
-  background: var(--divider-grip);
-  box-shadow: 0 0 0 1px #2b2e35;
-  transition: background 0.2s ease;
-}
-.panel-divider:hover .grip, .panel-divider.dragging .grip {
-  background: var(--divider-grip-hover);
-}
+/* (splitter removed) */
 
 /* Tooltip refinement for charts (recharts container will inherit) */
 .recharts-default-tooltip {
@@ -630,3 +622,47 @@ body {
   margin-left: 8px;
 }
 /* close-sidebar-btn removed - using drawer-tab to toggle sidebar */
+
+/* Bottom drawer (pie charts) */
+.bottom-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -60vh; /* hidden by default */
+  height: 60vh;
+  max-height: 80vh;
+  background: transparent;
+  z-index: 1200;
+  transition: bottom 0.32s cubic-bezier(.2,.9,.2,1);
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.bottom-drawer.open { bottom: 0; pointer-events: auto; }
+.bottom-drawer .panel-box {
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -6px 24px rgba(0,0,0,0.28);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+}
+
+.bottom-drawer-tab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  z-index: 1210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.16);
+  transition: transform .18s ease, opacity .18s ease;
+}
+.bottom-drawer-tab.open { transform: translateY(-8px); }
+

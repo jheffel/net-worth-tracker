@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import moment from 'moment';
 import NetWorthChart from './components/NetWorthChart';
@@ -31,8 +31,7 @@ function App() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
-  const [splitRatio, setSplitRatio] = useState(0.66); // portion of space for main graph (0-1)
-  const [dragging, setDragging] = useState(false);
+  // removed resizable split; pie charts moved to bottom drawer
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') || 'dark';
@@ -51,7 +50,6 @@ function App() {
     }
   };
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
-  const containerRef = useRef(null);
   // Load ignoreForTotal list
   useEffect(() => {
     fetch('/config/ignoreForTotal.txt').then(r => r.text()).then(txt => {
@@ -59,46 +57,8 @@ function App() {
     }).catch(() => setIgnoreForTotal([]));
   }, []);
 
-  const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-  // Support both mouse and touch for divider drag
-  const handleDividerMouseDown = (e) => {
-    e.preventDefault();
-    setDragging(true);
-  };
-  const handleDividerTouchStart = (e) => {
-    setDragging(true);
-  };
-
-  const handleMouseMove = useCallback((e) => {
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    let offsetY;
-    if (e.touches && e.touches.length) {
-      offsetY = e.touches[0].clientY - rect.top;
-    } else {
-      offsetY = e.clientY - rect.top;
-    }
-    const ratio = offsetY / rect.height;
-    setSplitRatio(clamp(ratio, 0.2, 0.85));
-  }, [dragging]);
-
-  const handleMouseUp = useCallback(() => {
-    if (dragging) setDragging(false);
-  }, [dragging]);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('touchmove', handleMouseMove);
-    window.addEventListener('touchend', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleMouseMove);
-      window.removeEventListener('touchend', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
+  // pie drawer (slides from bottom)
+  const [pieOpen, setPieOpen] = useState(false);
 
   // API base URL
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -336,8 +296,8 @@ function App() {
             />
           </div>
 
-        <div className="chart-container vertical-split panel-split" ref={containerRef}>
-            <div className="main-graph-panel panel-box" style={{ flex: `${splitRatio} 1 0%` }}>
+          <div className="chart-container panel-split">
+            <div className="main-graph-panel panel-box">
               <NetWorthChart
                 balances={balances}
                 selectedAccounts={selectedAccounts}
@@ -353,31 +313,32 @@ function App() {
                 compact={isMobile}
               />
             </div>
-            <div
-              className={`panel-divider${dragging ? ' dragging' : ''}`}
-              onMouseDown={handleDividerMouseDown}
-              onTouchStart={handleDividerTouchStart}
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize panels"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowUp') setSplitRatio(r => clamp(r - 0.02, 0.2, 0.85));
-                if (e.key === 'ArrowDown') setSplitRatio(r => clamp(r + 0.02, 0.2, 0.85));
-              }}
-            >
-              <div className="grip" />
-            </div>
-            <div className="piecharts-panel panel-box" style={{ flex: `${Math.max(0.15, 1 - splitRatio)} 0.7 0%`, minHeight: isMobile ? '80px' : '120px', maxHeight: isMobile ? '180px' : '350px' }}>
-              <PieCharts
-                balances={balances}
-                selectedAccounts={selectedAccounts}
-                groupMap={groupMap}
-                selectedDate={selectedDate}
-                mainCurrency={mainCurrency}
-                theme={theme}
-                compact={isMobile}
-              />
+
+            {/* Bottom pie-chart drawer (slides up) */}
+            <button aria-label="Toggle pie charts" title="Toggle pie charts" type="button" className={`bottom-drawer-tab ${pieOpen ? 'open' : ''}`} onClick={() => setPieOpen(s => !s)}>
+              {pieOpen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M7 14l5-5 5 5H7z" fill="currentColor"/>
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M7 10l5 5 5-5H7z" fill="currentColor"/>
+                </svg>
+              )}
+            </button>
+
+            <div className={`bottom-drawer${pieOpen ? ' open' : ''}`}>
+              <div className="panel-box" style={{ height: '100%', overflow: 'auto', padding: 18 }}>
+                <PieCharts
+                  balances={balances}
+                  selectedAccounts={selectedAccounts}
+                  groupMap={groupMap}
+                  selectedDate={selectedDate}
+                  mainCurrency={mainCurrency}
+                  theme={theme}
+                  compact={isMobile}
+                />
+              </div>
             </div>
           </div>
         </div>
