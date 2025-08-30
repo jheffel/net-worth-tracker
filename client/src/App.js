@@ -327,8 +327,13 @@ function App() {
               )}
             </button>
 
-            <div className={`bottom-drawer${pieOpen ? ' open' : ''}`}>
-              <div className="panel-box" style={{ height: '100%', overflow: 'auto', padding: 18 }}>
+            <div className={`bottom-drawer${pieOpen ? ' open' : ''}`} role="dialog" aria-label="Pie charts drawer" aria-hidden={!pieOpen}>
+              <div className="panel-box" style={{ position: 'relative', height: '100%', overflow: 'auto', padding: 18 }}>
+                <button className="drawer-close-btn" aria-label="Close pie charts" onClick={() => setPieOpen(false)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z" fill="currentColor"/>
+                  </svg>
+                </button>
                 <PieCharts
                   balances={balances}
                   selectedAccounts={selectedAccounts}

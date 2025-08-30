@@ -666,3 +666,22 @@ body {
 }
 .bottom-drawer-tab.open { transform: translateY(-8px); }
 
+/* Close button shown inside bottom drawer */
+.drawer-close-btn {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  z-index: 1220;
+}
+.drawer-close-btn:hover { background: rgba(255,255,255,0.02); }
+
