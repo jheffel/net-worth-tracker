@@ -7,7 +7,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
   const groupNames = Object.keys(groupMap);
 
   return (
-    <div>
+    <div className="account-panel">
       <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
         Account Selection
       </h3>
@@ -27,7 +27,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </button>
       </div>
 
-  <div className={`account-list ${compact ? 'compact' : ''}`}>
+      <div className="account-list-scroll">
+        <div className={`account-list ${compact ? 'compact' : ''}`}>
         {(accounts.length === 0) ? (
           <p style={{ color: '#cccccc', textAlign: 'center' }}>
             No accounts available. Import data to get started.
@@ -86,6 +87,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             );
           })
         )}
+        </div>
       </div>
 
       {accounts.length > 0 && (

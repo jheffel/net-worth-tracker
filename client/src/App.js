@@ -257,17 +257,18 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-        <div className="header header-flex">
-          <div />
-          <div className="header-theme">
-            {/* Menu button only - title moved into sidebar */}
-            <button aria-label="Open menu" title="Open menu" type="button" className="btn mobile-menu-btn icon-btn" onClick={() => setSidebarOpen(true)} style={{marginLeft: '8px'}}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* Drawer tab - fixed on left edge to pull/push the sidebar */}
+        <button aria-label="Toggle menu" title="Toggle menu" type="button" className={`drawer-tab ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(s => !s)}>
+          {sidebarOpen ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+            </svg>
+          )}
+        </button>
 
         {error && (
           <div className="error">
@@ -286,7 +287,6 @@ function App() {
           {/* Sidebar drawer */}
           <div className={`sidebar drawer${sidebarOpen ? ' open' : ''}`}>
             <div className="sidebar-header">
-              <button className="btn close-sidebar-btn" onClick={handleSidebarClose} aria-label="Close menu">&times;</button>
               <h1 style={{ margin: 0 }}>Net Worth Tracker</h1>
               <div className="sidebar-actions">
                 <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn icon-btn small">
@@ -333,7 +333,9 @@ function App() {
               groupMap={groupMap}
               ignoreForTotal={ignoreForTotal}
             />
-            <FileUpload onFileUpload={handleFileUpload} />
+            <div className="import-panel">
+              <FileUpload onFileUpload={handleFileUpload} />
+            </div>
           </div>
 
         <div className="chart-container vertical-split panel-split" ref={containerRef}>
