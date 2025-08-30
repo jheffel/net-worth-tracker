@@ -106,7 +106,8 @@
   padding: 16px 8px 8px 8px;
   border-radius: 8px;
   gap: 18px;
-  overflow: visible; /* let inner containers handle scrolling */
+  overflow-y: auto; /* let sidebar scroll when content exceeds viewport */
+  -webkit-overflow-scrolling: touch;
 }
 
 .account-list-scroll {
@@ -538,8 +539,9 @@ body {
   z-index: 1001;
   box-shadow: 2px 0 12px rgba(0,0,0,0.28);
   transition: left 0.28s cubic-bezier(.2,.9,.2,1);
-  /* remove global overflow so only account list scrolls */
-  overflow: visible;
+  /* allow overall vertical scrolling when needed */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 18px 12px 12px 12px;
   border-radius: 0 8px 8px 0;
 }
