@@ -332,10 +332,8 @@ function App() {
               onDeselectAll={handleDeselectAll}
               groupMap={groupMap}
               ignoreForTotal={ignoreForTotal}
+              onFileUpload={handleFileUpload}
             />
-            <div className="import-panel">
-              <FileUpload onFileUpload={handleFileUpload} />
-            </div>
           </div>
 
         <div className="chart-container vertical-split panel-split" ref={containerRef}>

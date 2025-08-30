@@ -1,7 +1,8 @@
 import React from 'react';
+import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload }) => {
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
@@ -103,6 +104,10 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           {selectedAccounts.length} of {accounts.length} accounts selected
         </div>
       )}
+
+      <div className="import-inline">
+        <FileUpload onFileUpload={onFileUpload} />
+      </div>
     </div>
   );
 };

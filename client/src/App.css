@@ -112,7 +112,7 @@
 .account-list-scroll {
   /* Take remaining vertical space inside sidebar and scroll if content overflows */
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 80px;
   max-height: none;
   overflow-y: auto;
   margin-bottom: 12px;
@@ -129,8 +129,8 @@
 }
 
 /* Import/upload UI anchored to bottom of the sidebar */
-.import-panel {
-  margin-top: auto; /* pushes this block to the bottom */
+.import-inline {
+  margin-top: 12px;
   padding-top: 8px;
   border-top: 1px dashed rgba(255,255,255,0.04);
 }
