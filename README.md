@@ -61,14 +61,17 @@ python main.py
 
 1. **Install dependencies:**
 ```bash
-# Install server dependencies
-npm install
+# Install server + client dependencies (recommended)
+npm run install-all
 
-# Install client dependencies
+# Alternative: install server then client manually
+npm install
 cd client
 npm install
 cd ..
 ```
+
+Note: `react-router-dom` is listed in `client/package.json`, so running the client install above will install it. If you add new imports or packages to the client code manually, run `cd client && npm install <pkg>` to add them.
 
 2. **Start the development server:**
 ```bash
@@ -78,6 +81,20 @@ npm run dev
 # Or start them separately:
 npm run server    # Backend on port 5000
 npm run client    # Frontend on port 3000
+```
+
+Notes about `npm run dev`:
+- The root `dev` script runs the server and client concurrently and now attempts to open your browser at the app path `/net-worth-tracker` (e.g. http://localhost:3000/net-worth-tracker). This is handled by a small helper script and uses a short delay to let the client compile.
+- If the browser opens too early or you want a different path, set these environment variables prior to running `npm run dev`:
+
+PowerShell example:
+```powershell
+$env:DEV_OPEN_DELAY=6000; $env:DEV_URL='http://localhost:3000/net-worth-tracker'; npm run dev
+```
+
+On macOS / Linux:
+```bash
+DEV_OPEN_DELAY=6000 DEV_URL='http://localhost:3000/net-worth-tracker' npm run dev
 ```
 
 3. **Build for production:**
