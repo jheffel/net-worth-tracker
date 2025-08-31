@@ -685,3 +685,25 @@ body {
 }
 .drawer-close-btn:hover { background: rgba(255,255,255,0.02); }
 
+/* Drawer header for bottom drawer: sticky at top of drawer panel */
+.drawer-header {
+  position: sticky;
+  top: 0;
+  z-index: 1225;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  backdrop-filter: blur(4px);
+}
+.drawer-header-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.piecharts-content {
+  -webkit-overflow-scrolling: touch;
+}
+
