@@ -1,20 +1,20 @@
 /* Main graph panel styling (single panel) */
 .chart-container.panel-split {
   display: flex;
-  flex-direction: column;
   height: 100%;
-  min-height: 0;
+  width: 100%;
+  min-height: 40px;
   flex: 1 1 0%;
   padding: 0;
 }
 .main-graph-panel.panel-box {
   width: 100%;
-  min-height: 0;
+  height: 100%;
+  min-height: 400px;
   background: var(--panel-bg);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   margin-bottom: 0;
-  padding: 18px;
+
   display: flex;
-  flex-direction: column;
 }
