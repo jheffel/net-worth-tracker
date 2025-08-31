@@ -4,7 +4,7 @@
   "description": "Web-based net worth tracker with interactive charts and portfolio management",
   "main": "server/index.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+  "dev": "concurrently \"npm run server\" \"npm run client\" \"node ./scripts/openDevUrl.js\"",
     "server": "nodemon server/index.js",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
