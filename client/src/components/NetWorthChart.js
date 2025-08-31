@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 //import { getFxRate, getFxRatesBatch } from '../utils/fx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [] }) => {
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false }) => {
   // Utility: get the earliest and latest date in chartData
   const getDateRange = (data) => {
     if (!data.length) return [null, null];
@@ -119,8 +119,21 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
+  const containerRef = useRef(null);
+
+  // Observe container size changes and trigger a resize so Recharts recalculates both width and height
+  useEffect(() => {
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const obs = new ResizeObserver(() => {
+      // dispatch a resize event; Recharts listens to window resize
+      window.dispatchEvent(new Event('resize'));
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, [containerRef.current]);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       {parentLoading && (
         <div style={{
           position: 'absolute',
@@ -138,30 +151,31 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
         </div>
       )}
-      <ResponsiveContainer>
+  <ResponsiveContainer height={'100%'}>
         <LineChart
           data={clipChartData(chartData, timeframe, selectedAccounts)}
-          margin={{ top: 30, right: 60, left: 60, bottom: 40 }}
+          margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#d0d5dd' : '#444'} />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            padding={{ left: 40, right: 40 }}
-            minTickGap={15}
+            padding={compact ? { left: 12, right: 12 } : { left: 40, right: 40 }}
+            minTickGap={compact ? 8 : 15}
             stroke={theme === 'light' ? '#384454' : '#aaa'}
-            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: 12 }}
+            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
           />
           <YAxis
+            width={72}
             tickFormatter={v => formatCurrency(v)}
-            padding={{ top: 40, bottom: 40 }}
-            minTickGap={15}
+            padding={compact ? { top: 12, bottom: 12 } : { top: 12, bottom: 12 }}
+            minTickGap={compact ? 8 : 15}
             stroke={theme === 'light' ? '#384454' : '#aaa'}
-            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: 12 }}
+            tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
+          <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
+          <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
           {selectedAccounts.map((acct, idx) => (
             <Line
               key={acct}
@@ -170,9 +184,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
               stroke={(theme === 'light'
                 ? ['#3557b7','#1f8f5f','#c28a00','#d45800','#005fb3','#009f7a','#b8860b','#cc5c28']
                 : ['#8884d8','#82ca9d','#ffc658','#ff7300','#0088FE','#00C49F','#FFBB28','#FF8042'])[idx % 8]}
-              strokeWidth={2}
+              strokeWidth={compact ? 1.5 : 2}
               dot={false}
-              activeDot={{ r: 6 }}
+              activeDot={{ r: compact ? 4 : 6 }}
             />
           ))}
         </LineChart>

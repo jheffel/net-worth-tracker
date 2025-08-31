@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import moment from 'moment';
 import NetWorthChart from './components/NetWorthChart';
@@ -10,6 +10,13 @@ import './App.css';
 import './chartLayout.css';
 
 function App() {
+  // Sidebar drawer state (slides in on desktop and mobile)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 900;
+
+  // Close sidebar on navigation or overlay click
+  const handleSidebarClose = () => setSidebarOpen(false);
+
   const [accounts, setAccounts] = useState([]);
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [balances, setBalances] = useState({});
@@ -24,8 +31,7 @@ function App() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
-  const [splitRatio, setSplitRatio] = useState(0.66); // portion of space for main graph (0-1)
-  const [dragging, setDragging] = useState(false);
+  // removed resizable split; pie charts moved to bottom drawer
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') || 'dark';
@@ -44,7 +50,6 @@ function App() {
     }
   };
   const [ignoreForTotal, setIgnoreForTotal] = useState([]);
-  const containerRef = useRef(null);
   // Load ignoreForTotal list
   useEffect(() => {
     fetch('/config/ignoreForTotal.txt').then(r => r.text()).then(txt => {
@@ -52,34 +57,8 @@ function App() {
     }).catch(() => setIgnoreForTotal([]));
   }, []);
 
-  const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-  const handleDividerMouseDown = (e) => {
-    e.preventDefault();
-    setDragging(true);
-  };
-
-  const handleMouseMove = useCallback((e) => {
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top; // distance from top of container
-    const ratio = offsetY / rect.height;
-    // enforce min / max to keep panels usable
-    setSplitRatio(clamp(ratio, 0.2, 0.85));
-  }, [dragging]);
-
-  const handleMouseUp = useCallback(() => {
-    if (dragging) setDragging(false);
-  }, [dragging]);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
+  // pie drawer (slides from bottom)
+  const [pieOpen, setPieOpen] = useState(false);
 
   // API base URL
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -88,6 +67,16 @@ function App() {
     loadInitialData();
     loadGroupMap();
   }, []);
+
+  // When layout-affecting drawers open/close, trigger a resize so charts recalc width/height
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // dispatch a couple times: soon after toggle and after CSS transition
+    const dispatchResize = () => window.dispatchEvent(new Event('resize'));
+    const t1 = setTimeout(dispatchResize, 80);
+    const t2 = setTimeout(dispatchResize, 360);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [sidebarOpen, pieOpen]);
 
   // Apply theme to root element
   useEffect(() => {
@@ -165,14 +154,17 @@ function App() {
         ? prev.filter(acc => acc !== account)
         : [...prev, account]
     );
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleSelectAll = () => {
     setSelectedAccounts(accounts);
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleDeselectAll = () => {
     setSelectedAccounts([]);
+  if (isMobile) setSidebarOpen(false);
   };
 
   const handleCurrencyChange = async (currency) => {
@@ -235,19 +227,18 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-
-        <div className="header header-flex">
-          <h1>Net Worth Tracker</h1>
-          <div className="header-theme">
-            <label style={{marginRight: 8}}>Theme:</label>
-            <button type="button" onClick={toggleTheme} className="btn" style={{minWidth: '110px'}}>
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            </button>
-            <button type="button" onClick={handleToggleFullscreen} className="btn" style={{minWidth: '110px', marginLeft: '8px'}}>
-              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            </button>
-          </div>
-        </div>
+        {/* Drawer tab - fixed on left edge to pull/push the sidebar */}
+        <button aria-label="Toggle menu" title="Toggle menu" type="button" className={`drawer-tab ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(s => !s)}>
+          {sidebarOpen ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+            </svg>
+          )}
+        </button>
 
         {error && (
           <div className="error">
@@ -258,11 +249,41 @@ function App() {
           </div>
         )}
 
-
-
         <div className="main-content">
-          <div className="sidebar">
-            <Controls
+          {/* Mobile sidebar overlay */}
+          {sidebarOpen && (
+            <div className="sidebar-overlay" onClick={handleSidebarClose} />
+          )}
+          {/* Sidebar drawer */}
+          <div className={`sidebar drawer${sidebarOpen ? ' open' : ''}`}>
+            <div className="sidebar-header">
+              <h1 style={{ margin: 0 }}>Net Worth Tracker</h1>
+              <div className="sidebar-actions">
+                <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn icon-btn small">
+                  {theme === 'dark' ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm7.24-2.84l1.79 1.79 1.79-1.79-1.79-1.8-1.79 1.8zM20 11v2h3v-2h-3zM4.22 19.78l1.79-1.79-1.79-1.79L2.43 18l1.79 1.78zM12 5a7 7 0 100 14 7 7 0 000-14z" fill="currentColor"/>
+                    </svg>
+                  )}
+                </button>
+                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn icon-btn small">
+                  {isFullscreen ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+              <Controls
               timeframe={timeframe}
               setTimeframe={setTimeframe}
               startDate={startDate}
@@ -281,51 +302,66 @@ function App() {
               onDeselectAll={handleDeselectAll}
               groupMap={groupMap}
               ignoreForTotal={ignoreForTotal}
+              onFileUpload={handleFileUpload}
             />
-            <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-            <div className="chart-container vertical-split panel-split" ref={containerRef}>
-              <div className="main-graph-panel panel-box" style={{ flex: `${splitRatio} 1 0%` }}>
-                <NetWorthChart
-                  balances={balances}
-                  selectedAccounts={selectedAccounts}
-                  mainCurrency={mainCurrency}
-                  onPointClick={handleChartClick}
-                  startDate={startDate}
-                  endDate={endDate}
-                  groupMap={groupMap}
-                  timeframe={timeframe}
-                  loading={loading}
-                  theme={theme}
-                  ignoreForTotal={ignoreForTotal}
-                />
-              </div>
-              <div
-                className={`panel-divider${dragging ? ' dragging' : ''}`}
-                onMouseDown={handleDividerMouseDown}
-                role="separator"
-                aria-orientation="horizontal"
-                aria-label="Resize panels"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowUp') setSplitRatio(r => clamp(r - 0.02, 0.2, 0.85));
-                  if (e.key === 'ArrowDown') setSplitRatio(r => clamp(r + 0.02, 0.2, 0.85));
-                }}
-              >
-                <div className="grip" />
-              </div>
-              <div className="piecharts-panel panel-box" style={{ flex: `${Math.max(0.15, 1 - splitRatio)} 0.7 0%`, minHeight: '120px', maxHeight: '350px' }}>
-                <PieCharts
-                  balances={balances}
-                  selectedAccounts={selectedAccounts}
-                  groupMap={groupMap}
-                  selectedDate={selectedDate}
-                  mainCurrency={mainCurrency}
-                  theme={theme}
-                />
+          <div className="chart-container panel-split">
+            <div className="main-graph-panel panel-box">
+              <NetWorthChart
+                balances={balances}
+                selectedAccounts={selectedAccounts}
+                mainCurrency={mainCurrency}
+                onPointClick={handleChartClick}
+                startDate={startDate}
+                endDate={endDate}
+                groupMap={groupMap}
+                timeframe={timeframe}
+                loading={loading}
+                theme={theme}
+                ignoreForTotal={ignoreForTotal}
+                compact={isMobile}
+              />
+            </div>
+
+            {/* Bottom pie-chart drawer (slides up) */}
+            <button aria-label="Toggle pie charts" title="Toggle pie charts" type="button" className={`bottom-drawer-tab ${pieOpen ? 'open' : ''}`} onClick={() => setPieOpen(s => !s)}>
+              {pieOpen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M7 14l5-5 5 5H7z" fill="currentColor"/>
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M7 10l5 5 5-5H7z" fill="currentColor"/>
+                </svg>
+              )}
+            </button>
+
+            <div className={`bottom-drawer${pieOpen ? ' open' : ''}`} role="dialog" aria-label="Pie charts drawer" aria-hidden={!pieOpen}>
+              <div className="panel-box" style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
+                <div className="drawer-header">
+                  <div className="drawer-header-title">Portfolio Distribution - {moment(selectedDate).format('MMM DD, YYYY')}</div>
+                  <button className="drawer-close-btn" aria-label="Close pie charts" onClick={() => setPieOpen(false)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="piecharts-content" style={{ overflow: 'auto', padding: 18, height: 'calc(100% - 56px)' }}>
+                  <PieCharts
+                    balances={balances}
+                    selectedAccounts={selectedAccounts}
+                    groupMap={groupMap}
+                    selectedDate={selectedDate}
+                    mainCurrency={mainCurrency}
+                    theme={theme}
+                    compact={isMobile}
+                  />
+                </div>
               </div>
             </div>
+          </div>
         </div>
       </div>
     </div>

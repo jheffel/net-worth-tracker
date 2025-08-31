@@ -1,13 +1,14 @@
 import React from 'react';
+import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload }) => {
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
 
   return (
-    <div>
+    <div className="account-panel">
       <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
         Account Selection
       </h3>
@@ -27,7 +28,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </button>
       </div>
 
-      <div className="account-list">
+      <div className="account-list-scroll">
+        <div className={`account-list ${compact ? 'compact' : ''}`}>
         {(accounts.length === 0) ? (
           <p style={{ color: '#cccccc', textAlign: 'center' }}>
             No accounts available. Import data to get started.
@@ -59,9 +61,10 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
                     id={account}
                     checked={selectedAccounts.includes(account)}
                     onChange={() => onAccountToggle(account)}
+                    style={compact ? { width: 22, height: 22 } : {}}
                   />
                   <label htmlFor={account} style={isGroupLike ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
-                    {account} {isGroupLike && <span style={{ fontSize: '11px', color: '#aaa' }}>(Group)</span>}
+                    {account} {isGroupLike && <span style={{ fontSize: compact ? '10px' : '11px', color: '#aaa' }}>(Group)</span>}
                   </label>
                 </div>
                 {isGroupLike && selectedAccounts.includes(account) && members.length > 0 && (
@@ -85,6 +88,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             );
           })
         )}
+        </div>
       </div>
 
       {accounts.length > 0 && (
@@ -100,6 +104,10 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           {selectedAccounts.length} of {accounts.length} accounts selected
         </div>
       )}
+
+      <div className="import-inline">
+        <FileUpload onFileUpload={onFileUpload} />
+      </div>
     </div>
   );
 };
