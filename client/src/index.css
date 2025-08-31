@@ -123,8 +123,9 @@ code {
 .main-content {
   display: flex;
   flex-direction: row;
-  /*height: calc(100vh - 200px);*/
   height: calc(100vh - 40px);
+  align-items: stretch;
+  gap: 18px;
 }
 
 .sidebar {
@@ -143,6 +144,9 @@ code {
   border: 1px solid var(--panel-border);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow children to shrink */
 }
 
 .pie-charts {

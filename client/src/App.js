@@ -68,6 +68,16 @@ function App() {
     loadGroupMap();
   }, []);
 
+  // When layout-affecting drawers open/close, trigger a resize so charts recalc width/height
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // dispatch a couple times: soon after toggle and after CSS transition
+    const dispatchResize = () => window.dispatchEvent(new Event('resize'));
+    const t1 = setTimeout(dispatchResize, 80);
+    const t2 = setTimeout(dispatchResize, 360);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [sidebarOpen, pieOpen]);
+
   // Apply theme to root element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

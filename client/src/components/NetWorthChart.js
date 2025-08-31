@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 //import { getFxRate, getFxRatesBatch } from '../utils/fx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import moment from 'moment';
@@ -119,8 +119,21 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
+  const containerRef = useRef(null);
+
+  // Observe container size changes and trigger a resize so Recharts recalculates both width and height
+  useEffect(() => {
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const obs = new ResizeObserver(() => {
+      // dispatch a resize event; Recharts listens to window resize
+      window.dispatchEvent(new Event('resize'));
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, [containerRef.current]);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       {parentLoading && (
         <div style={{
           position: 'absolute',
@@ -138,7 +151,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
         </div>
       )}
-      <ResponsiveContainer height={compact ? 160 : undefined}>
+  <ResponsiveContainer height={'100%'}>
         <LineChart
           data={clipChartData(chartData, timeframe, selectedAccounts)}
           margin={compact ? { top: 12, right: 24, left: 24, bottom: 18 } : { top: 30, right: 60, left: 60, bottom: 40 }}
