@@ -154,7 +154,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   <ResponsiveContainer height={'100%'}>
         <LineChart
           data={clipChartData(chartData, timeframe, selectedAccounts)}
-          margin={compact ? { top: 12, right: 24, left: 24, bottom: 18 } : { top: 30, right: 60, left: 60, bottom: 40 }}
+          margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#d0d5dd' : '#444'} />
@@ -167,8 +167,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
             tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
           />
           <YAxis
+            width={72}
             tickFormatter={v => formatCurrency(v)}
-            padding={compact ? { top: 12, bottom: 12 } : { top: 40, bottom: 40 }}
+            padding={compact ? { top: 12, bottom: 12 } : { top: 12, bottom: 12 }}
             minTickGap={compact ? 8 : 15}
             stroke={theme === 'light' ? '#384454' : '#aaa'}
             tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
