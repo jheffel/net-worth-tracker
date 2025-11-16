@@ -111,7 +111,6 @@
 }
 
 .account-list-scroll {
-  /* Take remaining vertical space inside sidebar and scroll if content overflows */
   flex: 1 1 auto;
   min-height: 80px;
   max-height: none;
@@ -127,6 +126,7 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
+  height: 100%;
 }
 
 /* Import/upload UI anchored to bottom of the sidebar */
@@ -505,8 +505,8 @@ body {
   padding: 6px 2px;
 }
 .account-list {
-  max-height: 300px;
-  overflow-y: auto;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 /* Mobile menu button */
