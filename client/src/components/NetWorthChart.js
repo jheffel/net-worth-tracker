@@ -5,20 +5,20 @@ import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false }) => {
-  // Track hovered y value for horizontal ruler
-  const [hoveredY, setHoveredY] = useState(null);
+  // Track hovered y values for horizontal rulers (one per account)
+  const [hoveredYs, setHoveredYs] = useState([]);
 
-  // Handler to update hoveredY on mouse move
+  // Handler to update hoveredYs on mouse move
   const handleMouseMove = (state) => {
     if (!state || !state.activePayload || !state.activePayload.length) {
-      setHoveredY(null);
+      setHoveredYs([]);
       return;
     }
-    // Use the first payload's value (total or first account)
-    setHoveredY(state.activePayload[0].value);
+    // Use all payload values (one per account)
+    setHoveredYs(state.activePayload.map(p => p.value));
   };
 
-  const handleMouseLeave = () => setHoveredY(null);
+  const handleMouseLeave = () => setHoveredYs([]);
   // Utility: get the earliest and latest date in chartData
   const getDateRange = (data) => {
     if (!data.length) return [null, null];
@@ -173,15 +173,16 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Horizontal ruler at hovered y value */}
-          {hoveredY !== null && (
+          {/* Horizontal rulers at hovered y values for each account */}
+          {hoveredYs && hoveredYs.length > 0 && hoveredYs.map((y, i) => (
             <ReferenceLine
-              y={hoveredY}
+              key={i}
+              y={y}
               stroke={theme === 'light' ? '#888' : '#fff'}
               strokeWidth={1}
               strokeDasharray={undefined}
             />
-          )}
+          ))}
           <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#d0d5dd' : '#444'} />
           <XAxis
             dataKey="date"
