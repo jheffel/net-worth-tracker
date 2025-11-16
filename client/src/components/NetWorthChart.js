@@ -4,7 +4,79 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false }) => {
+// Added: onRangeSelect callback for drag-to-select
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect }) => {
+    // --- Drag-to-select state ---
+    const [dragStart, setDragStart] = useState(null); // {x, date} or null
+    const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Utility: get x position from event (mouse or touch)
+    const getRelativeX = (e) => {
+      if (!containerRef.current) return null;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (e.touches && e.touches.length) {
+        return e.touches[0].clientX - rect.left;
+      } else if (e.changedTouches && e.changedTouches.length) {
+        return e.changedTouches[0].clientX - rect.left;
+      } else {
+        return e.clientX - rect.left;
+      }
+    };
+
+    // Utility: get date from x position
+    const getDateFromX = (x) => {
+      // Use chartData and container width
+      if (!chartData.length || !containerRef.current) return null;
+      const width = containerRef.current.offsetWidth;
+      const idx = Math.round((x / width) * (chartData.length - 1));
+      return chartData[Math.max(0, Math.min(chartData.length - 1, idx))].date;
+    };
+
+    // Mouse/touch event handlers
+    const handleChartMouseDown = (e) => {
+      if (parentLoading) return;
+      const x = getRelativeX(e);
+      const date = getDateFromX(x);
+      setDragStart({ x, date });
+      setDragEnd(null);
+      setIsDragging(true);
+    };
+    const handleChartMouseMoveDrag = (e) => {
+      if (!isDragging) return;
+      const x = getRelativeX(e);
+      const date = getDateFromX(x);
+      setDragEnd({ x, date });
+    };
+    const handleChartMouseUp = (e) => {
+      if (!isDragging) return;
+      setIsDragging(false);
+      const x = getRelativeX(e);
+      const date = getDateFromX(x);
+      let start = dragStart?.date;
+      let end = date;
+      if (start && end) {
+        // Ensure start <= end
+        if (moment(start).isAfter(moment(end))) {
+          [start, end] = [end, start];
+        }
+        if (start !== end) {
+          onRangeSelect?.(start, end);
+        } else {
+          // Click without drag: reset to all data
+          onRangeSelect?.(null, null);
+        }
+      } else {
+        onRangeSelect?.(null, null);
+      }
+      setDragStart(null);
+      setDragEnd(null);
+    };
+    // Touch events
+    const handleTouchStart = (e) => { handleChartMouseDown(e); };
+    const handleTouchMove = (e) => { handleChartMouseMoveDrag(e); };
+    const handleTouchEnd = (e) => { handleChartMouseUp(e); };
+
   // Track hovered y values for horizontal rulers (one per account)
   const [hoveredYs, setHoveredYs] = useState([]);
 
@@ -146,8 +218,40 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return () => obs.disconnect();
   }, [containerRef.current]);
 
+  // --- Highlight region rendering ---
+  let highlight = null;
+  if (isDragging && dragStart && dragEnd && dragStart.x !== null && dragEnd.x !== null) {
+    const left = Math.min(dragStart.x, dragEnd.x);
+    const width = Math.abs(dragEnd.x - dragStart.x);
+    highlight = (
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left,
+          width,
+          height: '100%',
+          background: 'rgba(53, 87, 183, 0.18)', // blue highlight, adjust as needed
+          pointerEvents: 'none',
+          zIndex: 8,
+        }}
+      />
+    );
+  }
+
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', position: 'relative', userSelect: isDragging ? 'none' : undefined }}
+      onMouseDown={handleChartMouseDown}
+      onMouseMove={handleChartMouseMoveDrag}
+      onMouseUp={handleChartMouseUp}
+      onMouseLeave={() => { setIsDragging(false); setDragStart(null); setDragEnd(null); }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {highlight}
       {parentLoading && (
         <div style={{
           position: 'absolute',

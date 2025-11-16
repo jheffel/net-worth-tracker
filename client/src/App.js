@@ -321,6 +321,15 @@ function App() {
                 theme={theme}
                 ignoreForTotal={ignoreForTotal}
                 compact={isMobile}
+                onRangeSelect={(start, end) => {
+                  if (start && end) {
+                    setStartDate(start);
+                    setEndDate(end);
+                    setTimeframe('Custom');
+                  } else {
+                    setTimeframe('All Data');
+                  }
+                }}
               />
             </div>
 
