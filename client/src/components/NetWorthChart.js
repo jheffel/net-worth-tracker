@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 //import { getFxRate, getFxRatesBatch } from '../utils/fx';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false }) => {
+  // Track hovered y value for horizontal ruler
+  const [hoveredY, setHoveredY] = useState(null);
+
+  // Handler to update hoveredY on mouse move
+  const handleMouseMove = (state) => {
+    if (!state || !state.activePayload || !state.activePayload.length) {
+      setHoveredY(null);
+      return;
+    }
+    // Use the first payload's value (total or first account)
+    setHoveredY(state.activePayload[0].value);
+  };
+
+  const handleMouseLeave = () => setHoveredY(null);
   // Utility: get the earliest and latest date in chartData
   const getDateRange = (data) => {
     if (!data.length) return [null, null];
@@ -156,7 +170,18 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           data={clipChartData(chartData, timeframe, selectedAccounts)}
           margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         >
+          {/* Horizontal ruler at hovered y value */}
+          {hoveredY !== null && (
+            <ReferenceLine
+              y={hoveredY}
+              stroke={theme === 'light' ? '#888' : '#fff'}
+              strokeWidth={1}
+              strokeDasharray={undefined}
+            />
+          )}
           <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#d0d5dd' : '#444'} />
           <XAxis
             dataKey="date"
