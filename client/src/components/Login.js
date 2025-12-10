@@ -10,6 +10,10 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    React.useEffect(() => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
