@@ -974,11 +974,33 @@ body {
   border: 1px solid var(--panel-border);
 }
 
+.list-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .list-box h4 {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 0.9rem;
   color: var(--text-secondary);
   text-transform: uppercase;
+}
+
+.btn-small {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-small:hover {
+  background: var(--control-border-hover);
+  color: var(--text-primary);
 }
 
 .list-content {

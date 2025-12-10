@@ -46,6 +46,16 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
         setLocalLeft(prev => [...prev, acc].sort());
     };
 
+    const handleAddAll = () => {
+        setLocalRight(prev => [...prev, ...localLeft].sort());
+        setLocalLeft([]);
+    };
+
+    const handleRemoveAll = () => {
+        setLocalLeft(prev => [...prev, ...localRight].sort());
+        setLocalRight([]);
+    };
+
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -84,7 +94,12 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
 
                 <div className="dual-list-container">
                     <div className="list-box">
-                        <h4>Available Accounts</h4>
+                        <div className="list-header-row">
+                            <h4>Available Accounts</h4>
+                            {localLeft.length > 0 && (
+                                <button className="btn-small" onClick={handleAddAll}>Add All &rarr;</button>
+                            )}
+                        </div>
                         <div className="list-content">
                             {localLeft.length === 0 && <div className="empty-msg">No accounts</div>}
                             {localLeft.map(acc => (
@@ -97,7 +112,12 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
                     </div>
 
                     <div className="list-box">
-                        <h4>In {groupLabels[activeTab]}</h4>
+                        <div className="list-header-row">
+                            <h4>In {groupLabels[activeTab]}</h4>
+                            {localRight.length > 0 && (
+                                <button className="btn-small" onClick={handleRemoveAll}>&larr; Remove All</button>
+                            )}
+                        </div>
                         <div className="list-content">
                             {localRight.length === 0 && <div className="empty-msg">No accounts in group</div>}
                             {localRight.map(acc => (
