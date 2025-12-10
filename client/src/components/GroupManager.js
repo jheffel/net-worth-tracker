@@ -26,8 +26,13 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
         if (!groupMap || !allAccounts) return;
         const currentGroupMembers = groupMap[activeTab] || [];
 
+        // Exclude groups (aggregates) from the available accounts list
+        // We assume anything in groupMap keys is a group/aggregate
+        const groupNames = Object.keys(groupMap);
+        const baseAccounts = allAccounts.filter(acc => !groupNames.includes(acc));
+
         // Left side: Accounts NOT in the current group
-        const left = allAccounts.filter(acc => !currentGroupMembers.includes(acc));
+        const left = baseAccounts.filter(acc => !currentGroupMembers.includes(acc));
         // Right side: Accounts IN the current group
         const right = currentGroupMembers.filter(acc => allAccounts.includes(acc)); // filter to ensure valid
 
