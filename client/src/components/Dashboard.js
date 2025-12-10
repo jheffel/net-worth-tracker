@@ -14,10 +14,12 @@ function Dashboard() {
 
     // Sidebar drawer state (slides in on desktop and mobile)
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     const isMobile = typeof window !== 'undefined' && window.innerWidth <= 900;
 
     // Close sidebar on navigation or overlay click
     const handleSidebarClose = () => setSidebarOpen(false);
+    const handleRightSidebarClose = () => setRightSidebarOpen(false);
 
     const [accounts, setAccounts] = useState([]);
     const [selectedAccounts, setSelectedAccounts] = useState([]);
@@ -70,6 +72,7 @@ function Dashboard() {
     }, []);
 
     // When layout-affecting drawers open/close, trigger a resize so charts recalc width/height
+    // When layout-affecting drawers open/close, trigger a resize so charts recalc width/height
     useEffect(() => {
         if (typeof window === 'undefined') return;
         // dispatch a couple times: soon after toggle and after CSS transition
@@ -77,7 +80,7 @@ function Dashboard() {
         const t1 = setTimeout(dispatchResize, 80);
         const t2 = setTimeout(dispatchResize, 360);
         return () => { clearTimeout(t1); clearTimeout(t2); };
-    }, [sidebarOpen, pieOpen]);
+    }, [sidebarOpen, rightSidebarOpen, pieOpen]);
 
     // Apply theme to root element
     useEffect(() => {
@@ -236,6 +239,20 @@ function Dashboard() {
                     )}
                 </button>
 
+                {/* Right sidebar tab */}
+                <button aria-label="Toggle user menu" title="Toggle user menu" type="button" className={`right-drawer-tab ${rightSidebarOpen ? 'open' : ''}`} onClick={() => setRightSidebarOpen(s => !s)}>
+                    {rightSidebarOpen ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                            <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="currentColor" />
+                        </svg>
+                    ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    )}
+                </button>
+
                 {error && (
                     <div className="error">
                         {error}
@@ -246,46 +263,76 @@ function Dashboard() {
                 )}
 
                 <div className="main-content">
-                    {/* Mobile sidebar overlay */}
-                    {sidebarOpen && (
-                        <div className="sidebar-overlay" onClick={handleSidebarClose} />
+                    {/* Sidebar overlay shared? No, maybe independent or shared. Let's make them independent for now. */}
+                    {(sidebarOpen || rightSidebarOpen) && (
+                        <div className="sidebar-overlay" onClick={() => { setSidebarOpen(false); setRightSidebarOpen(false); }} />
                     )}
+                    {/* Right Sidebar Drawer */}
+                    <div className={`right-sidebar drawer${rightSidebarOpen ? ' open' : ''}`}>
+                        <div className="sidebar-header">
+                            <h1 style={{ margin: 0 }}>My Profile</h1>
+                        </div>
+                        <div className="right-sidebar-content">
+                            <div className="user-info-large" style={{ padding: '20px 0', textAlign: 'center' }}>
+                                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent)', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </div>
+                                <h3 style={{ margin: 0 }}>{user?.username}</h3>
+                            </div>
+
+                            <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
+                                <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
+                                    {theme === 'dark' ? (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
+                                            </svg>
+                                            <span>Dark Mode</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm7.24-2.84l1.79 1.79 1.79-1.79-1.79-1.8-1.79 1.8zM20 11v2h3v-2h-3zM4.22 19.78l1.79-1.79-1.79-1.79L2.43 18l1.79 1.78zM12 5a7 7 0 100 14 7 7 0 000-14z" fill="currentColor" />
+                                            </svg>
+                                            <span>Light Mode</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
+                                    {isFullscreen ? (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor" />
+                                            </svg>
+                                            <span>Exit Fullscreen</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor" />
+                                            </svg>
+                                            <span>Fullscreen</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button onClick={logout} className="btn" title="Logout" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px', color: '#ff6b6b' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>Logout</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     {/* Sidebar drawer */}
                     <div className={`sidebar drawer${sidebarOpen ? ' open' : ''}`}>
                         <div className="sidebar-header">
                             <h1 style={{ margin: 0 }}>Net Worth Tracker</h1>
-                            <div className="sidebar-user-info" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                                Logged in as {user?.username}
-                            </div>
                             <div className="sidebar-actions">
-
-                                <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn icon-btn small">
-                                    {theme === 'dark' ? (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
-                                        </svg>
-                                    ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                            <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm7.24-2.84l1.79 1.79 1.79-1.79-1.79-1.8-1.79 1.8zM20 11v2h3v-2h-3zM4.22 19.78l1.79-1.79-1.79-1.79L2.43 18l1.79 1.78zM12 5a7 7 0 100 14 7 7 0 000-14z" fill="currentColor" />
-                                        </svg>
-                                    )}
-                                </button>
-                                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn icon-btn small">
-                                    {isFullscreen ? (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                            <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor" />
-                                        </svg>
-                                    ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                            <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor" />
-                                        </svg>
-                                    )}
-                                </button>
-                                <button onClick={logout} className="btn icon-btn small" title="Logout">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </button>
+                                {/* Actions moved to right sidebar */}
                             </div>
                         </div>
                         <Controls
