@@ -5,6 +5,7 @@ import NetWorthChart from './NetWorthChart';
 import PieCharts from './PieCharts';
 import AccountSelector from './AccountSelector';
 import Controls from './Controls';
+import GroupManager from './GroupManager';
 import '../App.css';
 import '../chartLayout.css';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +16,7 @@ function Dashboard() {
     // Sidebar drawer state (slides in on desktop and mobile)
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+    const [groupManagerOpen, setGroupManagerOpen] = useState(false);
     const isMobile = typeof window !== 'undefined' && window.innerWidth <= 900;
 
     // Close sidebar on navigation or overlay click
@@ -284,6 +286,12 @@ function Dashboard() {
                             </div>
 
                             <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
+                                <button onClick={() => setGroupManagerOpen(true)} className="btn" title="Manage Groups" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>Manage Groups</span>
+                                </button>
                                 <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
                                     {theme === 'dark' ? (
                                         <>
@@ -424,6 +432,19 @@ function Dashboard() {
                         </div>
                     </div>
                 </div>
+
+                {groupManagerOpen && (
+                    <GroupManager
+                        user={user}
+                        allAccounts={accounts}
+                        groupMap={groupMap}
+                        onClose={() => setGroupManagerOpen(false)}
+                        onUpdate={() => {
+                            loadGroupMap(); // Reload groups
+                            loadBalances(); // Reload balances to reflect changes if necessary
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

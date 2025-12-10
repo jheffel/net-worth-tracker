@@ -74,6 +74,18 @@ class Database {
       this.db.run(`
         INSERT OR IGNORE INTO settings (key, value) VALUES ('main_currency', 'CAD')
       `);
+
+      // Account groups table (per user)
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS account_groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          group_type TEXT NOT NULL,
+          account_name TEXT NOT NULL,
+          UNIQUE(user_id, group_type, account_name),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+      `);
     });
   }
 
@@ -442,53 +454,87 @@ class Database {
   }
 
   async getAccountGroups(userId) {
-    const fs = require('fs');
-    const path = require('path');
+    return new Promise((resolve, reject) => {
+      // 1. Get all distinct accounts for this user (for 'networth')
+      this.getAllAccounts(userId).then(allAccounts => {
+        // 2. Get user-defined groups from DB
+        this.db.all(
+          'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
+          [userId],
+          (err, rows) => {
+            if (err) return reject(err);
 
+            const groups = {
+              operating: [],
+              investing: [],
+              crypto: [],
+              equity: [],
+              summary: [],
+              ignoreForTotal: [], // special "group" for ignoring
+              networth: allAccounts,
+              total: []
+            };
 
-    const configDir = path.join(__dirname, '../config');
-    const groupFiles = ['operating', 'investing', 'crypto', 'equity', 'summary'];
-    const groups = {};
-    for (const group of groupFiles) {
-      const filePath = path.join(configDir, `${group}.txt`);
-      try {
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          groups[group] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-        } else {
-          groups[group] = [];
-        }
-      } catch (e) {
-        console.error(`Error reading group file for ${group}:`, e);
-        groups[group] = [];
-      }
-    }
+            // Populate from DB
+            rows.forEach(r => {
+              if (!groups[r.group_type]) groups[r.group_type] = [];
+              groups[r.group_type].push(r.account_name);
+            });
 
-    const allAccounts = await this.getAllAccounts(userId);
-    groups['networth'] = allAccounts;
-    const tempList = {};
-    const ignoreFilePath = path.join(configDir, 'ignoreForTotal.txt');
-    try {
-      if (fs.existsSync(ignoreFilePath)) {
-        const content = fs.readFileSync(ignoreFilePath, 'utf-8');
-        tempList['ignoreForTotal'] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      } else {
-        tempList['ignoreForTotal'] = [];
-      }
-    } catch (e) {
-      console.error(`Error reading group file for ignoreForTotal:`, e);
-      tempList['ignoreForTotal'] = [];
-    }
+            // Calculate 'total' = networth - ignoreForTotal
+            const ignoreList = groups['ignoreForTotal'] || [];
+            groups['total'] = allAccounts.filter(acc => !ignoreList.includes(acc));
 
-    if (groups['networth'] && tempList['ignoreForTotal']) {
-      groups['total'] = groups['networth'].filter(
-        account => !tempList['ignoreForTotal'].includes(account)
-      );
-    } else {
-      groups['total'] = [];
-    }
+            resolve(groups);
+          }
+        );
+      }).catch(reject);
+    });
+  }
 
-    return groups;
+  async updateAccountGroup(userId, groupType, accounts) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION');
+
+        // Delete existing entries for this group type
+        this.db.run(
+          'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+          [userId, groupType],
+          (err) => {
+            if (err) {
+              this.db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (accounts.length === 0) {
+              this.db.run('COMMIT');
+              return resolve();
+            }
+
+            // Insert new entries
+            const placeholders = accounts.map(() => '(?, ?, ?)').join(',');
+            const params = [];
+            accounts.forEach(acc => {
+              params.push(userId, groupType, acc);
+            });
+
+            this.db.run(
+              `INSERT INTO account_groups (user_id, group_type, account_name) VALUES ${placeholders}`,
+              params,
+              (err) => {
+                if (err) {
+                  this.db.run('ROLLBACK');
+                  return reject(err);
+                }
+                this.db.run('COMMIT');
+                resolve();
+              }
+            );
+          }
+        );
+      });
+    });
   }
 
 

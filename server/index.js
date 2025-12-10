@@ -261,6 +261,21 @@ app.get('/api/account-groups', authenticateToken, async (req, res) => {
   }
 });
 
+// Update account group
+app.post('/api/account-groups/:type', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { accounts } = req.body; // Array of account names
+    if (!Array.isArray(accounts)) {
+      return res.status(400).json({ error: 'Accounts must be an array' });
+    }
+    await db.updateAccountGroup(req.user.id, type, accounts);
+    res.json({ message: `Group ${type} updated` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update main currency (Protected, but global setting currently)
 app.put('/api/currency', authenticateToken, async (req, res) => {
   try {
