@@ -367,12 +367,11 @@ function Dashboard() {
                             ignoreForTotal={ignoreForTotal}
                             onFileUpload={handleFileUpload}
                             onGroupChange={(groupName, groupAccounts) => {
-                                // Set selection to just the new group accounts
                                 setSelectedAccounts(groupAccounts);
-                                // Refresh group map and accounts
                                 loadGroupMap();
                                 loadInitialData();
                             }}
+                            onGroupSelect={groupAccounts => setSelectedAccounts(groupAccounts)}
                             showSumLine={showSumLine}
                             setShowSumLine={setShowSumLine}
                         />

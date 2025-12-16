@@ -3,7 +3,7 @@ import axios from 'axios';
 import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine, onGroupSelect }) => {
           {/* Toggle for plotting sum of selected accounts */}
           <div style={{ marginBottom: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
@@ -27,6 +27,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
+  // Only show accounts that are not group names
+  const pureAccounts = accounts.filter(a => !groupNames.includes(a));
 
   return (
     <div className="account-panel">
@@ -141,66 +143,45 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
       )}
 
       <div className="account-list-scroll">
+        {/* Accounts Section */}
         <div className={`account-list ${compact ? 'compact' : ''}`}>
-        {(accounts.length === 0) ? (
-          <p style={{ color: '#cccccc', textAlign: 'center' }}>
-            No accounts available. Import data to get started.
-          </p>
-        ) : (
-          [...accounts].map(account => {
-            // Treat 'net worth' and 'total' as groups
-            let members = [];
-            /*
-            if (account === 'net worth') {
-              const allAccounts = [...accounts];
-              const groupedAccounts = Object.values(groupMap).flat();
-              members = allAccounts.filter(a => !groupedAccounts.includes(a));
-            } else if (account === 'total') {
-              const allAccounts = [...accounts];
-              const groupedAccounts = Object.values(groupMap).flat();
-              members = allAccounts.filter(a => !groupedAccounts.includes(a) && !(typeof ignoreForTotal !== 'undefined' && ignoreForTotal.includes(a)));
-            } else if (groupMap[account]) {
-              members = groupMap[account];
-            }
-            */
-            members = groupMap[account] || [];
-            const isGroupLike = account === 'net worth' || account === 'total' || groupMap[account];
-            return (
-              <React.Fragment key={account}>
-                <div className="account-item">
-                  <input
-                    type="checkbox"
-                    id={account}
-                    checked={selectedAccounts.includes(account)}
-                    onChange={() => onAccountToggle(account)}
-                    style={compact ? { width: 22, height: 22 } : {}}
-                  />
-                  <label htmlFor={account} style={isGroupLike ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
-                    {account} {isGroupLike && <span style={{ fontSize: compact ? '10px' : '11px', color: '#aaa' }}>(Group)</span>}
-                  </label>
-                </div>
-                {isGroupLike && selectedAccounts.includes(account) && members.length > 0 && (
-                  <div style={{ marginLeft: 24, marginBottom: 4 }}>
-                    {members.map(member => (
-                      <div key={account + '-' + member} className="account-item">
-                        <input
-                          type="checkbox"
-                          id={account + '-' + member}
-                          checked={true}
-                          disabled
-                        />
-                        <label htmlFor={account + '-' + member} style={{ color: '#aaa', fontStyle: 'italic' }}>
-                          {member}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })
-        )}
+          <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Accounts</div>
+          {pureAccounts.length === 0 ? (
+            <p style={{ color: '#cccccc', textAlign: 'center' }}>
+              No accounts available. Import data to get started.
+            </p>
+          ) : (
+            pureAccounts.map(account => (
+              <div className="account-item" key={account}>
+                <input
+                  type="checkbox"
+                  id={account}
+                  checked={selectedAccounts.includes(account)}
+                  onChange={() => onAccountToggle(account)}
+                  style={compact ? { width: 22, height: 22 } : {}}
+                />
+                <label htmlFor={account}>{account}</label>
+              </div>
+            ))
+          )}
         </div>
+        {/* Groups Section */}
+        {groupNames.length > 0 && (
+          <div className={`group-list ${compact ? 'compact' : ''}`} style={{ marginTop: 18 }}>
+            <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Groups</div>
+            {groupNames.map(group => (
+              <div className="group-item" key={group}>
+                <button
+                  className="btn btn-group-select"
+                  style={{ width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 15, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 4, marginBottom: 4, color: 'var(--text-primary)', cursor: 'pointer' }}
+                  onClick={() => onGroupSelect && onGroupSelect(groupMap[group])}
+                >
+                  {group}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {accounts.length > 0 && (
