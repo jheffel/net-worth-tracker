@@ -80,7 +80,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
       </div>
 
       {/* Compact Create Group button between accounts and groups, with anchored modal */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 8, position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'left', alignItems: 'left', gap: 10, marginBottom: 8, position: 'relative' }}>
         <button
           className="btn btn-tertiary"
           ref={plusBtnRef}
