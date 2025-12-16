@@ -176,7 +176,15 @@ class Database {
   async addBalance(userId, accountName, date, balance, currency, ticker = '') {
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO account_balances (account_name, date, balance, currency, ticker, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+        `INSERT INTO account_balances (account_name, date, balance, currency, ticker, user_id)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(account_name, date, currency, ticker, user_id)
+         DO UPDATE SET
+           balance=excluded.balance,
+           currency=excluded.currency,
+           ticker=excluded.ticker,
+           user_id=excluded.user_id
+        `,
         [accountName, date, balance, currency, ticker, userId],
         function (err) {
           if (err) reject(err);
