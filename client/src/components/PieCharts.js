@@ -6,31 +6,8 @@ import moment from 'moment';
 
 
 import axios from 'axios';
-const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCurrency, theme, compact = false }) => {
-  const [ignoreForTotal, setIgnoreForTotal] = useState([]);
-  const [summaryGroups, setSummaryGroups] = useState([]);
 
-  useEffect(() => {
-    /*
-    // Load ignoreForTotal.txt for 'total' group
-    axios.get('/config/ignoreForTotal.txt').then(res => {
-      setIgnoreForTotal(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
-    }).catch(() => setIgnoreForTotal([]));
-    */
-    // Load summary.txt for summary pie chart
-    axios.get('/config/summary.txt').then(res => {
-      setSummaryGroups(res.data.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
-    }).catch(() => setSummaryGroups(['operating','investing','crypto','equity']));
-  }, []);
-
-  const chartTypes = [
-    { key: 'summary', title: 'Summary Distribution' },
-    { key: 'operating', title: 'Operating Accounts' },
-    { key: 'investing', title: 'Investment Accounts' },
-    { key: 'crypto', title: 'Crypto Accounts' },
-    { key: 'equity', title: 'Equity Accounts' }
-  ];
-
+const PieCharts = ({ balances, groupMap, selectedDate, mainCurrency, theme, compact = false }) => {
   const colorsDark = ['#8884d8','#82ca9d','#ffc658','#ff7300','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];
   const colorsLight = ['#3557b7','#1f8f5f','#c28a00','#d45800','#b83232','#2b9b2b','#2e5fa8','#d1a500','#a93ba9','#2796a9'];
   const colors = theme === 'light' ? colorsLight : colorsDark;
@@ -63,69 +40,24 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
     return 0;
   };
 */
-  // Build pie data for each chart type
 
-  const buildPieData = (type) => {
-
-    //console.log('pie balances:', balances);
-    //console.log('pie selectedAccounts:', selectedAccounts);
-    //console.log('pie groupMap:', groupMap);
-    //console.log('pie selectedDate:', selectedDate);
-
-
-    if (type === 'summary') {
-      // For summary, show one slice per group in summary.txt, each as the sum of its members
-      const labels = [];
-      const data = [];
-      let signedTotal = 0;
-      summaryGroups.forEach(group => {
-        const members = groupMap[group] || [];
-        let groupSum = 0;
-        members.forEach(account => {
-          //const value = interpolateValue(balances[account], selectedDate);
-          //if (!selectedAccounts.includes(account)) return;
-          if (!balances[account]) return;
-          const value = balances[account][selectedDate];
-          groupSum += value;
-        });
-        if (groupSum !== 0) {
-          labels.push(group);
-          data.push(Math.abs(groupSum));
-          signedTotal += groupSum;
-        }
-      });
-      return { labels, data, total: signedTotal };
-    }
-    // ...existing code for other types...
-    let groupMembers = [];
-    if (type === 'networth') {
-      groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap));
-    } else if (type === 'total') {
-      groupMembers = Object.keys(balances).filter(acc => !(acc in groupMap) && !ignoreForTotal.includes(acc));
-    } else {
-      groupMembers = groupMap[type] || [];
-    }
-    groupMembers = Array.from(new Set(groupMembers));
+  // Build pie data for each group in groupMap, sorted alphabetically
+  const groupNames = Object.keys(groupMap).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const groupPieData = groupNames.map(groupName => {
+    const accounts = groupMap[groupName] || [];
     const labels = [];
     const data = [];
     let signedTotal = 0;
-    groupMembers.forEach(account => {
-      //const value = interpolateValue(balances[account], selectedDate);
-      //if (!selectedAccounts.includes(account)) return;
+    accounts.forEach(account => {
       if (!balances[account]) return;
       const value = balances[account][selectedDate];
-      if (value !== 0) {
+      if (typeof value === 'number') {
         labels.push(account);
         data.push(Math.abs(value));
         signedTotal += value;
       }
     });
-    return { labels, data, total: signedTotal };
-  };
-
-  const pieData = {};
-  chartTypes.forEach(type => {
-    pieData[type.key] = buildPieData(type.key);
+    return { groupName, labels, data, total: signedTotal };
   });
 
   const formatCurrency = (value) => {
@@ -207,26 +139,24 @@ const PieCharts = ({ balances, selectedAccounts, groupMap, selectedDate, mainCur
 
 
   return (
-    <>
-      <div className="pie-charts" style={{height: '100%', minHeight: 0}}>
-        {chartTypes.map((type) => (
-          <div key={type.key} className="pie-chart">
-            <h3 style={{ fontSize: compact ? '1em' : undefined }}>{type.title}</h3>
-            {renderPieChart(type.key, pieData[type.key])}
-            {pieData[type.key] && pieData[type.key].total > 0 && (
-              <p style={{
-                textAlign: 'center',
-                margin: '10px 0 0 0',
-                color: 'var(--text-secondary)',
-                fontSize: compact ? '12px' : '14px'
-              }}>
-                Total: {formatCurrency(pieData[type.key].total)}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
+    <div className="pie-charts" style={{height: '100%', minHeight: 0}}>
+      {groupPieData.map(({ groupName, labels, data, total }) => (
+        <div key={groupName} className="pie-chart">
+          <h3 style={{ fontSize: compact ? '1em' : undefined }}>{groupName}</h3>
+          {renderPieChart(groupName, { labels, data, total })}
+          {total > 0 && (
+            <p style={{
+              textAlign: 'center',
+              margin: '10px 0 0 0',
+              color: 'var(--text-secondary)',
+              fontSize: compact ? '12px' : '14px'
+            }}>
+              Total: {formatCurrency(total)}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
   );
 };
 
