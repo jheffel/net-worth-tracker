@@ -103,16 +103,25 @@ class Database {
   // Delete a group and all its assignments for a user
   async deleteAccountGroup(userId, groupType) {
     return new Promise((resolve, reject) => {
-      this.db.run(
-        'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
-        [userId, groupType],
-        function (err) {
-          if (err) reject(err);
-          else resolve(this.changes); // number of rows deleted
-        }
-      );
+      this.db.serialize(() => {
+        this.db.run(
+          'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+          [userId, groupType],
+          (err) => {
+            if (err) return reject(err);
+            // Now delete the group definition
+            this.db.run(
+              'DELETE FROM groups WHERE user_id = ? AND group_type = ?',
+              [userId, groupType],
+              function (err2) {
+                if (err2) reject(err2);
+                else resolve(this.changes);
+              }
+            );
+          }
+        );
+      });
     }).then((result) => {
-      // Invalidate group cache if you have one
       if (this.invalidateCache) this.invalidateCache();
       return result;
     });
