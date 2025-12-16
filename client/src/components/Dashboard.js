@@ -442,6 +442,7 @@ function Dashboard() {
                         onUpdate={() => {
                             loadGroupMap(); // Reload groups
                             loadBalances(); // Reload balances to reflect changes if necessary
+                            loadInitialData(); // Also reload accounts
                         }}
                     />
                 )}
