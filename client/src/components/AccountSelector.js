@@ -3,7 +3,7 @@ import axios from 'axios';
 import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine, onGroupSelect }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine, onGroupSelect, setGroupManagerOpen }) => {
           {/* Toggle for plotting sum of selected accounts */}
           <div style={{ marginBottom: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
@@ -80,7 +80,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
       </div>
 
       {/* Compact Create Group button between accounts and groups, with anchored modal */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 8, position: 'relative' }}>
         <button
           className="btn btn-tertiary"
           ref={plusBtnRef}
@@ -93,6 +93,12 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
             <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
+        </button>
+        <button onClick={() => setGroupManagerOpen && setGroupManagerOpen(true)} className="btn" title="Manage Groups" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 6 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span style={{ fontSize: 14 }}>Manage Groups</span>
         </button>
         {showGroupModal && (
           <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000 }} onClick={() => setShowGroupModal(false)}>
