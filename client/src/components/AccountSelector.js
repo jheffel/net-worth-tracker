@@ -216,9 +216,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </div>
       )}
 
-      <div className="import-inline">
-        <FileUpload onFileUpload={onFileUpload} />
-      </div>
+
     </div>
   );
 };

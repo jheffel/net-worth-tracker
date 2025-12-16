@@ -7,6 +7,7 @@ import PieCharts from './PieCharts';
 import AccountSelector from './AccountSelector';
 import Controls from './Controls';
 import GroupManager from './GroupManager';
+import FileUpload from './FileUpload';
 import '../App.css';
 import '../chartLayout.css';
 import { useAuth } from '../context/AuthContext';
@@ -286,6 +287,11 @@ function Dashboard() {
                                     </svg>
                                 </div>
                                 <h3 style={{ margin: 0 }}>{user?.username}</h3>
+                            </div>
+
+                            {/* Import Data/Drag-and-Drop region moved here */}
+                            <div className="import-inline" style={{ margin: '18px 0' }}>
+                                <FileUpload onFileUpload={handleFileUpload} />
                             </div>
 
                             <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
