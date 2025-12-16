@@ -363,6 +363,13 @@ function Dashboard() {
                             groupMap={groupMap}
                             ignoreForTotal={ignoreForTotal}
                             onFileUpload={handleFileUpload}
+                            onGroupChange={(groupName, groupAccounts) => {
+                                // Set selection to just the new group accounts
+                                setSelectedAccounts(groupAccounts);
+                                // Refresh group map and accounts
+                                loadGroupMap();
+                                loadInitialData();
+                            }}
                         />
                     </div>
 
