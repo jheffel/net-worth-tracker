@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
@@ -25,6 +25,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
     const [errorMsg, setErrorMsg] = useState('');
     const [loading, setLoading] = useState(false);
     const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+    const plusBtnRef = useRef(null);
+
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
@@ -37,15 +39,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         Account Selection
       </h3>
 
-      <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'flex-start' }}>
-        <button
-          className="btn btn-tertiary"
-          onClick={() => { setShowGroupModal(true); setGroupName(''); setErrorMsg(''); setOverridePrompt(false); }}
-          disabled={selectedAccounts.length === 0}
-        >
-          Create Group from Selection
-        </button>
-      </div>
+
       <div style={{ marginBottom: '15px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <button 
           className="btn btn-primary" 
@@ -60,91 +54,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           Deselect All
         </button>
       </div>
-      {/* Modal for group name and override confirmation */}
-      {showGroupModal && (
-        <div className="modal-overlay">
-          <div className="modal-dialog">
-            {!overridePrompt ? (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <strong>Create Group from Selection</strong>
-                  <div style={{ marginTop: 8 }}>
-                    <input
-                      type="text"
-                      value={groupName}
-                      onChange={e => setGroupName(e.target.value)}
-                      placeholder="Group name"
-                      style={{ fontSize: 15, padding: '4px 8px', width: 220 }}
-                      autoFocus
-                      disabled={loading}
-                    />
-                  </div>
-                  {errorMsg && <div style={{ color: 'red', marginTop: 6 }}>{errorMsg}</div>}
-                </div>
-                <button
-                  className="btn primary"
-                  onClick={async () => {
-                    setErrorMsg('');
-                    const name = groupName.trim();
-                    if (!name) { setErrorMsg('Group name required'); return; }
-                    if (groupMap[name]) {
-                      setOverridePrompt(true);
-                      setPendingGroup(name);
-                      return;
-                    }
-                    setLoading(true);
-                    try {
-                      await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(name)}`, { accounts: selectedAccounts });
-                      setShowGroupModal(false);
-                      setGroupName('');
-                      setErrorMsg('');
-                      setOverridePrompt(false);
-                      if (onGroupChange) onGroupChange(name, selectedAccounts);
-                    } catch (err) {
-                      setErrorMsg('Failed to create group.');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading}
-                >Create</button>
-                <button className="btn" onClick={() => setShowGroupModal(false)} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <strong>Group already exists.</strong><br />
-                  Override with current selection?
-                </div>
-                <button
-                  className="btn danger"
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(pendingGroup)}`, { accounts: selectedAccounts });
-                      setShowGroupModal(false);
-                      setGroupName('');
-                      setErrorMsg('');
-                      setOverridePrompt(false);
-                      setPendingGroup(null);
-                      if (onGroupChange) onGroupChange(pendingGroup, selectedAccounts);
-                    } catch (err) {
-                      setErrorMsg('Failed to override group.');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading}
-                >Override</button>
-                <button className="btn" onClick={() => { setOverridePrompt(false); setPendingGroup(null); }} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Accounts Scrollable Section */}
-      <div className="account-list-scroll" style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 12 }}>
+      <div className="account-list-scroll" style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 8 }}>
         <div className={`account-list ${compact ? 'compact' : ''}`}>
           <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Accounts</div>
           {pureAccounts.length === 0 ? (
@@ -166,6 +77,120 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             ))
           )}
         </div>
+      </div>
+
+      {/* Compact Create Group button between accounts and groups, with anchored modal */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
+        <button
+          className="btn btn-tertiary"
+          ref={plusBtnRef}
+          onClick={() => { setShowGroupModal(true); setGroupName(''); setErrorMsg(''); setOverridePrompt(false); }}
+          disabled={selectedAccounts.length === 0}
+          title="Create group from selection"
+          style={{ padding: 4, borderRadius: '50%', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+            <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        {showGroupModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000 }} onClick={() => setShowGroupModal(false)}>
+            <div
+              className="modal-dialog"
+              style={{
+                position: 'absolute',
+                zIndex: 1001,
+                left: plusBtnRef.current ? plusBtnRef.current.getBoundingClientRect().left + window.scrollX : '50%',
+                top: plusBtnRef.current ? plusBtnRef.current.getBoundingClientRect().bottom + window.scrollY + 8 : '50%',
+                transform: 'translateX(-50%)',
+                minWidth: 260,
+                background: 'var(--control-bg)',
+                border: '1px solid var(--control-border)',
+                borderRadius: 8,
+                boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
+                padding: 18
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {!overridePrompt ? (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Create Group from Selection</strong>
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        type="text"
+                        value={groupName}
+                        onChange={e => setGroupName(e.target.value)}
+                        placeholder="Group name"
+                        style={{ fontSize: 15, padding: '4px 8px', width: 220 }}
+                        autoFocus
+                        disabled={loading}
+                      />
+                    </div>
+                    {errorMsg && <div style={{ color: 'red', marginTop: 6 }}>{errorMsg}</div>}
+                  </div>
+                  <button
+                    className="btn primary"
+                    onClick={async () => {
+                      setErrorMsg('');
+                      const name = groupName.trim();
+                      if (!name) { setErrorMsg('Group name required'); return; }
+                      if (groupMap[name]) {
+                        setOverridePrompt(true);
+                        setPendingGroup(name);
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(name)}`, { accounts: selectedAccounts });
+                        setShowGroupModal(false);
+                        setGroupName('');
+                        setErrorMsg('');
+                        setOverridePrompt(false);
+                        if (onGroupChange) onGroupChange(name, selectedAccounts);
+                      } catch (err) {
+                        setErrorMsg('Failed to create group.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >Create</button>
+                  <button className="btn" onClick={() => setShowGroupModal(false)} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Group already exists.</strong><br />
+                    Override with current selection?
+                  </div>
+                  <button
+                    className="btn danger"
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(pendingGroup)}`, { accounts: selectedAccounts });
+                        setShowGroupModal(false);
+                        setGroupName('');
+                        setErrorMsg('');
+                        setOverridePrompt(false);
+                        setPendingGroup(null);
+                        if (onGroupChange) onGroupChange(pendingGroup, selectedAccounts);
+                      } catch (err) {
+                        setErrorMsg('Failed to override group.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >Override</button>
+                  <button className="btn" onClick={() => { setOverridePrompt(false); setPendingGroup(null); }} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Groups Scrollable Section with collapse/expand, now below accounts but above select/deselect all */}
