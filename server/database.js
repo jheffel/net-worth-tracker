@@ -492,37 +492,27 @@ class Database {
 
   async getAccountGroups(userId) {
     return new Promise((resolve, reject) => {
-      // 1. Get all distinct accounts for this user (for 'networth')
-      this.getAllAccounts(userId).then(allAccounts => {
-        // 2. Get all group definitions for this user
-        this.db.all(
-          'SELECT group_type FROM groups WHERE user_id = ?',
-          [userId],
-          (err, groupRows) => {
-            if (err) return reject(err);
-            // 3. Get all group assignments for this user
-            this.db.all(
-              'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
-              [userId],
-              (err2, rows) => {
-                if (err2) return reject(err2);
-                const groups = {};
-                groupRows.forEach(gr => { groups[gr.group_type] = []; });
-                // Populate from assignments
-                rows.forEach(r => {
-                  if (!groups[r.group_type]) groups[r.group_type] = [];
-                  groups[r.group_type].push(r.account_name);
-                });
-                // Add networth and total as before
-                groups['networth'] = allAccounts;
-                const ignoreList = groups['ignoreForTotal'] || [];
-                groups['total'] = allAccounts.filter(acc => !ignoreList.includes(acc));
-                resolve(groups);
-              }
-            );
-          }
-        );
-      }).catch(reject);
+      this.db.all(
+        'SELECT group_type FROM groups WHERE user_id = ?',
+        [userId],
+        (err, groupRows) => {
+          if (err) return reject(err);
+          this.db.all(
+            'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
+            [userId],
+            (err2, rows) => {
+              if (err2) return reject(err2);
+              const groups = {};
+              groupRows.forEach(gr => { groups[gr.group_type] = []; });
+              rows.forEach(r => {
+                if (!groups[r.group_type]) groups[r.group_type] = [];
+                groups[r.group_type].push(r.account_name);
+              });
+              resolve(groups);
+            }
+          );
+        }
+      );
     });
   }
 

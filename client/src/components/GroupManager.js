@@ -3,7 +3,7 @@ import axios from 'axios';
 import '../App.css';
 
 const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
-    const [activeTab, setActiveTab] = useState('operating');
+    const [activeTab, setActiveTab] = useState('');
     const [localLeft, setLocalLeft] = useState([]); // Available accounts (not in group)
     const [localRight, setLocalRight] = useState([]); // Accounts in group
     const [loading, setLoading] = useState(false);
@@ -21,6 +21,10 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
             const labels = {};
             keys.forEach(k => { labels[k] = k; });
             setGroupLabels(labels);
+            // Set activeTab to first group if current is not present
+            if (!keys.includes(activeTab)) {
+                setActiveTab(keys[0] || '');
+            }
         }
     }, [groupMap]);
 
