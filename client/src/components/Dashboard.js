@@ -13,6 +13,7 @@ import '../chartLayout.css';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
+    const [showOnlySum, setShowOnlySum] = useState(false);
     // State for sum toggle
     const [showSumLine, setShowSumLine] = useState(false);
     const { logout, user } = useAuth();
@@ -374,6 +375,8 @@ function Dashboard() {
                             onGroupSelect={groupAccounts => setSelectedAccounts(groupAccounts)}
                             showSumLine={showSumLine}
                             setShowSumLine={setShowSumLine}
+                            showOnlySum={showOnlySum}
+                            setShowOnlySum={setShowOnlySum}
                             setGroupManagerOpen={setGroupManagerOpen}
                         />
                     </div>
@@ -404,6 +407,8 @@ function Dashboard() {
                                 }}
                                 showSumLine={showSumLine}
                                 setShowSumLine={setShowSumLine}
+                                showOnlySum={showOnlySum}
+                                setShowOnlySum={setShowOnlySum}
                             />
                         </div>
 

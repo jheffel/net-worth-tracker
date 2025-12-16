@@ -5,7 +5,7 @@ import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
 // Added: onRangeSelect callback for drag-to-select
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine }) => {
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine, showOnlySum = false, setShowOnlySum }) => {
   // --- Drag-to-select state ---
   const [dragStart, setDragStart] = useState(null); // {x, date} or null
   const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
@@ -234,18 +234,35 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Toggle for plotting sum of selected accounts */}
+      {/* Toggle for plotting sum of selected accounts and show only sum */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
         <input
           type="checkbox"
           id="show-sum-line"
           checked={!!showSumLine}
-          onChange={e => setShowSumLine?.(e.target.checked)}
+          onChange={e => {
+            setShowSumLine?.(e.target.checked);
+            if (!e.target.checked) setShowOnlySum?.(false);
+          }}
           style={{ width: 18, height: 18 }}
         />
         <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
           Plot sum of selected accounts
         </label>
+        {showSumLine && typeof showOnlySum !== 'undefined' && typeof setShowOnlySum === 'function' && (
+          <>
+            <input
+              type="checkbox"
+              id="show-only-sum"
+              checked={!!showOnlySum}
+              onChange={e => setShowOnlySum(e.target.checked)}
+              style={{ width: 18, height: 18, marginLeft: 8 }}
+            />
+            <label htmlFor="show-only-sum" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
+              Show only sum
+            </label>
+          </>
+        )}
       </div>
       {highlight}
       {parentLoading && (
@@ -349,7 +366,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           />
           <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
           <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
-          {selectedAccounts.map((acct, idx) => (
+          {!showOnlySum && selectedAccounts.map((acct, idx) => (
             <Line
               key={acct}
               type="monotone"
