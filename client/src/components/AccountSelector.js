@@ -101,15 +101,12 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           <span style={{ fontSize: 14 }}>Manage Groups</span>
         </button>
         {showGroupModal && (
-          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000 }} onClick={() => setShowGroupModal(false)}>
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowGroupModal(false)}>
             <div
               className="modal-dialog"
               style={{
-                position: 'absolute',
+                position: 'relative',
                 zIndex: 1001,
-                left: plusBtnRef.current ? plusBtnRef.current.getBoundingClientRect().left + window.scrollX : '50%',
-                top: plusBtnRef.current ? plusBtnRef.current.getBoundingClientRect().bottom + window.scrollY + 8 : '50%',
-                transform: 'translateX(-50%)',
                 minWidth: 260,
                 background: 'var(--control-bg)',
                 border: '1px solid var(--control-border)',
