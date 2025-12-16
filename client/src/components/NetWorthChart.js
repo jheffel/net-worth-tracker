@@ -309,6 +309,43 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
             minTickGap={compact ? 8 : 15}
             stroke={theme === 'light' ? '#384454' : '#aaa'}
             tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
+            domain={(() => {
+              // Compute min/max across all selected accounts and sum (if shown)
+              let min = Infinity, max = -Infinity;
+              const data = clipChartData(
+                chartData.map(row => {
+                  const newRow = { ...row };
+                  selectedAccounts.forEach(acct => {
+                    if (!(acct in newRow)) newRow[acct] = 0;
+                  });
+                  return newRow;
+                }),
+                timeframe,
+                selectedAccounts
+              );
+              data.forEach(row => {
+                selectedAccounts.forEach(acct => {
+                  if (typeof row[acct] === 'number') {
+                    if (row[acct] < min) min = row[acct];
+                    if (row[acct] > max) max = row[acct];
+                  }
+                });
+              });
+              if (showSumLine && sumData.length > 0) {
+                const sumRows = clipChartData(sumData, timeframe, ['__sum__']);
+                sumRows.forEach(row => {
+                  if (typeof row.__sum__ === 'number') {
+                    if (row.__sum__ < min) min = row.__sum__;
+                    if (row.__sum__ > max) max = row.__sum__;
+                  }
+                });
+              }
+              if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
+              if (min === max) return [min - 1, max + 1];
+              // Add a small margin
+              const margin = (max - min) * 0.05;
+              return [min - margin, max + margin];
+            })()}
           />
           <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
           <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
