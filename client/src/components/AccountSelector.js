@@ -18,6 +18,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             </label>
           </div>
     const [showGroupModal, setShowGroupModal] = useState(false);
+    const [showGroups, setShowGroups] = useState(true);
     const [groupName, setGroupName] = useState('');
     const [overridePrompt, setOverridePrompt] = useState(false);
     const [pendingGroup, setPendingGroup] = useState(null);
@@ -142,8 +143,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </div>
       )}
 
-      <div className="account-list-scroll">
-        {/* Accounts Section */}
+      {/* Accounts Scrollable Section */}
+      <div className="account-list-scroll" style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 12 }}>
         <div className={`account-list ${compact ? 'compact' : ''}`}>
           <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Accounts</div>
           {pureAccounts.length === 0 ? (
@@ -165,11 +166,28 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
             ))
           )}
         </div>
-        {/* Groups Section */}
-        {groupNames.length > 0 && (
-          <div className={`group-list ${compact ? 'compact' : ''}`} style={{ marginTop: 18 }}>
-            <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Groups</div>
-            {groupNames.map(group => (
+      </div>
+
+      {/* Groups Scrollable Section with collapse/expand, now below accounts but above select/deselect all */}
+      {groupNames.length > 0 && (
+        <div className="group-list-scroll" style={{ maxHeight: 200, overflowY: showGroups ? 'auto' : 'hidden', marginBottom: 15 }}>
+          <div className={`group-list ${compact ? 'compact' : ''}`} style={{ marginTop: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>
+              <span style={{ flex: 1 }}>Groups</span>
+              <button
+                aria-label={showGroups ? 'Collapse groups' : 'Expand groups'}
+                title={showGroups ? 'Collapse groups' : 'Expand groups'}
+                onClick={() => setShowGroups(g => !g)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 6 }}
+              >
+                {showGroups ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                )}
+              </button>
+            </div>
+            {showGroups && groupNames.map(group => (
               <div className="group-item" key={group}>
                 <button
                   className="btn btn-group-select"
@@ -181,8 +199,8 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {accounts.length > 0 && (
         <div style={{ 
