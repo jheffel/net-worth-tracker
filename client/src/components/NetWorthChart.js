@@ -267,7 +267,18 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       )}
       <ResponsiveContainer height={'100%'}>
         <LineChart
-          data={clipChartData(chartData, timeframe, selectedAccounts)}
+          data={clipChartData(
+            chartData.map(row => {
+              // Always include all selected account keys, even if value is 0, to keep columns stable
+              const newRow = { ...row };
+              selectedAccounts.forEach(acct => {
+                if (!(acct in newRow)) newRow[acct] = 0;
+              });
+              return newRow;
+            }),
+            timeframe,
+            selectedAccounts
+          )}
           margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
           onMouseMove={handleMouseMove}
