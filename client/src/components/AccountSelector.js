@@ -3,7 +3,20 @@ import axios from 'axios';
 import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine }) => {
+          {/* Toggle for plotting sum of selected accounts */}
+          <div style={{ marginBottom: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              id="show-sum-line"
+              checked={!!showSumLine}
+              onChange={e => setShowSumLine?.(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none' }}>
+              Plot sum of selected accounts
+            </label>
+          </div>
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [groupName, setGroupName] = useState('');
     const [overridePrompt, setOverridePrompt] = useState(false);

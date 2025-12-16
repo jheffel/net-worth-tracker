@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import moment from 'moment';
+
 import NetWorthChart from './NetWorthChart';
 import PieCharts from './PieCharts';
 import AccountSelector from './AccountSelector';
@@ -11,6 +12,8 @@ import '../chartLayout.css';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
+    // State for sum toggle
+    const [showSumLine, setShowSumLine] = useState(false);
     const { logout, user } = useAuth();
 
     // Sidebar drawer state (slides in on desktop and mobile)
@@ -370,6 +373,8 @@ function Dashboard() {
                                 loadGroupMap();
                                 loadInitialData();
                             }}
+                            showSumLine={showSumLine}
+                            setShowSumLine={setShowSumLine}
                         />
                     </div>
 
@@ -397,6 +402,8 @@ function Dashboard() {
                                         setTimeframe('All Data');
                                     }
                                 }}
+                                showSumLine={showSumLine}
+                                setShowSumLine={setShowSumLine}
                             />
                         </div>
 

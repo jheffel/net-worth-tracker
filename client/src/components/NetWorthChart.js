@@ -5,80 +5,77 @@ import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
 // Added: onRangeSelect callback for drag-to-select
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect }) => {
-    // --- Drag-to-select state ---
-    const [dragStart, setDragStart] = useState(null); // {x, date} or null
-    const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
-    const [isDragging, setIsDragging] = useState(false);
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine }) => {
+  // --- Drag-to-select state ---
+  const [dragStart, setDragStart] = useState(null); // {x, date} or null
+  const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
+  const [isDragging, setIsDragging] = useState(false);
+  const [chartData, setChartData] = useState([]);
+  const [sumData, setSumData] = useState([]);
+  const [hoveredYs, setHoveredYs] = useState([]);
+  const containerRef = useRef(null);
 
-    // Utility: get x position from event (mouse or touch)
-    const getRelativeX = (e) => {
-      if (!containerRef.current) return null;
-      const rect = containerRef.current.getBoundingClientRect();
-      if (e.touches && e.touches.length) {
-        return e.touches[0].clientX - rect.left;
-      } else if (e.changedTouches && e.changedTouches.length) {
-        return e.changedTouches[0].clientX - rect.left;
-      } else {
-        return e.clientX - rect.left;
+  // Utility: get x position from event (mouse or touch)
+  const getRelativeX = (e) => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (e.touches && e.touches.length) {
+      return e.touches[0].clientX - rect.left;
+    } else if (e.changedTouches && e.changedTouches.length) {
+      return e.changedTouches[0].clientX - rect.left;
+    } else {
+      return e.clientX - rect.left;
+    }
+  };
+
+  // Utility: get date from x position
+  const getDateFromX = (x) => {
+    if (!chartData.length || !containerRef.current) return null;
+    const width = containerRef.current.offsetWidth;
+    const idx = Math.round((x / width) * (chartData.length - 1));
+    return chartData[Math.max(0, Math.min(chartData.length - 1, idx))].date;
+  };
+
+  // Mouse/touch event handlers
+  const handleChartMouseDown = (e) => {
+    if (parentLoading) return;
+    const x = getRelativeX(e);
+    const date = getDateFromX(x);
+    setDragStart({ x, date });
+    setDragEnd(null);
+    setIsDragging(true);
+  };
+  const handleChartMouseMoveDrag = (e) => {
+    if (!isDragging) return;
+    const x = getRelativeX(e);
+    const date = getDateFromX(x);
+    setDragEnd({ x, date });
+  };
+  const handleChartMouseUp = (e) => {
+    setIsDragging(false);
+    const x = getRelativeX(e);
+    const date = getDateFromX(x);
+    let start = dragStart?.date;
+    let end = date;
+    if (start && end) {
+      if (moment(start).isAfter(moment(end))) {
+        [start, end] = [end, start];
       }
-    };
-
-    // Utility: get date from x position
-    const getDateFromX = (x) => {
-      // Use chartData and container width
-      if (!chartData.length || !containerRef.current) return null;
-      const width = containerRef.current.offsetWidth;
-      const idx = Math.round((x / width) * (chartData.length - 1));
-      return chartData[Math.max(0, Math.min(chartData.length - 1, idx))].date;
-    };
-
-    // Mouse/touch event handlers
-    const handleChartMouseDown = (e) => {
-      if (parentLoading) return;
-      const x = getRelativeX(e);
-      const date = getDateFromX(x);
-      setDragStart({ x, date });
-      setDragEnd(null);
-      setIsDragging(true);
-    };
-    const handleChartMouseMoveDrag = (e) => {
-      if (!isDragging) return;
-      const x = getRelativeX(e);
-      const date = getDateFromX(x);
-      setDragEnd({ x, date });
-    };
-    const handleChartMouseUp = (e) => {
-      if (!isDragging) return;
-      setIsDragging(false);
-      const x = getRelativeX(e);
-      const date = getDateFromX(x);
-      let start = dragStart?.date;
-      let end = date;
-      if (start && end) {
-        // Ensure start <= end
-        if (moment(start).isAfter(moment(end))) {
-          [start, end] = [end, start];
-        }
-        if (start !== end) {
-          onRangeSelect?.(start, end);
-        } else {
-          // Click without drag: reset to all data
-          onRangeSelect?.(null, null);
-        }
+      if (start !== end) {
+        onRangeSelect?.(start, end);
       } else {
         onRangeSelect?.(null, null);
       }
-      setDragStart(null);
-      setDragEnd(null);
-    };
-    // Touch events
-    const handleTouchStart = (e) => { handleChartMouseDown(e); };
-    const handleTouchMove = (e) => { handleChartMouseMoveDrag(e); };
-    const handleTouchEnd = (e) => { handleChartMouseUp(e); };
-
-  // Track hovered y values for horizontal rulers (one per account)
-  const [hoveredYs, setHoveredYs] = useState([]);
+    } else {
+      onRangeSelect?.(null, null);
+    }
+    setDragStart(null);
+    setDragEnd(null);
+  };
+  // Touch events
+  const handleTouchStart = (e) => { handleChartMouseDown(e); };
+  const handleTouchMove = (e) => { handleChartMouseMoveDrag(e); };
+  const handleTouchEnd = (e) => { handleChartMouseUp(e); };
 
   // Handler to update hoveredYs on mouse move
   const handleMouseMove = (state) => {
@@ -86,11 +83,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       setHoveredYs([]);
       return;
     }
-    // Use all payload values (one per account)
     setHoveredYs(state.activePayload.map(p => p.value));
   };
-
   const handleMouseLeave = () => setHoveredYs([]);
+
   // Utility: get the earliest and latest date in chartData
   const getDateRange = (data) => {
     if (!data.length) return [null, null];
@@ -101,7 +97,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   // Utility: clip chartData to timeframe
   const clipChartData = (data, timeframe, selectedAccounts) => {
     if (!data.length || !timeframe || timeframe === 'ALL') return data;
-
     const filteredData = data.map(row => {
       const newRow = { date: row.date };
       selectedAccounts.forEach(account => {
@@ -112,8 +107,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       return newRow;
     }).filter(row => selectedAccounts.some(account => row.hasOwnProperty(account)));
     data = filteredData;
-
-    // Custom timeframe takes precedence
     if (timeframe === 'Custom') {
       if (startDate && endDate) {
         return data.filter(row =>
@@ -123,7 +116,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       }
       return data;
     }
-
     const [_, latest] = getDateRange(data);
     if (!latest) return data;
     let startMoment = moment(latest);
@@ -138,12 +130,9 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
   };
 
-  const [chartData, setChartData] = useState([]);
-
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
-      //build the chart rows in Recharts format
       const dateAccountMap = {};
       for (const [account, dates] of Object.entries(balances)) {
         for (const [date, balance] of Object.entries(dates)) {
@@ -151,20 +140,26 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           if (!dateAccountMap[date][account]) dateAccountMap[date][account] = balance;
         }
       }
-
-      // Convert map to sorted array
       const newChartRows = Object.values(dateAccountMap).sort((a, b) => a.date.localeCompare(b.date));
       if (!cancelled) setChartData(newChartRows);
+      if (showSumLine && selectedAccounts.length > 0) {
+        const sumRows = newChartRows.map(row => {
+          let sum = selectedAccounts.reduce((acc, acct) => acc + (row[acct] || 0), 0);
+          return { date: row.date, __sum__: sum };
+        });
+        if (!cancelled) setSumData(sumRows);
+      } else {
+        if (!cancelled) setSumData([]);
+      }
     };
     fetchData();
     return () => { cancelled = true; };
-  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal]);
+  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal, showSumLine]);
 
-  
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
     style: 'currency', currency: mainCurrency, minimumFractionDigits: 2, maximumFractionDigits: 6
   }).format(value || 0);
-  
+
   const formatDate = (date) => moment(date).format('MMM DD, YYYY');
 
   // Calculate amount changed for the displayed range (main scope)
@@ -179,7 +174,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
   }
   let firstVal = null, lastVal = null;
   if (displayedData.length) {
-    // Sum balances for selected accounts
     firstVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[0][acct] || 0), 0);
     lastVal = selectedAccounts.reduce((sum, acct) => sum + (displayedData[displayedData.length-1][acct] || 0), 0);
   }
@@ -205,18 +199,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return null;
   };
 
-  const containerRef = useRef(null);
 
-  // Observe container size changes and trigger a resize so Recharts recalculates both width and height
-  useEffect(() => {
-    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
-    const obs = new ResizeObserver(() => {
-      // dispatch a resize event; Recharts listens to window resize
-      window.dispatchEvent(new Event('resize'));
-    });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
-  }, [containerRef.current]);
 
   // --- Highlight region rendering ---
   let highlight = null;
@@ -231,7 +214,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           left,
           width,
           height: '100%',
-          background: 'rgba(53, 87, 183, 0.18)', // blue highlight, adjust as needed
+          background: 'rgba(53, 87, 183, 0.18)',
           pointerEvents: 'none',
           zIndex: 8,
         }}
@@ -251,6 +234,19 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Toggle for plotting sum of selected accounts */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
+        <input
+          type="checkbox"
+          id="show-sum-line"
+          checked={!!showSumLine}
+          onChange={e => setShowSumLine?.(e.target.checked)}
+          style={{ width: 18, height: 18 }}
+        />
+        <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
+          Plot sum of selected accounts
+        </label>
+      </div>
       {highlight}
       {parentLoading && (
         <div style={{
@@ -269,7 +265,7 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
         </div>
       )}
-  <ResponsiveContainer height={'100%'}>
+      <ResponsiveContainer height={'100%'}>
         <LineChart
           data={clipChartData(chartData, timeframe, selectedAccounts)}
           margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
@@ -277,7 +273,6 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Horizontal rulers at hovered y values for each account */}
           {hoveredYs && hoveredYs.length > 0 && hoveredYs.map((y, i) => (
             <ReferenceLine
               key={i}
@@ -319,27 +314,39 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
               activeDot={{ r: compact ? 4 : 6 }}
             />
           ))}
+          {showSumLine && sumData.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="__sum__"
+              data={clipChartData(sumData, timeframe, ['__sum__'])}
+              stroke="#e91e63"
+              strokeWidth={compact ? 2.5 : 3}
+              dot={false}
+              activeDot={{ r: compact ? 5 : 7 }}
+              name="Sum of Selected"
+              legendType="rect"
+              isAnimationActive={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
-        {/* Amount changed label */}
-        {amountChanged !== null && (
-          <div style={{
-            position: 'absolute',
-            left: 12,
-            bottom: 8,
-            fontSize: 15,
-            color: theme === 'light' ? '#384454' : '#eee',
-            background: theme === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)',
-            padding: '4px 12px',
-            borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-            zIndex: 5
-          }}>
-            Amount changed: <span style={{ fontWeight: 600 }}>{formatCurrency(amountChanged)}</span>
-          </div>
-        )}
+      {amountChanged !== null && (
+        <div style={{
+          position: 'absolute',
+          left: 12,
+          bottom: 8,
+          fontSize: 15,
+          color: theme === 'light' ? '#384454' : '#eee',
+          background: theme === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)',
+          padding: '4px 12px',
+          borderRadius: 8,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+          zIndex: 5
+        }}>
+          Amount changed: <span style={{ fontWeight: 600 }}>{formatCurrency(amountChanged)}</span>
+        </div>
+      )}
     </div>
   );
-};
-
+}
 export default NetWorthChart;
