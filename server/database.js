@@ -42,6 +42,17 @@ class Database {
         )
       `);
 
+      // Groups table (new, supports empty groups)
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          group_type TEXT NOT NULL,
+          UNIQUE(user_id, group_type),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+      `);
+
       // Account balances table
       this.db.run(`
         CREATE TABLE IF NOT EXISTS account_balances (
@@ -86,6 +97,24 @@ class Database {
           FOREIGN KEY(user_id) REFERENCES users(id)
         )
       `);
+    });
+  }
+
+  // Delete a group and all its assignments for a user
+  async deleteAccountGroup(userId, groupType) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+        [userId, groupType],
+        function (err) {
+          if (err) reject(err);
+          else resolve(this.changes); // number of rows deleted
+        }
+      );
+    }).then((result) => {
+      // Invalidate group cache if you have one
+      if (this.invalidateCache) this.invalidateCache();
+      return result;
     });
   }
 
@@ -465,35 +494,32 @@ class Database {
     return new Promise((resolve, reject) => {
       // 1. Get all distinct accounts for this user (for 'networth')
       this.getAllAccounts(userId).then(allAccounts => {
-        // 2. Get user-defined groups from DB
+        // 2. Get all group definitions for this user
         this.db.all(
-          'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
+          'SELECT group_type FROM groups WHERE user_id = ?',
           [userId],
-          (err, rows) => {
+          (err, groupRows) => {
             if (err) return reject(err);
-
-            const groups = {
-              operating: [],
-              investing: [],
-              crypto: [],
-              equity: [],
-              summary: [],
-              ignoreForTotal: [], // special "group" for ignoring
-              networth: allAccounts,
-              total: []
-            };
-
-            // Populate from DB
-            rows.forEach(r => {
-              if (!groups[r.group_type]) groups[r.group_type] = [];
-              groups[r.group_type].push(r.account_name);
-            });
-
-            // Calculate 'total' = networth - ignoreForTotal
-            const ignoreList = groups['ignoreForTotal'] || [];
-            groups['total'] = allAccounts.filter(acc => !ignoreList.includes(acc));
-
-            resolve(groups);
+            // 3. Get all group assignments for this user
+            this.db.all(
+              'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
+              [userId],
+              (err2, rows) => {
+                if (err2) return reject(err2);
+                const groups = {};
+                groupRows.forEach(gr => { groups[gr.group_type] = []; });
+                // Populate from assignments
+                rows.forEach(r => {
+                  if (!groups[r.group_type]) groups[r.group_type] = [];
+                  groups[r.group_type].push(r.account_name);
+                });
+                // Add networth and total as before
+                groups['networth'] = allAccounts;
+                const ignoreList = groups['ignoreForTotal'] || [];
+                groups['total'] = allAccounts.filter(acc => !ignoreList.includes(acc));
+                resolve(groups);
+              }
+            );
           }
         );
       }).catch(reject);
@@ -505,9 +531,9 @@ class Database {
       this.db.serialize(() => {
         this.db.run('BEGIN TRANSACTION');
 
-        // Delete existing entries for this group type
+        // Ensure the group exists in the groups table
         this.db.run(
-          'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+          'INSERT OR IGNORE INTO groups (user_id, group_type) VALUES (?, ?)',
           [userId, groupType],
           (err) => {
             if (err) {
@@ -515,28 +541,40 @@ class Database {
               return reject(err);
             }
 
-            if (accounts.length === 0) {
-              this.db.run('COMMIT');
-              return resolve();
-            }
-
-            // Insert new entries
-            const placeholders = accounts.map(() => '(?, ?, ?)').join(',');
-            const params = [];
-            accounts.forEach(acc => {
-              params.push(userId, groupType, acc);
-            });
-
+            // Delete existing entries for this group type
             this.db.run(
-              `INSERT INTO account_groups (user_id, group_type, account_name) VALUES ${placeholders}`,
-              params,
-              (err) => {
-                if (err) {
+              'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+              [userId, groupType],
+              (err2) => {
+                if (err2) {
                   this.db.run('ROLLBACK');
-                  return reject(err);
+                  return reject(err2);
                 }
-                this.db.run('COMMIT');
-                resolve();
+
+                if (accounts.length === 0) {
+                  this.db.run('COMMIT');
+                  return resolve();
+                }
+
+                // Insert new entries
+                const placeholders = accounts.map(() => '(?, ?, ?)').join(',');
+                const params = [];
+                accounts.forEach(acc => {
+                  params.push(userId, groupType, acc);
+                });
+
+                this.db.run(
+                  `INSERT INTO account_groups (user_id, group_type, account_name) VALUES ${placeholders}`,
+                  params,
+                  (err3) => {
+                    if (err3) {
+                      this.db.run('ROLLBACK');
+                      return reject(err3);
+                    }
+                    this.db.run('COMMIT');
+                    resolve();
+                  }
+                );
               }
             );
           }

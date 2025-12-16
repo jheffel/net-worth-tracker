@@ -9,14 +9,52 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState(null);
 
-    const groupTypes = ['operating', 'investing', 'crypto', 'equity', 'summary', 'ignoreForTotal'];
-    const groupLabels = {
-        operating: 'Operating Cash',
-        investing: 'Investments',
-        crypto: 'Crypto Assets',
-        equity: 'Home Equity / Other',
-        summary: 'Summary Highlight',
-        ignoreForTotal: 'Exclude from Net Worth'
+
+    // All group types are now custom per user, so build from groupMap keys
+    const [groupTypes, setGroupTypes] = useState([]);
+    const [groupLabels, setGroupLabels] = useState({});
+    useEffect(() => {
+        if (groupMap) {
+            const keys = Object.keys(groupMap);
+            setGroupTypes(keys);
+            // Use group name as label, or allow custom naming in future
+            const labels = {};
+            keys.forEach(k => { labels[k] = k; });
+            setGroupLabels(labels);
+        }
+    }, [groupMap]);
+
+    const [newGroupName, setNewGroupName] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(null); // groupType to confirm
+    // Add a new group
+    const handleAddGroup = async () => {
+        const name = newGroupName.trim();
+        if (!name || groupTypes.includes(name)) return;
+        setLoading(true);
+        try {
+            await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(name)}`, { accounts: [] });
+            setNewGroupName('');
+            if (onUpdate) onUpdate();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to add group.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Delete a group (with confirmation if needed)
+    const handleDeleteGroup = async (type) => {
+        setLoading(true);
+        try {
+            await axios.delete(`${API_BASE}/account-groups/${encodeURIComponent(type)}`);
+            if (activeTab === type) setActiveTab(groupTypes[0] || '');
+            if (onUpdate) onUpdate();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to delete group.' });
+        } finally {
+            setLoading(false);
+            setConfirmDelete(null);
+        }
     };
 
     const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -85,17 +123,62 @@ const GroupManager = ({ user, onClose, allAccounts, groupMap, onUpdate }) => {
                     <button className="close-btn" onClick={onClose}>×</button>
                 </div>
 
-                <div className="group-tabs">
+
+                <div className="group-tabs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {groupTypes.map(type => (
-                        <button
-                            key={type}
-                            className={`tab-btn ${activeTab === type ? 'active' : ''}`}
-                            onClick={() => setActiveTab(type)}
-                        >
-                            {groupLabels[type] || type}
-                        </button>
+                        <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <button
+                                className={`tab-btn ${activeTab === type ? 'active' : ''}`}
+                                onClick={() => setActiveTab(type)}
+                            >
+                                {groupLabels[type] || type}
+                            </button>
+                            {/* Delete button for group */}
+                            <button
+                                className="btn-small danger"
+                                title="Delete group"
+                                style={{ marginLeft: 2, fontSize: 13, padding: '0 6px' }}
+                                onClick={() => {
+                                    // If group has assignments, confirm; else delete immediately
+                                    if ((groupMap[type] || []).length > 0) {
+                                        setConfirmDelete(type);
+                                    } else {
+                                        handleDeleteGroup(type);
+                                    }
+                                }}
+                                disabled={loading}
+                            >
+                                ×
+                            </button>
+                        </div>
                     ))}
+                    {/* Add group UI */}
+                    <input
+                        type="text"
+                        value={newGroupName}
+                        onChange={e => setNewGroupName(e.target.value)}
+                        placeholder="New group name"
+                        style={{ marginLeft: 8, fontSize: 14, padding: '2px 6px' }}
+                        disabled={loading}
+                    />
+                    <button className="btn-small" onClick={handleAddGroup} disabled={loading || !newGroupName.trim() || groupTypes.includes(newGroupName.trim())}>
+                        +
+                    </button>
                 </div>
+
+                {/* Confirm delete dialog */}
+                {confirmDelete && (
+                    <div className="modal-overlay">
+                        <div className="modal-dialog">
+                            <div style={{ marginBottom: 12 }}>
+                                <strong>Delete group "{confirmDelete}"?</strong><br />
+                                This group has assigned accounts. Deleting it will remove all assignments. Continue?
+                            </div>
+                            <button className="btn danger" onClick={() => handleDeleteGroup(confirmDelete)} disabled={loading}>Delete</button>
+                            <button className="btn" onClick={() => setConfirmDelete(null)} disabled={loading} style={{ marginLeft: 8 }}>Cancel</button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="dual-list-container">
                     <div className="list-box">

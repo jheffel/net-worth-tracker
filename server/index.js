@@ -10,12 +10,28 @@ const jwt = require('jsonwebtoken');
 const Database = require('./database');
 const { authenticateToken, JWT_SECRET } = require('./middleware/auth');
 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// CORS middleware (must be before all routes)
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+}));
 app.use(express.json());
+
+// Delete account group and all its assignments
+app.delete('/api/account-groups/:type', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const deletedCount = await db.deleteAccountGroup(req.user.id, type);
+    res.json({ message: `Group ${type} deleted`, deletedCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Serve config directory statically for all environments (if public config needed)
 // Note: Config files might contain sensitive info? Assuming public lists like currency lists are fine.
