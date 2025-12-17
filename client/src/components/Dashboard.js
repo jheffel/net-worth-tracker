@@ -30,7 +30,9 @@ function Dashboard() {
             const endpoint = removeGroups ? '/api/purge-all' : '/api/purge-financial';
             await axios.post(endpoint);
             setPurgeSuccess('User data purged successfully.');
-            // Optionally refresh data here
+            // Immediately reload accounts and groups
+            await loadInitialData();
+            await loadGroupMap();
         } catch (err) {
             setPurgeError('Failed to purge user data.');
         } finally {
