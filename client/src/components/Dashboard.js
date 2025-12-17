@@ -319,12 +319,8 @@ function Dashboard() {
                                 <h3 style={{ margin: 0 }}>{user?.username}</h3>
                             </div>
 
-                            {/* Import Data/Drag-and-Drop region moved here */}
-                            <div className="import-inline" style={{ margin: '18px 0' }}>
-                                <FileUpload onFileUpload={handleFileUpload} />
-                            </div>
-
-                            <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
+                            {/* Dark Mode and Fullscreen toggles moved above import area */}
+                            <div className="right-sidebar-actions top-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px', marginTop: '12px' }}>
                                 <button aria-label="Toggle theme" title="Toggle theme" type="button" onClick={toggleTheme} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
                                     {theme === 'dark' ? (
                                         <>
@@ -343,6 +339,31 @@ function Dashboard() {
                                     )}
                                 </button>
 
+                                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
+                                    {isFullscreen ? (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor" />
+                                            </svg>
+                                            <span>Exit Fullscreen</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                                <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor" />
+                                            </svg>
+                                            <span>Fullscreen</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Import Data/Drag-and-Drop region */}
+                            <div className="import-inline" style={{ margin: '18px 0' }}>
+                                <FileUpload onFileUpload={handleFileUpload} />
+                            </div>
+
+                            <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
                                 <button className="btn danger" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px', color: '#fff', background: '#d32f2f' }} onClick={() => setShowPurgeModal(true)}>
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M3 6h18M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -369,23 +390,6 @@ function Dashboard() {
                                         </div>
                                     </div>
                                 )}
-                                <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
-                                    {isFullscreen ? (
-                                        <>
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                                <path d="M6 6h6V4H4v8h2V6zm12 12h-6v2h8v-8h-2v6zM6 18v-6H4v8h8v-2H6zm12-12v6h2V4h-8v2h6z" fill="currentColor" />
-                                            </svg>
-                                            <span>Exit Fullscreen</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                                <path d="M3 3h8v2H5v6H3V3zm10 0h8v8h-2V5h-6V3zm8 18h-8v-2h6v-6h2v8zM3 21v-8h2v6h6v2H3z" fill="currentColor" />
-                                            </svg>
-                                            <span>Fullscreen</span>
-                                        </>
-                                    )}
-                                </button>
                                 <button onClick={logout} className="btn" title="Logout" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px', color: '#ff6b6b' }}>
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
