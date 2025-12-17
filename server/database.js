@@ -1,13 +1,46 @@
+
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const bcrypt = require('bcrypt');
-
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 const { convertBalance } = require('./convert');
 
+// ...existing code...
+
 class Database {
+    // Purge all user data (including groups)
+    async purgeAllUserData(userId) {
+      return new Promise((resolve, reject) => {
+        this.db.serialize(() => {
+          this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err1) => {
+            if (err1) return reject(err1);
+            this.db.run('DELETE FROM account_groups WHERE user_id = ?', [userId], (err2) => {
+              if (err2) return reject(err2);
+              this.db.run('DELETE FROM groups WHERE user_id = ?', [userId], (err3) => {
+                if (err3) return reject(err3);
+                resolve();
+              });
+            });
+          });
+        });
+      }).then(() => {
+        if (this.invalidateCache) this.invalidateCache();
+      });
+    }
+
+    // Purge only financial data (keep groups)
+    async purgeFinancialData(userId) {
+      return new Promise((resolve, reject) => {
+        this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      }).then(() => {
+        if (this.invalidateCache) this.invalidateCache();
+      });
+    }
   constructor() {
     this._accountBalancesCache = new Map();
     this.dbPath = path.join(__dirname, '../db/finance.db');

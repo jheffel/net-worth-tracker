@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+
+
 import axios from 'axios';
 import moment from 'moment';
 
@@ -13,6 +15,31 @@ import '../chartLayout.css';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
+
+
+    const [showPurgeModal, setShowPurgeModal] = useState(false);
+    const [purgeLoading, setPurgeLoading] = useState(false);
+    const [purgeError, setPurgeError] = useState('');
+    const [purgeSuccess, setPurgeSuccess] = useState('');
+    // Purge user data API calls
+    const handlePurge = async (removeGroups) => {
+        setPurgeLoading(true);
+        setPurgeError('');
+        setPurgeSuccess('');
+        try {
+            const endpoint = removeGroups ? '/api/purge-all' : '/api/purge-financial';
+            await axios.post(endpoint);
+            setPurgeSuccess('User data purged successfully.');
+            // Optionally refresh data here
+        } catch (err) {
+            setPurgeError('Failed to purge user data.');
+        } finally {
+            setPurgeLoading(false);
+        }
+    };
+
+
+
     const [showOnlySum, setShowOnlySum] = useState(false);
     // State for sum toggle
     const [showSumLine, setShowSumLine] = useState(false);
@@ -313,6 +340,33 @@ function Dashboard() {
                                         </>
                                     )}
                                 </button>
+
+                                <button className="btn danger" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px', color: '#fff', background: '#d32f2f' }} onClick={() => setShowPurgeModal(true)}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 6h18M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>Purge User Data</span>
+                                </button>
+
+                                {showPurgeModal && (
+                                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }} onClick={() => setShowPurgeModal(false)}>
+                                        <div className="modal-dialog" style={{ position: 'relative', background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 8, boxShadow: '0 2px 16px rgba(0,0,0,0.18)', padding: 28, minWidth: 320, zIndex: 2001 }} onClick={e => e.stopPropagation()}>
+                                            <h2 style={{ marginTop: 0 }}>Purge User Data</h2>
+                                            <p style={{ color: 'var(--text-secondary)' }}>This will permanently delete your financial data. This action cannot be undone.</p>
+                                            <div style={{ margin: '18px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                <button className="btn danger" disabled={purgeLoading} onClick={() => handlePurge(false)}>
+                                                    Remove all financial data (keep my groups)
+                                                </button>
+                                                <button className="btn danger" style={{ background: '#b71c1c' }} disabled={purgeLoading} onClick={() => handlePurge(true)}>
+                                                    Remove everything (including groups)
+                                                </button>
+                                            </div>
+                                            {purgeError && <div style={{ color: 'red', marginTop: 8 }}>{purgeError}</div>}
+                                            {purgeSuccess && <div style={{ color: 'green', marginTop: 8 }}>{purgeSuccess}</div>}
+                                            <button className="btn" style={{ marginTop: 18 }} onClick={() => setShowPurgeModal(false)} disabled={purgeLoading}>Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
                                 <button aria-label="Toggle fullscreen" title="Toggle fullscreen" type="button" onClick={handleToggleFullscreen} className="btn" style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}>
                                     {isFullscreen ? (
                                         <>

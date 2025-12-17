@@ -22,6 +22,30 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Purge all user data (including groups)
+
+app.post('/api/purge-all', authenticateToken, async (req, res) => {
+  try {
+    await db.purgeAllUserData(req.user.id);
+    res.json({ message: 'All user data purged' });
+  } catch (error) {
+    console.error('[PURGE-ALL ERROR]', error, 'User:', req.user);
+    res.status(500).json({ error: error.message, details: error.stack });
+  }
+});
+
+// Purge only financial data (keep groups)
+
+app.post('/api/purge-financial', authenticateToken, async (req, res) => {
+  try {
+    await db.purgeFinancialData(req.user.id);
+    res.json({ message: 'Financial data purged' });
+  } catch (error) {
+    console.error('[PURGE-FINANCIAL ERROR]', error, 'User:', req.user);
+    res.status(500).json({ error: error.message, details: error.stack });
+  }
+});
+
 // Delete account group and all its assignments
 app.delete('/api/account-groups/:type', authenticateToken, async (req, res) => {
   try {
