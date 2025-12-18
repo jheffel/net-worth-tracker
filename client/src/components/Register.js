@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import './Auth.css';
 
 const Register = () => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
@@ -20,7 +20,7 @@ const Register = () => {
             return;
         }
 
-        const result = await register(username, password);
+        const result = await register(email, password);
         if (result.success) {
             navigate('/login');
         } else {
@@ -35,11 +35,11 @@ const Register = () => {
                 {error && <div className="auth-error">{error}</div>}
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Username</label>
+                        <label>Email Address</label>
                         <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             required
                         />
                     </div>

@@ -80,16 +80,16 @@ const upload = multer({ storage: storage });
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
     }
-    const existing = await db.getUserByUsername(username);
+    const existing = await db.getUserByEmail(email);
     if (existing) {
-      return res.status(400).json({ error: 'Username already taken' });
+      return res.status(400).json({ error: 'Email already taken' });
     }
     const hash = await bcrypt.hash(password, 10);
-    const user = await db.createUser(username, hash);
+    const user = await db.createUser(email, hash);
     res.status(201).json({ message: 'User created' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -98,14 +98,14 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await db.getUserByUsername(username);
+    const { email, password } = req.body;
+    const user = await db.getUserByEmail(email);
     if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
     if (await bcrypt.compare(password, user.password_hash)) {
-      const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ token, username: user.username, id: user.id });
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+      res.json({ token, email: user.email, id: user.id });
     } else {
       res.status(403).json({ error: 'Invalid password' });
     }

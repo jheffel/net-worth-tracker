@@ -10,37 +10,37 @@ const { convertBalance } = require('./convert');
 // ...existing code...
 
 class Database {
-    // Purge all user data (including groups)
-    async purgeAllUserData(userId) {
-      return new Promise((resolve, reject) => {
-        this.db.serialize(() => {
-          this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err1) => {
-            if (err1) return reject(err1);
-            this.db.run('DELETE FROM account_groups WHERE user_id = ?', [userId], (err2) => {
-              if (err2) return reject(err2);
-              this.db.run('DELETE FROM groups WHERE user_id = ?', [userId], (err3) => {
-                if (err3) return reject(err3);
-                resolve();
-              });
+  // Purge all user data (including groups)
+  async purgeAllUserData(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err1) => {
+          if (err1) return reject(err1);
+          this.db.run('DELETE FROM account_groups WHERE user_id = ?', [userId], (err2) => {
+            if (err2) return reject(err2);
+            this.db.run('DELETE FROM groups WHERE user_id = ?', [userId], (err3) => {
+              if (err3) return reject(err3);
+              resolve();
             });
           });
         });
-      }).then(() => {
-        if (this.invalidateCache) this.invalidateCache();
       });
-    }
+    }).then(() => {
+      if (this.invalidateCache) this.invalidateCache();
+    });
+  }
 
-    // Purge only financial data (keep groups)
-    async purgeFinancialData(userId) {
-      return new Promise((resolve, reject) => {
-        this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      }).then(() => {
-        if (this.invalidateCache) this.invalidateCache();
+  // Purge only financial data (keep groups)
+  async purgeFinancialData(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err) => {
+        if (err) return reject(err);
+        resolve();
       });
-    }
+    }).then(() => {
+      if (this.invalidateCache) this.invalidateCache();
+    });
+  }
   constructor() {
     this._accountBalancesCache = new Map();
     this.dbPath = path.join(__dirname, '../db/finance.db');
@@ -69,7 +69,7 @@ class Database {
       this.db.run(`
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT UNIQUE NOT NULL,
+          email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -161,6 +161,20 @@ class Database {
   }
 
   checkAndMigrateSchema() {
+    // Check if email column exists (migration from username)
+    this.db.all("PRAGMA table_info(users)", (err, columns) => {
+      if (err) return console.error('Error checking users schema:', err);
+      const hasEmail = columns.some(c => c.name === 'email');
+      const hasUsername = columns.some(c => c.name === 'username');
+
+      if (!hasEmail && hasUsername) {
+        console.log('Migrating users table: Renaming username to email...');
+        this.db.run("ALTER TABLE users RENAME COLUMN username TO email", (renameErr) => {
+          if (renameErr) console.error('Error renaming username to email:', renameErr);
+        });
+      }
+    });
+
     // Check if user_id column exists
     this.db.all("PRAGMA table_info(account_balances)", async (err, rows) => {
       if (err) return console.error('Error checking schema:', err);
@@ -187,12 +201,12 @@ class Database {
         if (row.count > 0) {
           console.log(`Found ${row.count} orphan records. Assigning to default admin user.`);
           try {
-            let admin = await this.getUserByUsername('admin');
+            let admin = await this.getUserByEmail('admin@example.com');
             if (!admin) {
               const hash = await bcrypt.hash('admin', 10);
-              const result = await this.createUser('admin', hash);
+              const result = await this.createUser('admin@example.com', hash);
               admin = { id: result.id };
-              console.log('Created default admin user (password: admin).');
+              console.log('Created default admin user (email: admin@example.com, password: admin).');
             }
 
             this.db.run("UPDATE account_balances SET user_id = ? WHERE user_id IS NULL", [admin.id], (updateErr) => {
@@ -212,22 +226,22 @@ class Database {
   }
 
   // User operations
-  async createUser(username, passwordHash) {
+  async createUser(email, passwordHash) {
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-        [username, passwordHash],
+        'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+        [email, passwordHash],
         function (err) {
           if (err) reject(err);
-          else resolve({ id: this.lastID, username });
+          else resolve({ id: this.lastID, email });
         }
       );
     });
   }
 
-  async getUserByUsername(username) {
+  async getUserByEmail(email) {
     return new Promise((resolve, reject) => {
-      this.db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+      this.db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
@@ -236,7 +250,7 @@ class Database {
 
   async getUserById(id) {
     return new Promise((resolve, reject) => {
-      this.db.get('SELECT id, username, created_at FROM users WHERE id = ?', [id], (err, row) => {
+      this.db.get('SELECT id, email, created_at FROM users WHERE id = ?', [id], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });

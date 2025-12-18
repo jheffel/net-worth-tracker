@@ -316,7 +316,7 @@ function Dashboard() {
                                         <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
-                                <h3 style={{ margin: 0 }}>{user?.username}</h3>
+                                <h3 style={{ margin: 0 }}>{user?.email}</h3>
                             </div>
 
                             {/* Dark Mode and Fullscreen toggles moved above import area */}
