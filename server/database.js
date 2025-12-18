@@ -1,12 +1,46 @@
+
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
-
+const bcrypt = require('bcrypt');
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 const { convertBalance } = require('./convert');
 
+// ...existing code...
+
 class Database {
+  // Purge all user data (including groups)
+  async purgeAllUserData(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err1) => {
+          if (err1) return reject(err1);
+          this.db.run('DELETE FROM account_groups WHERE user_id = ?', [userId], (err2) => {
+            if (err2) return reject(err2);
+            this.db.run('DELETE FROM groups WHERE user_id = ?', [userId], (err3) => {
+              if (err3) return reject(err3);
+              resolve();
+            });
+          });
+        });
+      });
+    }).then(() => {
+      if (this.invalidateCache) this.invalidateCache();
+    });
+  }
+
+  // Purge only financial data (keep groups)
+  async purgeFinancialData(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM account_balances WHERE user_id = ?', [userId], (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    }).then(() => {
+      if (this.invalidateCache) this.invalidateCache();
+    });
+  }
   constructor() {
     this._accountBalancesCache = new Map();
     this.dbPath = path.join(__dirname, '../db/finance.db');
@@ -28,9 +62,30 @@ class Database {
 
   init() {
     this.db = new sqlite3.Database(this.dbPath);
-    
+
     // Create tables
     this.db.serialize(() => {
+      // Users table
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Groups table (new, supports empty groups)
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          group_type TEXT NOT NULL,
+          UNIQUE(user_id, group_type),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+      `);
+
       // Account balances table
       this.db.run(`
         CREATE TABLE IF NOT EXISTS account_balances (
@@ -40,11 +95,18 @@ class Database {
           balance REAL,
           currency TEXT,
           ticker TEXT,
-          UNIQUE (account_name, date, currency, ticker)
+          user_id INTEGER,
+          UNIQUE (account_name, date, currency, ticker, user_id),
+          FOREIGN KEY(user_id) REFERENCES users(id)
         )
-      `);
+      `, async (err) => {
+        if (!err) {
+          // Check for user_id column existence and migrate if needed
+          this.checkAndMigrateSchema();
+        }
+      });
 
-      // Settings table
+      // Settings table (global for simplicity, or could be per user if needed later)
       this.db.run(`
         CREATE TABLE IF NOT EXISTS settings (
           key TEXT PRIMARY KEY,
@@ -56,16 +118,160 @@ class Database {
       this.db.run(`
         INSERT OR IGNORE INTO settings (key, value) VALUES ('main_currency', 'CAD')
       `);
+
+      // Account groups table (per user)
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS account_groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          group_type TEXT NOT NULL,
+          account_name TEXT NOT NULL,
+          UNIQUE(user_id, group_type, account_name),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+      `);
+    });
+  }
+
+  // Delete a group and all its assignments for a user
+  async deleteAccountGroup(userId, groupType) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run(
+          'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+          [userId, groupType],
+          (err) => {
+            if (err) return reject(err);
+            // Now delete the group definition
+            this.db.run(
+              'DELETE FROM groups WHERE user_id = ? AND group_type = ?',
+              [userId, groupType],
+              function (err2) {
+                if (err2) reject(err2);
+                else resolve(this.changes);
+              }
+            );
+          }
+        );
+      });
+    }).then((result) => {
+      if (this.invalidateCache) this.invalidateCache();
+      return result;
+    });
+  }
+
+  checkAndMigrateSchema() {
+    // Check if email column exists (migration from username)
+    this.db.all("PRAGMA table_info(users)", (err, columns) => {
+      if (err) return console.error('Error checking users schema:', err);
+      const hasEmail = columns.some(c => c.name === 'email');
+      const hasUsername = columns.some(c => c.name === 'username');
+
+      if (!hasEmail && hasUsername) {
+        console.log('Migrating users table: Renaming username to email...');
+        this.db.run("ALTER TABLE users RENAME COLUMN username TO email", (renameErr) => {
+          if (renameErr) console.error('Error renaming username to email:', renameErr);
+        });
+      }
+    });
+
+    // Check if user_id column exists
+    this.db.all("PRAGMA table_info(account_balances)", async (err, rows) => {
+      if (err) return console.error('Error checking schema:', err);
+
+      const hasUserId = rows.some(r => r.name === 'user_id');
+
+      if (!hasUserId) {
+        console.log('Migrating database: Adding user_id column...');
+        this.db.run("ALTER TABLE account_balances ADD COLUMN user_id INTEGER", async (alterErr) => {
+          if (alterErr) return console.error('Error adding user_id:', alterErr);
+          await this.migrateOrphanData();
+        });
+      } else {
+        // Even if column exists, check for NULL user_ids
+        await this.migrateOrphanData();
+      }
+    });
+  }
+
+  async migrateOrphanData() {
+    return new Promise((resolve, reject) => {
+      this.db.get("SELECT COUNT(*) as count FROM account_balances WHERE user_id IS NULL", async (err, row) => {
+        if (err) return reject(err);
+        if (row.count > 0) {
+          console.log(`Found ${row.count} orphan records. Assigning to default admin user.`);
+          try {
+            let admin = await this.getUserByEmail('admin@example.com');
+            if (!admin) {
+              const hash = await bcrypt.hash('admin', 10);
+              const result = await this.createUser('admin@example.com', hash);
+              admin = { id: result.id };
+              console.log('Created default admin user (email: admin@example.com, password: admin).');
+            }
+
+            this.db.run("UPDATE account_balances SET user_id = ? WHERE user_id IS NULL", [admin.id], (updateErr) => {
+              if (updateErr) console.error('Error migrating data:', updateErr);
+              else console.log('Successfully migrated orphan data.');
+              resolve();
+            });
+          } catch (e) {
+            console.error('Migration failed:', e);
+            reject(e);
+          }
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  // User operations
+  async createUser(email, passwordHash) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+        [email, passwordHash],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ id: this.lastID, email });
+        }
+      );
+    });
+  }
+
+  async getUserByEmail(email) {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
+
+  async getUserById(id) {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT id, email, created_at FROM users WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
     });
   }
 
   // Account operations
-  async addBalance(accountName, date, balance, currency, ticker = '') {
+  async addBalance(userId, accountName, date, balance, currency, ticker = '') {
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO account_balances (account_name, date, balance, currency, ticker) VALUES (?, ?, ?, ?, ?)',
-        [accountName, date, balance, currency, ticker],
-        function(err) {
+        `INSERT INTO account_balances (account_name, date, balance, currency, ticker, user_id)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(account_name, date, currency, ticker, user_id)
+         DO UPDATE SET
+           balance=excluded.balance,
+           currency=excluded.currency,
+           ticker=excluded.ticker,
+           user_id=excluded.user_id
+        `,
+        [accountName, date, balance, currency, ticker, userId],
+        function (err) {
           if (err) reject(err);
           else resolve(this.lastID);
         }
@@ -76,11 +282,11 @@ class Database {
     });
   }
 
-  async getAllAccounts() {
+  async getAllAccounts(userId) {
     return new Promise((resolve, reject) => {
       this.db.all(
-        'SELECT DISTINCT account_name FROM account_balances ORDER BY account_name',
-        [],
+        'SELECT DISTINCT account_name FROM account_balances WHERE user_id = ? ORDER BY account_name',
+        [userId],
         (err, rows) => {
           if (err) reject(err);
           else resolve(rows.map(row => row.account_name));
@@ -89,8 +295,8 @@ class Database {
     });
   }
 
-  async getAccountBalances(startDate = null, endDate = null, accounts = null, targetCurrency = 'CAD') {
-    const cacheKey = JSON.stringify({ startDate, endDate, accounts, targetCurrency });
+  async getAccountBalances(userId, startDate = null, endDate = null, accounts = null, targetCurrency = 'CAD') {
+    const cacheKey = JSON.stringify({ userId, startDate, endDate, accounts, targetCurrency });
     if (this._accountBalancesCache.has(cacheKey)) {
       return this._accountBalancesCache.get(cacheKey);
     }
@@ -141,8 +347,8 @@ class Database {
     };
 
     return new Promise((resolve, reject) => {
-      let query = 'SELECT account_name, date, balance, currency, ticker FROM account_balances';
-      const params = [];
+      let query = 'SELECT account_name, date, balance, currency, ticker FROM account_balances WHERE user_id = ?';
+      const params = [userId];
       const conditions = [];
 
       if (startDate) {
@@ -159,7 +365,7 @@ class Database {
         params.push(...accounts);
       }
       if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
+        query += ' AND ' + conditions.join(' AND ');
       }
       query += ' ORDER BY account_name, date';
 
@@ -189,7 +395,7 @@ class Database {
         }
 
         // Preload groups once
-        const groups = await this.getAccountGroups();
+        const groups = await this.getAccountGroups(userId);
 
         const result = {};
 
@@ -239,8 +445,8 @@ class Database {
                 balance = leftVal + (rightVal - leftVal) * (daysSinceLeft / totalDays);
               }
             }
-              // Only output for dates >= firstKnown
-              if (d < firstKnown) continue;
+            // Only output for dates >= firstKnown
+            if (d < firstKnown) continue;
 
             // Apply ticker price if present
             const tickerRate = ticker ? await getTickerRatePrev(ticker, d) : 1;
@@ -284,40 +490,47 @@ class Database {
     });
   }
 
-  async getPieChartData(type, date) {
+  async getPieChartData(userId, type, date) {
     return new Promise((resolve, reject) => {
       // Get account groups based on type
-      //const accountGroups = this.getAccountGroupsByType(type);
-      const accountGroups = this.getAccountGroups(type);
+      // Use an internal promise wrapper since getAccountGroups is async
+      this.getAccountGroups(userId).then(groups => {
+        const accountGroups = groups[type] || [];
 
-      if (!accountGroups || accountGroups.length === 0) {
-        resolve({ labels: [], data: [], total: 0 });
-        return;
-      }
-
-      const placeholders = accountGroups.map(() => '?').join(',');
-      const query = `
-        SELECT account_name, balance, currency 
-        FROM account_balances 
-        WHERE account_name IN (${placeholders}) 
-        AND date = ?
-        AND balance != 0
-      `;
-
-      this.db.all(query, [...accountGroups, date], (err, rows) => {
-        if (err) reject(err);
-        else {
-          const labels = rows.map(row => row.account_name);
-          const data = rows.map(row => Math.abs(row.balance));
-          const total = data.reduce((sum, val) => sum + val, 0);
-
-          resolve({ labels, data, total });
+        if (!accountGroups || accountGroups.length === 0) {
+          resolve({ labels: [], data: [], total: 0 });
+          return;
         }
-      });
+
+        const placeholders = accountGroups.map(() => '?').join(',');
+        const query = `
+              SELECT account_name, balance, currency 
+              FROM account_balances 
+              WHERE account_name IN (${placeholders}) 
+              AND date = ?
+              AND balance != 0
+              AND user_id = ?
+            `;
+
+        // Add date and user_id to params
+        const params = [...accountGroups, date, userId];
+
+        this.db.all(query, params, (err, rows) => {
+          if (err) reject(err);
+          else {
+            const labels = rows.map(row => row.account_name);
+            const data = rows.map(row => Math.abs(row.balance));
+            const total = data.reduce((sum, val) => sum + val, 0);
+
+            resolve({ labels, data, total });
+          }
+        });
+      }).catch(reject);
     });
   }
 
   getAccountGroupsByType(type) {
+    // Legacy method, kept for reference if needed, but getAccountGroups is preferred
     const fs = require('fs');
     const path = require('path');
     const configDir = path.join(__dirname, '../config');
@@ -333,54 +546,87 @@ class Database {
     return [];
   }
 
-  async getAccountGroups() {
-    const fs = require('fs');
-    const path = require('path');
-
-
-    const configDir = path.join(__dirname, '../config');
-    const groupFiles = ['operating', 'investing', 'crypto', 'equity', 'summary'];
-    const groups = {};
-    for (const group of groupFiles) {
-      const filePath = path.join(configDir, `${group}.txt`);
-      try {
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          groups[group] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-        } else {
-          groups[group] = [];
+  async getAccountGroups(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT group_type FROM groups WHERE user_id = ?',
+        [userId],
+        (err, groupRows) => {
+          if (err) return reject(err);
+          this.db.all(
+            'SELECT group_type, account_name FROM account_groups WHERE user_id = ?',
+            [userId],
+            (err2, rows) => {
+              if (err2) return reject(err2);
+              const groups = {};
+              groupRows.forEach(gr => { groups[gr.group_type] = []; });
+              rows.forEach(r => {
+                if (!groups[r.group_type]) groups[r.group_type] = [];
+                groups[r.group_type].push(r.account_name);
+              });
+              resolve(groups);
+            }
+          );
         }
-      } catch (e) {
-        console.error(`Error reading group file for ${group}:`, e);
-        groups[group] = [];
-      }
-    }
-
-    const allAccounts = this.getAllAccounts();
-    groups['networth'] = await allAccounts;
-    const tempList = {};
-    const ignoreFilePath = path.join(configDir, 'ignoreForTotal.txt');
-    try {
-      if (fs.existsSync(ignoreFilePath)) {
-        const content = fs.readFileSync(ignoreFilePath, 'utf-8');
-        tempList['ignoreForTotal'] = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      } else {
-        tempList['ignoreForTotal'] = [];
-      }
-    } catch (e) {
-      console.error(`Error reading group file for ignoreForTotal:`, e);
-      tempList['ignoreForTotal'] = [];
-    }
-
-    if (groups['networth'] && tempList['ignoreForTotal']) {
-      groups['total'] = groups['networth'].filter(
-        account => !tempList['ignoreForTotal'].includes(account)
       );
-    } else {
-      groups['total'] = [];
-    }
+    });
+  }
 
-    return groups;
+  async updateAccountGroup(userId, groupType, accounts) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION');
+
+        // Ensure the group exists in the groups table
+        this.db.run(
+          'INSERT OR IGNORE INTO groups (user_id, group_type) VALUES (?, ?)',
+          [userId, groupType],
+          (err) => {
+            if (err) {
+              this.db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            // Delete existing entries for this group type
+            this.db.run(
+              'DELETE FROM account_groups WHERE user_id = ? AND group_type = ?',
+              [userId, groupType],
+              (err2) => {
+                if (err2) {
+                  this.db.run('ROLLBACK');
+                  return reject(err2);
+                }
+
+                if (accounts.length === 0) {
+                  this.db.run('COMMIT');
+                  return resolve();
+                }
+
+                // Insert new entries
+                const placeholders = accounts.map(() => '(?, ?, ?)').join(',');
+                const params = [];
+                accounts.forEach(acc => {
+                  params.push(userId, groupType, acc);
+                });
+
+                this.db.run(
+                  `INSERT INTO account_groups (user_id, group_type, account_name) VALUES ${placeholders}`,
+                  params,
+                  (err3) => {
+                    if (err3) {
+                      this.db.run('ROLLBACK');
+                      return reject(err3);
+                    }
+                    this.db.run('COMMIT');
+                    resolve();
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
+    });
   }
 
 
@@ -392,11 +638,11 @@ class Database {
     let all = [];
     for (const file of currencyFiles) {
       try {
-        console.log('[getAvailableCurrencies] Reading:', file);
+        // console.log('[getAvailableCurrencies] Reading:', file);
         const txt = await fsPromises.readFile(file, 'utf8');
-        console.log(`[getAvailableCurrencies] Content of ${file}:`, JSON.stringify(txt));
+        // console.log(`[getAvailableCurrencies] Content of ${file}:`, JSON.stringify(txt));
         const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        console.log(`[getAvailableCurrencies] Parsed lines:`, lines);
+        // console.log(`[getAvailableCurrencies] Parsed lines:`, lines);
         all = all.concat(lines);
       } catch (e) {
         console.error(`[getAvailableCurrencies] Error reading ${file}:`, e.message);
@@ -404,7 +650,7 @@ class Database {
     }
     // Remove duplicates and empty
     const result = Array.from(new Set(all)).filter(Boolean);
-    console.log('[getAvailableCurrencies] Final result:', result);
+    // console.log('[getAvailableCurrencies] Final result:', result);
     return result;
   }
 
@@ -426,7 +672,7 @@ class Database {
       this.db.run(
         'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
         ['main_currency', currency],
-        function(err) {
+        function (err) {
           if (err) reject(err);
           else resolve();
         }
@@ -434,9 +680,9 @@ class Database {
     });
   }
 
-  async getNetWorthSummary(startDate = null, endDate = null, accounts = null) {
+  async getNetWorthSummary(userId, startDate = null, endDate = null, accounts = null) {
     const main = await this.getMainCurrency();
-    const balances = await this.getAccountBalances(startDate, endDate, accounts, main);
+    const balances = await this.getAccountBalances(userId, startDate, endDate, accounts, main);
     // Calculate totals for each date (balances shape: { account: { date: number } })
     const summary = {};
     for (const [account, dates] of Object.entries(balances)) {

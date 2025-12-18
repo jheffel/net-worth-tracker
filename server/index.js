@@ -4,17 +4,61 @@ const path = require('path');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const moment = require('moment');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
 const Database = require('./database');
+const { authenticateToken, JWT_SECRET } = require('./middleware/auth');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// CORS middleware (must be before all routes)
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+}));
 app.use(express.json());
 
+// Purge all user data (including groups)
 
-// Serve config directory statically for all environments
+app.post('/api/purge-all', authenticateToken, async (req, res) => {
+  try {
+    await db.purgeAllUserData(req.user.id);
+    res.json({ message: 'All user data purged' });
+  } catch (error) {
+    console.error('[PURGE-ALL ERROR]', error, 'User:', req.user);
+    res.status(500).json({ error: error.message, details: error.stack });
+  }
+});
+
+// Purge only financial data (keep groups)
+
+app.post('/api/purge-financial', authenticateToken, async (req, res) => {
+  try {
+    await db.purgeFinancialData(req.user.id);
+    res.json({ message: 'Financial data purged' });
+  } catch (error) {
+    console.error('[PURGE-FINANCIAL ERROR]', error, 'User:', req.user);
+    res.status(500).json({ error: error.message, details: error.stack });
+  }
+});
+
+// Delete account group and all its assignments
+app.delete('/api/account-groups/:type', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const deletedCount = await db.deleteAccountGroup(req.user.id, type);
+    res.json({ message: `Group ${type} deleted`, deletedCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve config directory statically for all environments (if public config needed)
+// Note: Config files might contain sensitive info? Assuming public lists like currency lists are fine.
 app.use('/config', express.static(path.join(__dirname, '../config')));
 
 // Only serve static files in production
@@ -32,6 +76,46 @@ const upload = multer({ storage: storage });
 
 // API Routes
 
+// --- Auth Routes ---
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    const existing = await db.getUserByEmail(email);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already taken' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const user = await db.createUser(email, hash);
+    res.status(201).json({ message: 'User created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await db.getUserByEmail(email);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+    if (await bcrypt.compare(password, user.password_hash)) {
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+      res.json({ token, email: user.email, id: user.id });
+    } else {
+      res.status(403).json({ error: 'Invalid password' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Public Data Routes (FX) ---
+
 // FX rate endpoint (moved here to ensure app is initialized)
 app.get('/api/fx-rate', async (req, res) => {
   try {
@@ -47,7 +131,7 @@ app.get('/api/fx-rate', async (req, res) => {
   }
 });
 
-// Batch FX rates endpoint to reduce network overhead
+// Batch FX rates endpoint
 app.post('/api/fx-rates', async (req, res) => {
   try {
     const { requests } = req.body || {};
@@ -74,11 +158,23 @@ app.post('/api/fx-rates', async (req, res) => {
   }
 });
 
-// Get all account data
-app.get('/api/accounts', async (req, res) => {
+// Get available currencies (Public for now, or could be protected)
+app.get('/api/currencies', async (req, res) => {
   try {
-    const accounts = await db.getAllAccounts();
-    const groups = await db.getAccountGroups();
+    const currencies = await db.getAvailableCurrencies();
+    res.json(currencies);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- Protected Data Routes ---
+
+// Get all account data
+app.get('/api/accounts', authenticateToken, async (req, res) => {
+  try {
+    const accounts = await db.getAllAccounts(req.user.id);
+    const groups = await db.getAccountGroups(req.user.id);
     // Only include groups that have at least one member present in the database
     const validGroups = Object.entries(groups)
       .filter(([group, members]) => members.some(member => accounts.includes(member)))
@@ -91,8 +187,7 @@ app.get('/api/accounts', async (req, res) => {
 });
 
 // Get account balances for a specific date range
-
-app.get('/api/balances', async (req, res) => {
+app.get('/api/balances', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate, accounts, currency } = req.query;
     let targetCurrency = currency;
@@ -100,9 +195,8 @@ app.get('/api/balances', async (req, res) => {
       // If not specified, get main currency from DB
       targetCurrency = await db.getMainCurrency();
     }
-    console.log(`[API] /api/balances using targetCurrency: ${targetCurrency}`);
-    // Pass targetCurrency to db.getAccountBalances
-    const balances = await db.getAccountBalances(startDate, endDate, accounts, targetCurrency);
+    // Pass user ID
+    const balances = await db.getAccountBalances(req.user.id, startDate, endDate, accounts, targetCurrency);
     res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -110,11 +204,11 @@ app.get('/api/balances', async (req, res) => {
 });
 
 // Get pie chart data for a specific date
-app.get('/api/pie-chart/:type', async (req, res) => {
+app.get('/api/pie-chart/:type', authenticateToken, async (req, res) => {
   try {
     const { type } = req.params;
     const { date } = req.query;
-    const pieData = await db.getPieChartData(type, date);
+    const pieData = await db.getPieChartData(req.user.id, type, date);
     res.json(pieData);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -122,7 +216,7 @@ app.get('/api/pie-chart/:type', async (req, res) => {
 });
 
 // Import Excel/ODS file
-app.post('/api/import', upload.single('file'), async (req, res) => {
+app.post('/api/import', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -142,7 +236,6 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
         // Each row after the header is a single account's data
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          console.log(`Processing row ${i}:`, row);
           const accountName = row[0];
           const dateCell = row[1];
           // Strip out $, commas, and any non-numeric characters except . and -
@@ -154,19 +247,11 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           const balance = parseFloat(balanceStr);
           const currency = row[3] || 'CAD';
           const ticker = row[4] || '';
-          console.log('Raw dateCell:', dateCell, 'Type:', typeof dateCell);
-          if (!accountName) {
-            console.log(`Skipping row ${i}: missing accountName`, row);
-            continue;
-          }
-          if (dateCell === undefined || dateCell === null || dateCell === '') {
-            console.log(`Skipping row ${i}: missing dateCell`, row);
-            continue;
-          }
-          if (isNaN(balance)) {
-            console.log(`Skipping row ${i}: balance is not a number`, row);
-            continue;
-          }
+
+          if (!accountName) continue;
+          if (dateCell === undefined || dateCell === null || dateCell === '') continue;
+          if (isNaN(balance)) continue;
+
           let date = null;
           // Try to handle Excel/ODS serial dates and string dates
           if (typeof dateCell === 'number') {
@@ -177,13 +262,11 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           } else if (moment(dateCell).isValid()) {
             date = moment(dateCell).format('YYYY-MM-DD');
           }
-          console.log(`Parsed date for row ${i}:`, date);
-          if (!date) {
-            console.log(`Skipping row ${i}: could not parse date`, row);
-            continue;
-          }
+
+          if (!date) continue;
+
           try {
-            await db.addBalance(accountName, date, balance, currency, ticker);
+            await db.addBalance(req.user.id, accountName, date, balance, currency, ticker);
             importedData.push({
               account: accountName,
               date,
@@ -191,7 +274,6 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
               currency,
               ticker
             });
-            console.log(`Imported row ${i}:`, { account: accountName, date, balance, currency, ticker });
           } catch (err) {
             console.error(`Error importing row ${i}:`, err);
           }
@@ -199,39 +281,43 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
       }
     }
 
-  console.log('Imported data:', JSON.stringify(importedData, null, 2));
-  res.json({ 
-      message: 'Data imported successfully', 
+    res.json({
+      message: 'Data imported successfully',
       importedCount: importedData.length,
-      data: importedData 
+      data: importedData
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get available currencies
-app.get('/api/currencies', async (req, res) => {
+// Get account groups
+app.get('/api/account-groups', authenticateToken, async (req, res) => {
   try {
-    const currencies = await db.getAvailableCurrencies();
-    res.json(currencies);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get account groups (operating, investing, crypto, equity, summary)
-app.get('/api/account-groups', async (req, res) => {
-  try {
-    const groups = await db.getAccountGroups();
+    const groups = await db.getAccountGroups(req.user.id);
     res.json(groups);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update main currency
-app.put('/api/currency', async (req, res) => {
+// Update account group
+app.post('/api/account-groups/:type', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { accounts } = req.body; // Array of account names
+    if (!Array.isArray(accounts)) {
+      return res.status(400).json({ error: 'Accounts must be an array' });
+    }
+    await db.updateAccountGroup(req.user.id, type, accounts);
+    res.json({ message: `Group ${type} updated` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update main currency (Protected, but global setting currently)
+app.put('/api/currency', authenticateToken, async (req, res) => {
   try {
     const { currency } = req.body;
     await db.setMainCurrency(currency);
@@ -242,10 +328,10 @@ app.put('/api/currency', async (req, res) => {
 });
 
 // Get net worth summary
-app.get('/api/net-worth', async (req, res) => {
+app.get('/api/net-worth', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate, accounts } = req.query;
-    const summary = await db.getNetWorthSummary(startDate, endDate, accounts);
+    const summary = await db.getNetWorthSummary(req.user.id, startDate, endDate, accounts);
     res.json(summary);
   } catch (error) {
     res.status(500).json({ error: error.message });

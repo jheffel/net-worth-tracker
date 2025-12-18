@@ -1,22 +1,49 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
 import FileUpload from './FileUpload';
 //import { ignoreForTotal } from '../constants/ignoreForTotal';
 
-const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload }) => {
+const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelectAll, onDeselectAll, groupMap, ignoreForTotal, compact = false, onFileUpload, onGroupChange, showSumLine, setShowSumLine, onGroupSelect, setGroupManagerOpen }) => {
+          {/* Toggle for plotting sum of selected accounts */}
+          <div style={{ marginBottom: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              id="show-sum-line"
+              checked={!!showSumLine}
+              onChange={e => setShowSumLine?.(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none' }}>
+              Plot sum of selected accounts
+            </label>
+          </div>
+    const [showGroupModal, setShowGroupModal] = useState(false);
+    const [showGroups, setShowGroups] = useState(true);
+    const [groupName, setGroupName] = useState('');
+    const [overridePrompt, setOverridePrompt] = useState(false);
+    const [pendingGroup, setPendingGroup] = useState(null);
+    const [errorMsg, setErrorMsg] = useState('');
+    const [loading, setLoading] = useState(false);
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+    const plusBtnRef = useRef(null);
+
   // Define group membership (should match NetWorthChart.js)
 
   const groupNames = Object.keys(groupMap);
+  // Only show accounts that are not group names
+  const pureAccounts = accounts.filter(a => !groupNames.includes(a));
 
   return (
     <div className="account-panel">
       <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>
         Account Selection
       </h3>
-      <div style={{ marginBottom: '15px' }}>
+
+
+      <div style={{ marginBottom: '15px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <button 
           className="btn btn-primary" 
           onClick={onSelectAll}
-          style={{ marginRight: '10px' }}
         >
           Select All
         </button>
@@ -27,69 +54,181 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           Deselect All
         </button>
       </div>
-
-      <div className="account-list-scroll">
+      {/* Accounts Scrollable Section */}
+      <div className="account-list-scroll" style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 8 }}>
         <div className={`account-list ${compact ? 'compact' : ''}`}>
-        {(accounts.length === 0) ? (
-          <p style={{ color: '#cccccc', textAlign: 'center' }}>
-            No accounts available. Import data to get started.
-          </p>
-        ) : (
-          [...accounts].map(account => {
-            // Treat 'net worth' and 'total' as groups
-            let members = [];
-            /*
-            if (account === 'net worth') {
-              const allAccounts = [...accounts];
-              const groupedAccounts = Object.values(groupMap).flat();
-              members = allAccounts.filter(a => !groupedAccounts.includes(a));
-            } else if (account === 'total') {
-              const allAccounts = [...accounts];
-              const groupedAccounts = Object.values(groupMap).flat();
-              members = allAccounts.filter(a => !groupedAccounts.includes(a) && !(typeof ignoreForTotal !== 'undefined' && ignoreForTotal.includes(a)));
-            } else if (groupMap[account]) {
-              members = groupMap[account];
-            }
-            */
-            members = groupMap[account] || [];
-            const isGroupLike = account === 'net worth' || account === 'total' || groupMap[account];
-            return (
-              <React.Fragment key={account}>
-                <div className="account-item">
-                  <input
-                    type="checkbox"
-                    id={account}
-                    checked={selectedAccounts.includes(account)}
-                    onChange={() => onAccountToggle(account)}
-                    style={compact ? { width: 22, height: 22 } : {}}
-                  />
-                  <label htmlFor={account} style={isGroupLike ? { fontWeight: 'bold', color: '#ffd700' } : {}}>
-                    {account} {isGroupLike && <span style={{ fontSize: compact ? '10px' : '11px', color: '#aaa' }}>(Group)</span>}
-                  </label>
-                </div>
-                {isGroupLike && selectedAccounts.includes(account) && members.length > 0 && (
-                  <div style={{ marginLeft: 24, marginBottom: 4 }}>
-                    {members.map(member => (
-                      <div key={account + '-' + member} className="account-item">
-                        <input
-                          type="checkbox"
-                          id={account + '-' + member}
-                          checked={true}
-                          disabled
-                        />
-                        <label htmlFor={account + '-' + member} style={{ color: '#aaa', fontStyle: 'italic' }}>
-                          {member}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })
-        )}
+          <div style={{ fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>Accounts</div>
+          {pureAccounts.length === 0 ? (
+            <p style={{ color: '#cccccc', textAlign: 'center' }}>
+              No accounts available. Import data to get started.
+            </p>
+          ) : (
+            pureAccounts.map(account => (
+              <div className="account-item" key={account}>
+                <input
+                  type="checkbox"
+                  id={account}
+                  checked={selectedAccounts.includes(account)}
+                  onChange={() => onAccountToggle(account)}
+                  style={compact ? { width: 22, height: 22 } : {}}
+                />
+                <label htmlFor={account}>{account}</label>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {/* Compact Create Group button between accounts and groups, with anchored modal */}
+      <div style={{ display: 'flex', justifyContent: 'left', alignItems: 'left', gap: 10, marginBottom: 8, position: 'relative' }}>
+        <button
+          className="btn btn-tertiary"
+          ref={plusBtnRef}
+          onClick={() => { setShowGroupModal(true); setGroupName(''); setErrorMsg(''); setOverridePrompt(false); }}
+          disabled={selectedAccounts.length === 0}
+          title="Create group from selection"
+          style={{ padding: 4, borderRadius: '50%', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+            <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button onClick={() => setGroupManagerOpen && setGroupManagerOpen(true)} className="btn" title="Manage Groups" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 6 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span style={{ fontSize: 14 }}>Manage Groups</span>
+        </button>
+        {showGroupModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowGroupModal(false)}>
+            <div
+              className="modal-dialog"
+              style={{
+                position: 'relative',
+                zIndex: 1001,
+                minWidth: 260,
+                background: 'var(--control-bg)',
+                border: '1px solid var(--control-border)',
+                borderRadius: 8,
+                boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
+                padding: 18
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {!overridePrompt ? (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Create Group from Selection</strong>
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        type="text"
+                        value={groupName}
+                        onChange={e => setGroupName(e.target.value)}
+                        placeholder="Group name"
+                        style={{ fontSize: 15, padding: '4px 8px', width: 220 }}
+                        autoFocus
+                        disabled={loading}
+                      />
+                    </div>
+                    {errorMsg && <div style={{ color: 'red', marginTop: 6 }}>{errorMsg}</div>}
+                  </div>
+                  <button
+                    className="btn primary"
+                    onClick={async () => {
+                      setErrorMsg('');
+                      const name = groupName.trim();
+                      if (!name) { setErrorMsg('Group name required'); return; }
+                      if (groupMap[name]) {
+                        setOverridePrompt(true);
+                        setPendingGroup(name);
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(name)}`, { accounts: selectedAccounts });
+                        setShowGroupModal(false);
+                        setGroupName('');
+                        setErrorMsg('');
+                        setOverridePrompt(false);
+                        if (onGroupChange) onGroupChange(name, selectedAccounts);
+                      } catch (err) {
+                        setErrorMsg('Failed to create group.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >Create</button>
+                  <button className="btn" onClick={() => setShowGroupModal(false)} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Group already exists.</strong><br />
+                    Override with current selection?
+                  </div>
+                  <button
+                    className="btn danger"
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        await axios.post(`${API_BASE}/account-groups/${encodeURIComponent(pendingGroup)}`, { accounts: selectedAccounts });
+                        setShowGroupModal(false);
+                        setGroupName('');
+                        setErrorMsg('');
+                        setOverridePrompt(false);
+                        setPendingGroup(null);
+                        if (onGroupChange) onGroupChange(pendingGroup, selectedAccounts);
+                      } catch (err) {
+                        setErrorMsg('Failed to override group.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >Override</button>
+                  <button className="btn" onClick={() => { setOverridePrompt(false); setPendingGroup(null); }} style={{ marginLeft: 8 }} disabled={loading}>Cancel</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Groups Scrollable Section with collapse/expand, now below accounts but above select/deselect all */}
+      {groupNames.length > 0 && (
+        <div className="group-list-scroll" style={{ maxHeight: 200, overflowY: showGroups ? 'auto' : 'hidden', marginBottom: 15 }}>
+          <div className={`group-list ${compact ? 'compact' : ''}`} style={{ marginTop: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', marginBottom: 6, color: 'var(--text-primary)' }}>
+              <span style={{ flex: 1 }}>Groups</span>
+              <button
+                aria-label={showGroups ? 'Collapse groups' : 'Expand groups'}
+                title={showGroups ? 'Collapse groups' : 'Expand groups'}
+                onClick={() => setShowGroups(g => !g)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 6 }}
+              >
+                {showGroups ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                )}
+              </button>
+            </div>
+            {showGroups && groupNames.map(group => (
+              <div className="group-item" key={group}>
+                <button
+                  className="btn btn-group-select"
+                  style={{ width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 15, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 4, marginBottom: 4, color: 'var(--text-primary)', cursor: 'pointer' }}
+                  onClick={() => onGroupSelect && onGroupSelect(groupMap[group])}
+                >
+                  {group}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {accounts.length > 0 && (
         <div style={{ 
@@ -105,9 +244,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
         </div>
       )}
 
-      <div className="import-inline">
-        <FileUpload onFileUpload={onFileUpload} />
-      </div>
+
     </div>
   );
 };
