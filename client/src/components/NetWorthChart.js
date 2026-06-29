@@ -188,6 +188,45 @@ const [velocityData, setVelocityData] = useState([]);
      return () => { cancelled = true; };
    }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal, showSumLine, showVelocity, velocityWindow]);
 
+  // Compute main Y-axis domain for use in both domain prop and zero-line check
+  const mainYDomain = (() => {
+    let min = Infinity, max = -Infinity;
+    const data = clipChartData(
+      chartData.map(row => {
+        const newRow = { ...row };
+        selectedAccounts.forEach(acct => {
+          if (!(acct in newRow)) newRow[acct] = 0;
+        });
+        return newRow;
+      }),
+      timeframe,
+      selectedAccounts
+    );
+    data.forEach(row => {
+      selectedAccounts.forEach(acct => {
+        if (typeof row[acct] === 'number') {
+          if (row[acct] < min) min = row[acct];
+          if (row[acct] > max) max = row[acct];
+        }
+      });
+    });
+    if (showSumLine && sumData.length > 0) {
+      const sumRows = clipChartData(sumData, timeframe, ['__sum__']);
+      sumRows.forEach(row => {
+        if (typeof row.__sum__ === 'number') {
+          if (row.__sum__ < min) min = row.__sum__;
+          if (row.__sum__ > max) max = row.__sum__;
+        }
+      });
+    }
+    if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
+    if (min === max) return [min - 1, max + 1];
+    const margin = (max - min) * 0.05;
+    return [min - margin, max + margin];
+  })();
+
+  const zeroInMainDomain = Array.isArray(mainYDomain) && mainYDomain[0] <= 0 && mainYDomain[1] >= 0;
+
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
     style: 'currency', currency: mainCurrency, minimumFractionDigits: 2, maximumFractionDigits: 6
   }).format(value || 0);
@@ -340,18 +379,28 @@ const [velocityData, setVelocityData] = useState([]);
       )}
       <ResponsiveContainer height={'100%'}>
         <LineChart
-          data={clipChartData(
-            chartData.map(row => {
-              // Always include all selected account keys, even if value is 0, to keep columns stable
-              const newRow = { ...row };
-              selectedAccounts.forEach(acct => {
-                if (!(acct in newRow)) newRow[acct] = 0;
+          data={(() => {
+            const rows = clipChartData(
+              chartData.map(row => {
+                const newRow = { ...row };
+                selectedAccounts.forEach(acct => {
+                  if (!(acct in newRow)) newRow[acct] = 0;
+                });
+                return newRow;
+              }),
+              timeframe,
+              selectedAccounts
+            );
+            // Merge __sum__ after clipping (clipChartData strips non-selected keys)
+            if (showSumLine && sumData.length > 0) {
+              const sumMap = {};
+              sumData.forEach(sr => { sumMap[sr.date] = sr.__sum__; });
+              rows.forEach(row => {
+                if (sumMap[row.date] !== undefined) row.__sum__ = sumMap[row.date];
               });
-              return newRow;
-            }),
-            timeframe,
-            selectedAccounts
-          )}
+            }
+            return rows;
+          })()}
           margin={compact ? { top: 12, right: 18, left: 18, bottom: 12 } : { top: 16, right: 24, left: 24, bottom: 20 }}
           onClick={(e) => { if (e && e.activeLabel) onPointClick?.(e.activeLabel, e.activePayload); }}
           onMouseMove={handleMouseMove}
@@ -382,43 +431,7 @@ const [velocityData, setVelocityData] = useState([]);
             minTickGap={compact ? 8 : 15}
             stroke={theme === 'light' ? '#384454' : '#aaa'}
             tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
-            domain={(() => {
-              // Compute min/max across all selected accounts and sum (if shown)
-              let min = Infinity, max = -Infinity;
-              const data = clipChartData(
-                chartData.map(row => {
-                  const newRow = { ...row };
-                  selectedAccounts.forEach(acct => {
-                    if (!(acct in newRow)) newRow[acct] = 0;
-                  });
-                  return newRow;
-                }),
-                timeframe,
-                selectedAccounts
-              );
-              data.forEach(row => {
-                selectedAccounts.forEach(acct => {
-                  if (typeof row[acct] === 'number') {
-                    if (row[acct] < min) min = row[acct];
-                    if (row[acct] > max) max = row[acct];
-                  }
-                });
-              });
-              if (showSumLine && sumData.length > 0) {
-                const sumRows = clipChartData(sumData, timeframe, ['__sum__']);
-                sumRows.forEach(row => {
-                  if (typeof row.__sum__ === 'number') {
-                    if (row.__sum__ < min) min = row.__sum__;
-                    if (row.__sum__ > max) max = row.__sum__;
-                  }
-                });
-              }
-              if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
-              if (min === max) return [min - 1, max + 1];
-              // Add a small margin
-              const margin = (max - min) * 0.05;
-              return [min - margin, max + margin];
-            })()}
+            domain={mainYDomain}
           />
           {showVelocity && velocityData.length > 0 && (
             <YAxis
@@ -439,8 +452,9 @@ const [velocityData, setVelocityData] = useState([]);
                 });
                 if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
                 if (min === max) return [min - 1, max + 1];
-                const margin = (max - min) * 0.05;
-                return [min - margin, max + margin];
+                const maxAbs = Math.max(Math.abs(min), Math.abs(max));
+                const margin = maxAbs * 0.05 || 1;
+                return [-maxAbs - margin, maxAbs + margin];
               })()}
             />
           )}
@@ -463,7 +477,6 @@ const [velocityData, setVelocityData] = useState([]);
             <Line
               type="monotone"
               dataKey="__sum__"
-              data={clipChartData(sumData, timeframe, ['__sum__'])}
               stroke="#e91e63"
               strokeWidth={compact ? 2.5 : 3}
               dot={false}
@@ -487,6 +500,11 @@ const [velocityData, setVelocityData] = useState([]);
               legendType="line"
               isAnimationActive={false}
             />
+          )}
+          {showVelocity && velocityData.length > 0 ? (
+            <ReferenceLine y={0} yAxisId="right" stroke={theme === 'light' ? '#9c27b0' : '#ce93d8'} strokeWidth={1} opacity={0.6} />
+          ) : zeroInMainDomain && (
+            <ReferenceLine y={0} stroke={theme === 'light' ? '#384454' : '#aaa'} strokeWidth={1} opacity={0.35} />
           )}
         </LineChart>
       </ResponsiveContainer>
