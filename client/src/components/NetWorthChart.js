@@ -12,8 +12,10 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
    const [isDragging, setIsDragging] = useState(false);
    const [chartData, setChartData] = useState([]);
 const [sumData, setSumData] = useState([]);
+const [velocityData, setVelocityData] = useState([]);
    const [hoveredYs, setHoveredYs] = useState([]);
-   const [showVelocity, setShowVelocity] = useState(false); // NEW STATE FOR VELOCITY
+   const [showVelocity, setShowVelocity] = useState(false);
+   const [velocityWindow, setVelocityWindow] = useState(1);
    const containerRef = useRef(null);
 
   // Utility: get x position from event (mouse or touch)
@@ -160,31 +162,31 @@ const [sumData, setSumData] = useState([]);
      });
      if (!cancelled) setSumData(sumRows);
    } else {
-     if (!cancelled) setSumData([]);
+    if (!cancelled) setSumData([]);
    }
-  
-  // VELOCITY CALCULATION:
-  let velocityData = [];
-  for (let i = 1; i < newChartRows.length; i++) {
-    const currentDate = newChartRows[i].date;
-    const previousDate = newChartRows[i-1].date;
-    let sumDiff = 0;
-    
-    // Calculate the net change from day to day across all selected accounts
-    selectedAccounts.forEach(acct => {
-      if (typeof newChartRows[i][acct] === 'number' && typeof newChartRows[i-1][acct] === 'number') {
-        const change = newChartRows[i][acct] - newChartRows[i-1][acct];
-        sumDiff += change;
+   
+    // VELOCITY CALCULATION:
+    if (showVelocity) {
+      const w = Math.max(1, velocityWindow);
+      const vData = [];
+      for (let i = w; i < newChartRows.length; i++) {
+        const currentDate = newChartRows[i].date;
+        let sumDiff = 0;
+        selectedAccounts.forEach(acct => {
+          if (typeof newChartRows[i][acct] === 'number' && typeof newChartRows[i-w][acct] === 'number') {
+            sumDiff += (newChartRows[i][acct] - newChartRows[i-w][acct]) / w;
+          }
+        });
+        vData.push({ date: currentDate, velocity: sumDiff });
       }
-    });
-    
-    // We use the date of the second point (i) as the date marker for the velocity point
-    velocityData.push({ date: currentDate, velocity: sumDiff });
-  }
-    };
-    fetchData();
-    return () => { cancelled = true; };
-  }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal, showSumLine]);
+      if (!cancelled) setVelocityData(vData);
+    } else {
+      if (!cancelled) setVelocityData([]);
+    }
+     };
+     fetchData();
+     return () => { cancelled = true; };
+   }, [balances, selectedAccounts, mainCurrency, startDate, endDate, timeframe, groupMap, ignoreForTotal, showSumLine, showVelocity, velocityWindow]);
 
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
     style: 'currency', currency: mainCurrency, minimumFractionDigits: 2, maximumFractionDigits: 6
@@ -293,6 +295,29 @@ const [sumData, setSumData] = useState([]);
             </label>
           </>
         )}
+        <input
+          type="checkbox"
+          id="show-velocity"
+          checked={showVelocity}
+          onChange={e => setShowVelocity(e.target.checked)}
+          style={{ width: 18, height: 18 }}
+        />
+        <label htmlFor="show-velocity" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none' }}>
+          Velocity
+        </label>
+        {showVelocity && (
+          <>
+            <input
+              type="range"
+              min="1"
+              max="365"
+              value={velocityWindow}
+              onChange={e => setVelocityWindow(Number(e.target.value))}
+              style={{ width: 100, height: 4, cursor: 'pointer', accentColor: '#9c27b0' }}
+            />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 50 }}>{velocityWindow}d</span>
+          </>
+        )}
       </div>
       {highlight}
       {parentLoading && (
@@ -395,6 +420,30 @@ const [sumData, setSumData] = useState([]);
               return [min - margin, max + margin];
             })()}
           />
+          {showVelocity && velocityData.length > 0 && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              width={56}
+              tickFormatter={v => formatCurrency(v)}
+              stroke={theme === 'light' ? '#384454' : '#aaa'}
+              tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
+              domain={(() => {
+                let min = Infinity, max = -Infinity;
+                const rows = clipChartData(velocityData, timeframe, ['velocity']);
+                rows.forEach(row => {
+                  if (typeof row.velocity === 'number') {
+                    if (row.velocity < min) min = row.velocity;
+                    if (row.velocity > max) max = row.velocity;
+                  }
+                });
+                if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
+                if (min === max) return [min - 1, max + 1];
+                const margin = (max - min) * 0.05;
+                return [min - margin, max + margin];
+              })()}
+            />
+          )}
           <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
           <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
           {!showOnlySum && selectedAccounts.map((acct, idx) => (
@@ -421,6 +470,21 @@ const [sumData, setSumData] = useState([]);
               activeDot={{ r: compact ? 5 : 7 }}
               name="Sum of Selected"
               legendType="rect"
+              isAnimationActive={false}
+            />
+          )}
+          {showVelocity && velocityData.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="velocity"
+              data={clipChartData(velocityData, timeframe, ['velocity'])}
+              stroke="#9c27b0"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: compact ? 4 : 6 }}
+              yAxisId="right"
+              name="Velocity"
+              legendType="line"
               isAnimationActive={false}
             />
           )}
