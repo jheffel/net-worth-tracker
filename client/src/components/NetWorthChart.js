@@ -219,6 +219,15 @@ const [velocityData, setVelocityData] = useState([]);
         }
       });
     }
+    if (showVelocity && velocityData.length > 0) {
+      const vRows = clipChartData(velocityData, timeframe, ['velocity']);
+      vRows.forEach(row => {
+        if (typeof row.velocity === 'number') {
+          if (row.velocity < min) min = row.velocity;
+          if (row.velocity > max) max = row.velocity;
+        }
+      });
+    }
     if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
     if (min === max) return [min - 1, max + 1];
     const margin = (max - min) * 0.05;
@@ -391,12 +400,19 @@ const [velocityData, setVelocityData] = useState([]);
               timeframe,
               selectedAccounts
             );
-            // Merge __sum__ after clipping (clipChartData strips non-selected keys)
+            // Merge __sum__ and velocity after clipping (clipChartData strips non-selected keys)
             if (showSumLine && sumData.length > 0) {
               const sumMap = {};
               sumData.forEach(sr => { sumMap[sr.date] = sr.__sum__; });
               rows.forEach(row => {
                 if (sumMap[row.date] !== undefined) row.__sum__ = sumMap[row.date];
+              });
+            }
+            if (showVelocity && velocityData.length > 0) {
+              const vMap = {};
+              velocityData.forEach(vr => { vMap[vr.date] = vr.velocity; });
+              rows.forEach(row => {
+                if (vMap[row.date] !== undefined) row.velocity = vMap[row.date];
               });
             }
             return rows;
@@ -432,32 +448,30 @@ const [velocityData, setVelocityData] = useState([]);
             stroke={theme === 'light' ? '#384454' : '#aaa'}
             tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
             domain={mainYDomain}
+            ticks={(() => {
+              if (!Array.isArray(mainYDomain)) return undefined;
+              const [dMin, dMax] = mainYDomain;
+              const range = dMax - dMin;
+              const roughStep = range / 6;
+              const exp = Math.floor(Math.log10(roughStep));
+              const mant = roughStep / Math.pow(10, exp);
+              const niceStep = mant <= 1 ? Math.pow(10, exp)
+                : mant <= 2 ? 2 * Math.pow(10, exp)
+                : mant <= 5 ? 5 * Math.pow(10, exp)
+                : 10 * Math.pow(10, exp);
+              const start = Math.ceil(dMin / niceStep) * niceStep;
+              const ticks = [];
+              for (let t = start; t <= dMax + niceStep * 1e-10; t += niceStep) {
+                ticks.push(parseFloat(t.toFixed(10)));
+              }
+              if (dMin <= 0 && dMax >= 0 && !ticks.some(t => Math.abs(t) < 1e-10)) {
+                ticks.push(0);
+                ticks.sort((a, b) => a - b);
+              }
+              return ticks;
+            })()}
           />
-          {showVelocity && velocityData.length > 0 && (
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              width={56}
-              tickFormatter={v => formatCurrency(v)}
-              stroke={theme === 'light' ? '#384454' : '#aaa'}
-              tick={{ fill: theme === 'light' ? '#384454' : '#ddd', fontSize: compact ? 10 : 12 }}
-              domain={(() => {
-                let min = Infinity, max = -Infinity;
-                const rows = clipChartData(velocityData, timeframe, ['velocity']);
-                rows.forEach(row => {
-                  if (typeof row.velocity === 'number') {
-                    if (row.velocity < min) min = row.velocity;
-                    if (row.velocity > max) max = row.velocity;
-                  }
-                });
-                if (!isFinite(min) || !isFinite(max)) return ['auto', 'auto'];
-                if (min === max) return [min - 1, max + 1];
-                const maxAbs = Math.max(Math.abs(min), Math.abs(max));
-                const margin = maxAbs * 0.05 || 1;
-                return [-maxAbs - margin, maxAbs + margin];
-              })()}
-            />
-          )}
+
           <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
           <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
           {!showOnlySum && selectedAccounts.map((acct, idx) => (
@@ -490,20 +504,16 @@ const [velocityData, setVelocityData] = useState([]);
             <Line
               type="monotone"
               dataKey="velocity"
-              data={clipChartData(velocityData, timeframe, ['velocity'])}
               stroke="#9c27b0"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: compact ? 4 : 6 }}
-              yAxisId="right"
               name="Velocity"
               legendType="line"
               isAnimationActive={false}
             />
           )}
-          {showVelocity && velocityData.length > 0 ? (
-            <ReferenceLine y={0} yAxisId="right" stroke={theme === 'light' ? '#9c27b0' : '#ce93d8'} strokeWidth={1} opacity={0.6} />
-          ) : zeroInMainDomain && (
+          {zeroInMainDomain && (
             <ReferenceLine y={0} stroke={theme === 'light' ? '#384454' : '#aaa'} strokeWidth={1} opacity={0.35} />
           )}
         </LineChart>
