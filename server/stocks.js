@@ -2,14 +2,16 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 
-
 const dbFile = path.join(__dirname, '../db/stock.db');
 
-
-
+function openDb() {
+  const db = new sqlite3.Database(dbFile);
+  db.run('PRAGMA busy_timeout=5000');
+  return db;
+}
 
 function _initializeDB() {
-const db = new sqlite3.Database(dbFile);
+const db = openDb();
 db.run(`
     CREATE TABLE IF NOT EXISTS stock_prices (
     date TEXT,
@@ -27,7 +29,7 @@ db.run(`
 
 function addPrice(date, symbol, currency, price) {
 return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbFile);
+    const db = openDb();
     db.run(
     'INSERT OR REPLACE INTO stock_prices (date, symbol, currency, price) VALUES (?, ?, ?, ?)',
     [date, symbol, currency, price],
@@ -42,7 +44,7 @@ return new Promise((resolve, reject) => {
 
 function getAllPricesForSymbol(symbol) {
     return new Promise((resolve, reject) => {
-        const db = new sqlite3.Database(dbFile);
+        const db = openDb();
         db.all(
             'SELECT date, price FROM stock_prices WHERE symbol = ? ORDER BY date ASC',
             [symbol],
@@ -61,7 +63,7 @@ function getAllPricesForSymbol(symbol) {
 
 function getPrice(date, symbol) {
 return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbFile);
+    const db = openDb();
     db.get(
     'SELECT price FROM stock_prices WHERE date = ? AND symbol = ?',
     [date, symbol],
@@ -76,7 +78,7 @@ return new Promise((resolve, reject) => {
 
 function getNearestPrice(date, symbol) {
 return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbFile);
+    const db = openDb();
     db.get(
     'SELECT price FROM stock_prices WHERE date <= ? AND symbol = ? ORDER BY date DESC LIMIT 1',
     [date, symbol],

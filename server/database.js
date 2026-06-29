@@ -6,6 +6,7 @@ const fsPromises = require('fs').promises;
 const bcrypt = require('bcrypt');
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 const { convertBalance } = require('./convert');
+const { ensureStockPrices, ensureCryptoRates, ensureFxRates } = require('./fetchPrices');
 
 // ...existing code...
 
@@ -402,6 +403,47 @@ class Database {
 
         // Preload groups once
         const groups = await this.getAccountGroups(userId);
+
+        // Ensure required market data is available for the date range
+        const cryptoSet = new Set(['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'SOL', 'DOT', 'LINK', 'MATIC', 'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'ATOM', 'FIL', 'NEAR', 'APT', 'ARB', 'PEPE']);
+        const uniqueTickers = [...new Set(rows.filter(r => r.ticker).map(r => r.ticker.toUpperCase()))];
+        const uniqueCryptoCurrencies = [...new Set(rows.filter(r => cryptoSet.has(r.currency)).map(r => r.currency.toUpperCase()))];
+        const neededCurrencyPairs = new Set();
+        for (const r of rows) {
+          if (r.ticker) {
+            neededCurrencyPairs.add(`${r.currency}||CAD`);
+          }
+          if (cryptoSet.has(r.currency)) {
+            neededCurrencyPairs.add(`${r.currency}||CAD`);
+          }
+        }
+        neededCurrencyPairs.add(`CAD||${targetCurrency}`);
+        const neededDates = [];
+        for (let d = rangeStart; d <= rangeEnd; d = addDaysStr(d, 1)) {
+          neededDates.push(d);
+        }
+
+        try {
+          await Promise.all([
+            ...uniqueTickers.map(async (t) => {
+              if (cryptoSet.has(t)) {
+                await ensureCryptoRates(t, neededDates);
+              }
+              await ensureStockPrices(t, neededDates);
+            }),
+            ...uniqueCryptoCurrencies.map(async (c) => {
+              if (!uniqueTickers.includes(c)) {
+                await ensureCryptoRates(c, neededDates);
+              }
+            }),
+            ...[...neededCurrencyPairs].map(async (pair) => {
+              const [base, target] = pair.split('||');
+              if (base !== target && !cryptoSet.has(base)) await ensureFxRates(base, target, neededDates);
+            })
+          ]);
+        } catch (err) {
+          console.error('[database] Error prefetching market data:', err.message);
+        }
 
         const result = {};
 

@@ -7,13 +7,19 @@ const fs = require('fs');
 
 const DB_PATH = path.join(__dirname, '../db/exchange_rates.db');
 
+function openDb() {
+  const db = new sqlite3.Database(DB_PATH);
+  db.run('PRAGMA busy_timeout=5000');
+  return db;
+}
+
 // Initialize the database table at module load
 (function initDb() {
   const dir = path.dirname(DB_PATH);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  const db = new sqlite3.Database(DB_PATH);
+  const db = openDb();
   db.run(`CREATE TABLE IF NOT EXISTS exchange_rates (
     date TEXT,
     base_currency TEXT,
@@ -51,7 +57,7 @@ async function getRate(date, base, target) {
 function directOrNearest(date, base, target) {
   return new Promise((resolve, reject) => {
     if (base === target) return resolve(1.0);
-    const db = new sqlite3.Database(DB_PATH);
+    const db = openDb();
     db.get(
       'SELECT rate FROM exchange_rates WHERE date = ? AND base_currency = ? AND target_currency = ?',
       [date, base, target],
@@ -60,7 +66,7 @@ function directOrNearest(date, base, target) {
         if (err) return reject(err);
         if (row && row.rate) return resolve(row.rate);
         // Try reverse direction (reciprocal)
-        const dbRev = new sqlite3.Database(DB_PATH);
+        const dbRev = openDb();
         dbRev.get(
           'SELECT rate FROM exchange_rates WHERE date = ? AND base_currency = ? AND target_currency = ?',
           [date, target, base],
@@ -73,13 +79,13 @@ function directOrNearest(date, base, target) {
             }
             // Try nearest previous date
             const prevQuery = `SELECT rate FROM exchange_rates WHERE date <= ? AND base_currency = ? AND target_currency = ? ORDER BY date DESC LIMIT 1`;
-            const db2 = new sqlite3.Database(DB_PATH);
+            const db2 = openDb();
             db2.get(prevQuery, [date, base, target], (err2, row2) => {
               db2.close();
               if (err2) return reject(err2);
               if (row2 && row2.rate) return resolve(row2.rate);
               // Try reverse previous
-              const db2Rev = new sqlite3.Database(DB_PATH);
+              const db2Rev = openDb();
               db2Rev.get(prevQuery, [date, target, base], (err2r, row2r) => {
                 db2Rev.close();
                 if (err2r) return reject(err2r);
@@ -89,13 +95,13 @@ function directOrNearest(date, base, target) {
                 }
                 // Try nearest next date
                 const nextQuery = `SELECT rate FROM exchange_rates WHERE date >= ? AND base_currency = ? AND target_currency = ? ORDER BY date ASC LIMIT 1`;
-                const db3 = new sqlite3.Database(DB_PATH);
+                const db3 = openDb();
                 db3.get(nextQuery, [date, base, target], (err3, row3) => {
                   db3.close();
                   if (err3) return reject(err3);
                   if (row3 && row3.rate) return resolve(row3.rate);
                   // Try reverse next
-                  const db3Rev = new sqlite3.Database(DB_PATH);
+                  const db3Rev = openDb();
                   db3Rev.get(nextQuery, [date, target, base], (err3r, row3r) => {
                     db3Rev.close();
                     if (err3r) return reject(err3r);
