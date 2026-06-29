@@ -145,13 +145,15 @@ function Dashboard() {
 
     useEffect(() => {
         if (!loading) { setLoadingMessage(''); return; }
-        const poll = setInterval(async () => {
+        const fetchStatus = async () => {
             try {
                 const res = await axios.get(`${API_BASE}/loading-status`);
                 setLoadingMessage(res.data.message || '');
             } catch (_) { }
-        }, 1000);
-        return () => clearInterval(poll);
+        };
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 500);
+        return () => clearInterval(interval);
     }, [loading]);
 
     const loadInitialData = async () => {

@@ -6,7 +6,7 @@ const fsPromises = require('fs').promises;
 const bcrypt = require('bcrypt');
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 const { convertBalance } = require('./convert');
-const { ensureStockPrices, ensureCryptoRates, ensureFxRates, runBatch, clearStatus } = require('./fetchPrices');
+const { ensureStockPrices, ensureCryptoRates, ensureFxRates, runBatch, setStatus } = require('./fetchPrices');
 
 // ...existing code...
 
@@ -422,28 +422,27 @@ class Database {
           neededDates.push(d);
         }
 
+        setStatus('Processing market data...');
+        const tasks = [];
+        for (const t of uniqueTickers) {
+          tasks.push(() => ensureStockPrices(t, neededDates));
+          tasks.push(() => ensureCryptoRates(t, neededDates));
+        }
+        for (const c of uniqueCurrencies) {
+          if (!FIAT_CURRENCIES.has(c) && !uniqueTickers.includes(c)) {
+            tasks.push(() => ensureCryptoRates(c, neededDates));
+          }
+        }
+        for (const pair of neededCurrencyPairs) {
+          const [base, target] = pair.split('||');
+          if (base !== target && FIAT_CURRENCIES.has(base)) {
+            tasks.push(() => ensureFxRates(base, target, neededDates));
+          }
+        }
         try {
-          const tasks = [];
-          for (const t of uniqueTickers) {
-            tasks.push(() => ensureStockPrices(t, neededDates));
-            tasks.push(() => ensureCryptoRates(t, neededDates));
-          }
-          for (const c of uniqueCurrencies) {
-            if (!FIAT_CURRENCIES.has(c) && !uniqueTickers.includes(c)) {
-              tasks.push(() => ensureCryptoRates(c, neededDates));
-            }
-          }
-          for (const pair of neededCurrencyPairs) {
-            const [base, target] = pair.split('||');
-            if (base !== target && FIAT_CURRENCIES.has(base)) {
-              tasks.push(() => ensureFxRates(base, target, neededDates));
-            }
-          }
           await runBatch(tasks, 3);
         } catch (err) {
           console.error('[database] Error prefetching market data:', err.message);
-        } finally {
-          clearStatus();
         }
 
         const result = {};
