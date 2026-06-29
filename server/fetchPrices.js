@@ -6,6 +6,25 @@ const fs = require('fs');
 const STOCK_DB = path.join(__dirname, '../db/stock.db');
 const FX_DB = path.join(__dirname, '../db/exchange_rates.db');
 
+const loadingStatus = { message: '', active: false };
+
+function setStatus(msg) {
+  loadingStatus.message = msg;
+  loadingStatus.active = true;
+}
+
+function clearStatus() {
+  loadingStatus.active = false;
+  loadingStatus.message = '';
+}
+
+const EXCHANGE_SUFFIXES = ['.TO', '.V', '.L', '.DE', '.PA', '.AS', '.BR', '.MI', '.MC', '.CO', '.ST', '.OL', '.HE', '.IR', '.AX', '.NZ', '.HK', '.SI', '.TWO', '.SS', '.KS', '.NSE'];
+
+function isExchangeTicker(ticker) {
+  const upper = ticker.toUpperCase();
+  return EXCHANGE_SUFFIXES.some(s => upper.endsWith(s));
+}
+
 function openDb(dbPath) {
   const db = new sqlite3.Database(dbPath);
   db.run('PRAGMA journal_mode=WAL');
@@ -36,21 +55,54 @@ function initFxDb() {
 initStockDb();
 initFxDb();
 
+const BATCH_SIZE = 3;
+
+async function runBatch(tasks, batchSize = BATCH_SIZE) {
+  const results = [];
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize).map(t => t().catch(err => {
+      console.error('[fetchPrices] Batch task error:', err.message);
+      return null;
+    }));
+    const batchResults = await Promise.all(batch);
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+function dbRun(db, sql, params) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
 function storeStockPrices(prices) {
   return new Promise((resolve, reject) => {
     const db = openDb(STOCK_DB);
-    db.serialize(() => {
-      db.run('BEGIN TRANSACTION');
-      let errCount = 0;
-      prices.forEach(p => {
-        db.run('INSERT OR REPLACE INTO stock_prices (date, symbol, currency, price) VALUES (?, ?, ?, ?)',
-          [p.date, p.symbol, p.currency, p.price], (err) => { if (err) errCount++; });
-      });
-      db.run('COMMIT', () => {
-        db.close();
+    db.on('error', (err) => { console.error('[fetchPrices] stock DB error:', err.message); });
+    db.serialize(async () => {
+      try {
+        await dbRun(db, 'BEGIN');
+        let errCount = 0;
+        for (const p of prices) {
+          try {
+            await dbRun(db, 'INSERT OR REPLACE INTO stock_prices (date, symbol, currency, price) VALUES (?, ?, ?, ?)',
+              [p.date, p.symbol, p.currency, p.price]);
+          } catch (e) { errCount++; }
+        }
+        await dbRun(db, 'COMMIT');
         if (errCount) console.error(`[fetchPrices] ${errCount} insert errors in stock_prices`);
         resolve(prices);
-      });
+      } catch (e) {
+        try { await dbRun(db, 'ROLLBACK'); } catch (_) { }
+        console.error('[fetchPrices] Transaction error in stock_prices:', e.message);
+        resolve(prices);
+      } finally {
+        db.close();
+      }
     });
   });
 }
@@ -58,16 +110,25 @@ function storeStockPrices(prices) {
 function storeFxRates(rates) {
   return new Promise((resolve, reject) => {
     const db = openDb(FX_DB);
-    db.serialize(() => {
-      db.run('BEGIN TRANSACTION');
-      rates.forEach(r => {
-        db.run('INSERT OR REPLACE INTO exchange_rates (date, base_currency, target_currency, rate) VALUES (?, ?, ?, ?)',
-          [r.date, r.base, r.target, r.rate]);
-      });
-      db.run('COMMIT', () => {
-        db.close();
+    db.on('error', (err) => { console.error('[fetchPrices] FX DB error:', err.message); });
+    db.serialize(async () => {
+      try {
+        await dbRun(db, 'BEGIN');
+        for (const r of rates) {
+          try {
+            await dbRun(db, 'INSERT OR REPLACE INTO exchange_rates (date, base_currency, target_currency, rate) VALUES (?, ?, ?, ?)',
+              [r.date, r.base, r.target, r.rate]);
+          } catch (e) { /* skip failed rows */ }
+        }
+        await dbRun(db, 'COMMIT');
         resolve(rates);
-      });
+      } catch (e) {
+        try { await dbRun(db, 'ROLLBACK'); } catch (_) { }
+        console.error('[fetchPrices] Transaction error in exchange_rates:', e.message);
+        resolve(rates);
+      } finally {
+        db.close();
+      }
     });
   });
 }
@@ -75,6 +136,7 @@ function storeFxRates(rates) {
 function getExistingStockDates(symbol) {
   return new Promise((resolve, reject) => {
     const db = openDb(STOCK_DB);
+    db.on('error', () => { });
     db.all('SELECT date FROM stock_prices WHERE symbol = ?', [symbol], (err, rows) => {
       db.close();
       if (err) reject(err);
@@ -86,6 +148,7 @@ function getExistingStockDates(symbol) {
 function getExistingFxDates(base, target) {
   return new Promise((resolve, reject) => {
     const db = openDb(FX_DB);
+    db.on('error', () => { });
     db.all('SELECT date FROM exchange_rates WHERE base_currency = ? AND target_currency = ?', [base, target], (err, rows) => {
       db.close();
       if (err) reject(err);
@@ -96,30 +159,33 @@ function getExistingFxDates(base, target) {
 
 const YAHOO_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
-function toYahooSymbol(ticker) {
-  const crypto = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'SOL', 'DOT', 'LINK', 'MATIC', 'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'ATOM', 'FIL', 'NEAR', 'APT', 'ARB', 'PEPE'];
-  if (crypto.includes(ticker.toUpperCase())) {
-    return `${ticker.toUpperCase()}-USD`;
-  }
-  return ticker.toUpperCase();
-}
-
 async function fetchYahooPrices(ticker, startDate, endDate) {
-  const symbol = toYahooSymbol(ticker);
   const period1 = Math.floor(new Date(startDate).getTime() / 1000);
   const period2 = Math.floor(new Date(endDate).getTime() / 1000) + 86400;
 
+  const prices = await tryFetch(ticker.toUpperCase(), ticker, period1, period2);
+  if (prices.length > 0) return prices;
+
+  if (!isExchangeTicker(ticker)) {
+    const cryptoFallback = `${ticker.toUpperCase()}-USD`;
+    console.log(`[fetchPrices] No data for ${ticker}, trying as crypto: ${cryptoFallback}`);
+    return await tryFetch(cryptoFallback, ticker, period1, period2);
+  }
+  return [];
+}
+
+async function tryFetch(yahooSymbol, originalTicker, period1, period2) {
   let response;
   try {
-    response = await axios.get(`${YAHOO_CHART}/${encodeURIComponent(symbol)}`, {
+    response = await axios.get(`${YAHOO_CHART}/${encodeURIComponent(yahooSymbol)}`, {
       params: { period1, period2, interval: '1d' },
-      timeout: 15000,
+      timeout: 30000,
     });
   } catch (err) {
     if (err.response?.status === 404) {
-      console.warn(`[fetchPrices] Symbol not found on Yahoo Finance: ${symbol}`);
+      console.warn(`[fetchPrices] Symbol not found on Yahoo Finance: ${yahooSymbol}`);
     } else {
-      console.error(`[fetchPrices] Yahoo Finance error for ${symbol}:`, err.message);
+      console.error(`[fetchPrices] Yahoo Finance error for ${yahooSymbol}:`, err.message);
     }
     return [];
   }
@@ -136,7 +202,7 @@ async function fetchYahooPrices(ticker, startDate, endDate) {
   for (let i = 0; i < timestamps.length; i++) {
     const date = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
     if (closes[i] != null) {
-      prices.push({ date, symbol: ticker.toUpperCase(), currency, price: closes[i] });
+      prices.push({ date, symbol: originalTicker.toUpperCase(), currency, price: closes[i] });
     }
   }
   return prices;
@@ -149,7 +215,7 @@ async function fetchFxRates(base, target, startDate, endDate) {
   const url = `${FRANKFURTER}/${startDate}..${endDate}?from=${base}&to=${target}`;
   let response;
   try {
-    response = await axios.get(url, { timeout: 15000 });
+    response = await axios.get(url, { timeout: 30000 });
   } catch (err) {
     console.error(`[fetchPrices] Frankfurter error for ${base}->${target}:`, err.message);
     return [];
@@ -176,6 +242,7 @@ async function ensureStockPrices(ticker, neededDates) {
   missing.sort();
   const startDate = missing[0];
   const endDate = missing[missing.length - 1];
+  setStatus(`Fetching ${missing.length} days of prices for ${ticker}...`);
   console.log(`[fetchPrices] Fetching ${missing.length} missing stock prices for ${ticker} (${startDate} to ${endDate})`);
 
   const prices = await fetchYahooPrices(ticker, startDate, endDate);
@@ -194,6 +261,7 @@ async function ensureCryptoRates(ticker, neededDates) {
   missing.sort();
   const startDate = missing[0];
   const endDate = missing[missing.length - 1];
+  setStatus(`Fetching ${missing.length} days of rates for ${ticker}...`);
   console.log(`[fetchPrices] Fetching ${missing.length} missing crypto rates for ${ticker} (${startDate} to ${endDate})`);
 
   const prices = await fetchYahooPrices(ticker, startDate, endDate);
@@ -228,6 +296,7 @@ async function ensureFxRates(base, target, neededDates) {
   missing.sort();
   const startDate = missing[0];
   const endDate = missing[missing.length - 1];
+  setStatus(`Fetching FX rates ${base}->${target}...`);
   console.log(`[fetchPrices] Fetching ${missing.length} missing FX rates for ${base}->${target} (${startDate} to ${endDate})`);
 
   const rates = await fetchFxRates(base, target, startDate, endDate);
@@ -238,4 +307,4 @@ async function ensureFxRates(base, target, neededDates) {
   }
 }
 
-module.exports = { ensureStockPrices, ensureCryptoRates, ensureFxRates };
+module.exports = { ensureStockPrices, ensureCryptoRates, ensureFxRates, loadingStatus, runBatch, setStatus, clearStatus };

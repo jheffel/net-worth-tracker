@@ -5,7 +5,7 @@ import moment from 'moment';
 
 // NetWorth / Total FX-aware interpolation chart
 // Added: onRangeSelect callback for drag-to-select
-const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine, showOnlySum = false, setShowOnlySum }) => {
+const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, loadingMessage = '', theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine, showOnlySum = false, setShowOnlySum }) => {
    // --- Drag-to-select state ---
    const [dragStart, setDragStart] = useState(null); // {x, date} or null
    const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
@@ -299,7 +299,7 @@ const [sumData, setSumData] = useState([]);
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
           background: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(30,30,30,0.7)', zIndex: 10
         }}>
           <div className="spinner" style={{
@@ -309,6 +309,7 @@ const [sumData, setSumData] = useState([]);
             width: 48, height: 48,
             animation: 'spin 1s linear infinite'
           }} />
+          {loadingMessage && <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{loadingMessage}</div>}
           <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
         </div>
       )}

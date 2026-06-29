@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 
 const Database = require('./database');
 const { authenticateToken, JWT_SECRET } = require('./middleware/auth');
+const { loadingStatus } = require('./fetchPrices');
 
 
 const app = express();
@@ -317,6 +318,10 @@ app.post('/api/account-groups/:type', authenticateToken, async (req, res) => {
 });
 
 // Update main currency (Protected, but global setting currently)
+app.get('/api/loading-status', (req, res) => {
+  res.json(loadingStatus);
+});
+
 app.put('/api/currency', authenticateToken, async (req, res) => {
   try {
     const { currency } = req.body;

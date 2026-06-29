@@ -67,6 +67,7 @@ function Dashboard() {
     const [currencies, setCurrencies] = useState([]);
     const [groupMap, setGroupMap] = useState({});
     const [loading, setLoading] = useState(true);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
@@ -141,6 +142,17 @@ function Dashboard() {
             loadBalances();
         }
     }, [accounts, selectedAccounts, timeframe, startDate, endDate, mainCurrency]);
+
+    useEffect(() => {
+        if (!loading) { setLoadingMessage(''); return; }
+        const poll = setInterval(async () => {
+            try {
+                const res = await axios.get(`${API_BASE}/loading-status`);
+                setLoadingMessage(res.data.message || '');
+            } catch (_) { }
+        }, 1000);
+        return () => clearInterval(poll);
+    }, [loading]);
 
     const loadInitialData = async () => {
         try {
@@ -253,7 +265,7 @@ function Dashboard() {
         return (
             <div className="App">
                 <div className="container">
-                    <div className="loading">Loading...</div>
+                    <div className="loading">{loadingMessage || 'Loading...'}</div>
                 </div>
             </div>
         );
@@ -453,6 +465,7 @@ function Dashboard() {
                                 groupMap={groupMap}
                                 timeframe={timeframe}
                                 loading={loading}
+                                loadingMessage={loadingMessage}
                                 theme={theme}
                                 ignoreForTotal={ignoreForTotal}
                                 compact={isMobile}

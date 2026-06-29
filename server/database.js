@@ -6,7 +6,7 @@ const fsPromises = require('fs').promises;
 const bcrypt = require('bcrypt');
 const { getNearestPrice, getAllPricesForSymbol } = require('./stocks');
 const { convertBalance } = require('./convert');
-const { ensureStockPrices, ensureCryptoRates, ensureFxRates } = require('./fetchPrices');
+const { ensureStockPrices, ensureCryptoRates, ensureFxRates, runBatch, clearStatus } = require('./fetchPrices');
 
 // ...existing code...
 
@@ -405,15 +405,14 @@ class Database {
         const groups = await this.getAccountGroups(userId);
 
         // Ensure required market data is available for the date range
-        const cryptoSet = new Set(['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'SOL', 'DOT', 'LINK', 'MATIC', 'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'ATOM', 'FIL', 'NEAR', 'APT', 'ARB', 'PEPE']);
+        const FIAT_CURRENCIES = new Set(['USD', 'CAD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'HKD', 'SGD', 'KRW', 'SEK', 'NOK', 'DKK', 'INR', 'CNY', 'BRL', 'MXN', 'TWD', 'ZAR', 'TRY', 'PLN', 'THB', 'IDR', 'MYR', 'PHP', 'CZK', 'ILS', 'CLP', 'AED', 'SAR']);
         const uniqueTickers = [...new Set(rows.filter(r => r.ticker).map(r => r.ticker.toUpperCase()))];
-        const uniqueCryptoCurrencies = [...new Set(rows.filter(r => cryptoSet.has(r.currency)).map(r => r.currency.toUpperCase()))];
+        const uniqueCurrencies = [...new Set(rows.map(r => r.currency.toUpperCase()))];
         const neededCurrencyPairs = new Set();
         for (const r of rows) {
           if (r.ticker) {
             neededCurrencyPairs.add(`${r.currency}||CAD`);
-          }
-          if (cryptoSet.has(r.currency)) {
+          } else if (!FIAT_CURRENCIES.has(r.currency.toUpperCase())) {
             neededCurrencyPairs.add(`${r.currency}||CAD`);
           }
         }
@@ -424,25 +423,27 @@ class Database {
         }
 
         try {
-          await Promise.all([
-            ...uniqueTickers.map(async (t) => {
-              if (cryptoSet.has(t)) {
-                await ensureCryptoRates(t, neededDates);
-              }
-              await ensureStockPrices(t, neededDates);
-            }),
-            ...uniqueCryptoCurrencies.map(async (c) => {
-              if (!uniqueTickers.includes(c)) {
-                await ensureCryptoRates(c, neededDates);
-              }
-            }),
-            ...[...neededCurrencyPairs].map(async (pair) => {
-              const [base, target] = pair.split('||');
-              if (base !== target && !cryptoSet.has(base)) await ensureFxRates(base, target, neededDates);
-            })
-          ]);
+          const tasks = [];
+          for (const t of uniqueTickers) {
+            tasks.push(() => ensureStockPrices(t, neededDates));
+            tasks.push(() => ensureCryptoRates(t, neededDates));
+          }
+          for (const c of uniqueCurrencies) {
+            if (!FIAT_CURRENCIES.has(c) && !uniqueTickers.includes(c)) {
+              tasks.push(() => ensureCryptoRates(c, neededDates));
+            }
+          }
+          for (const pair of neededCurrencyPairs) {
+            const [base, target] = pair.split('||');
+            if (base !== target && FIAT_CURRENCIES.has(base)) {
+              tasks.push(() => ensureFxRates(base, target, neededDates));
+            }
+          }
+          await runBatch(tasks, 3);
         } catch (err) {
           console.error('[database] Error prefetching market data:', err.message);
+        } finally {
+          clearStatus();
         }
 
         const result = {};
