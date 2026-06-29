@@ -54,10 +54,25 @@ python main.py
 ## Web Version (React + Node.js)
 
 ### Requirements
-- Node.js 16+
-- npm or yarn
+- Node.js 16+ (for development)
+- Docker & Docker Compose (for containerized deployment)
 
-### Installation
+### Docker (Recommended)
+
+```bash
+docker compose up -d --build
+```
+
+Opens at **http://localhost:5000/**.
+
+- **Single container**: The backend builds the React app in a multi-stage Dockerfile and serves both the API and static files from port 5000.
+- **Data persists** across restarts via the `db_data` volume mounted at `/app/db/` (contains `finance.db`, `stock.db`, `exchange_rates.db`).
+- **No cron jobs**: Market data (stock prices, crypto prices, FX rates) is fetched lazily on-demand when you view your portfolio. Results are cached in SQLite.
+- **Free APIs** (no API keys required): Yahoo Finance for stocks & crypto, Frankfurter for FX rates.
+- **Auto-detection**: Stock vs crypto detection is automatic — no hardcoded ticker lists. Accounts with exchange suffixes (`.TO`, `.L`, `.DE`, etc.) skip the crypto fallback.
+- **Data loss on rebuild**: The volume path was previously incorrect. If you still have the old setup, remove the old volume: `docker compose down -v && docker compose up -d --build`.
+
+### Local Development
 
 1. **Install dependencies:**
 ```bash
@@ -106,11 +121,11 @@ npm start
 ### Features
 - Modern web interface with dark theme
 - Responsive design for mobile/desktop
-- Interactive Recharts visualizations
+- Interactive Recharts visualizations (line charts with velocity overlay, pie charts)
 - Drag-and-drop file upload
 - RESTful API backend
 - SQLite database with Node.js
-- Currency and ticker support
+- Currency and ticker support (free APIs, no keys needed)
 - Fast chart rendering with caching and optimized backend
 
 ## Data Format
@@ -193,9 +208,15 @@ net-worth-tracker/
 ├── exchange_rates.py       # Exchange rate handling
 ├── stocks.py               # Stock price handling
 ├── package.json            # Web app dependencies
+├── Dockerfile.backend      # Multi-stage Docker build (React + Node)
+├── docker-compose.yml      # Single-service Docker Compose config
+├── .dockerignore           # Excludes node_modules from Docker context
 ├── server/
-│   ├── index.js            # Express server
-│   └── database.js         # Database operations
+│   ├── index.js            # Express server (API + static files)
+│   ├── database.js         # Database operations
+│   ├── fetchPrices.js      # Lazy on-demand price fetcher (Yahoo, Frankfurter)
+│   ├── fx.js               # FX rate handling with caching
+│   └── stocks.js           # Stock price handling with caching
 ├── client/
 │   ├── package.json        # React dependencies
 │   ├── public/
