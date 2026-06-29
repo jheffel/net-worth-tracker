@@ -6,14 +6,15 @@ import moment from 'moment';
 // NetWorth / Total FX-aware interpolation chart
 // Added: onRangeSelect callback for drag-to-select
 const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onPointClick, startDate, endDate, groupMap = {}, timeframe, loading: parentLoading = false, theme, ignoreForTotal = [], compact = false, onRangeSelect, showSumLine = false, setShowSumLine, showOnlySum = false, setShowOnlySum }) => {
-  // --- Drag-to-select state ---
-  const [dragStart, setDragStart] = useState(null); // {x, date} or null
-  const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
-  const [isDragging, setIsDragging] = useState(false);
-  const [chartData, setChartData] = useState([]);
-  const [sumData, setSumData] = useState([]);
-  const [hoveredYs, setHoveredYs] = useState([]);
-  const containerRef = useRef(null);
+   // --- Drag-to-select state ---
+   const [dragStart, setDragStart] = useState(null); // {x, date} or null
+   const [dragEnd, setDragEnd] = useState(null); // {x, date} or null
+   const [isDragging, setIsDragging] = useState(false);
+   const [chartData, setChartData] = useState([]);
+const [sumData, setSumData] = useState([]);
+   const [hoveredYs, setHoveredYs] = useState([]);
+   const [showVelocity, setShowVelocity] = useState(false); // NEW STATE FOR VELOCITY
+   const containerRef = useRef(null);
 
   // Utility: get x position from event (mouse or touch)
   const getRelativeX = (e) => {
@@ -94,40 +95,50 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
     return [dates[0], dates[dates.length - 1]];
   };
 
-  // Utility: clip chartData to timeframe
+  // Utility: clip chartData to timeframe and calculate velocity
   const clipChartData = (data, timeframe, selectedAccounts) => {
-    if (!data.length || !timeframe || timeframe === 'ALL') return data;
-    const filteredData = data.map(row => {
+    let filteredData = data.map(row => {
       const newRow = { date: row.date };
       selectedAccounts.forEach(account => {
         if (row.hasOwnProperty(account)) {
           newRow[account] = row[account];
         }
       });
+      // Include velocity data if present
+      if (row.velocity !== undefined) {
+          newRow.velocity = row.velocity;
+      }
       return newRow;
     }).filter(row => selectedAccounts.some(account => row.hasOwnProperty(account)));
-    data = filteredData;
+
+    // Re-filter based on timeframe
+    if (!timeframe || timeframe === 'ALL') return filteredData;
+
+    let startMoment = null;
+
     if (timeframe === 'Custom') {
       if (startDate && endDate) {
-        return data.filter(row =>
+        return filteredData.filter(row =>
           moment(row.date).isSameOrAfter(moment(startDate)) &&
           moment(row.date).isSameOrBefore(moment(endDate))
         );
       }
-      return data;
+      return filteredData;
     }
-    const [_, latest] = getDateRange(data);
-    if (!latest) return data;
-    let startMoment = moment(latest);
+
+    let [_, latest] = getDateRange(filteredData);
+    if (!latest) return filteredData;
+
+    startMoment = moment(latest);
     switch (timeframe) {
       case 'Last Month': startMoment = startMoment.subtract(1, 'months'); break;
       case 'Last 3 Months': startMoment = startMoment.subtract(3, 'months'); break;
       case 'Last 6 Months': startMoment = startMoment.subtract(6, 'months'); break;
       case 'Last Year': startMoment = startMoment.subtract(1, 'years'); break;
-      case 'All Data': return data;
-      default: return data;
+      case 'All Data': return filteredData;
+      default: return filteredData;
     }
-    return data.filter(row => moment(row.date).isSameOrAfter(startMoment));
+    return filteredData.filter(row => moment(row.date).isSameOrAfter(startMoment));
   };
 
   useEffect(() => {
@@ -142,15 +153,34 @@ const NetWorthChart = ({ balances = {}, selectedAccounts = [], mainCurrency, onP
       }
       const newChartRows = Object.values(dateAccountMap).sort((a, b) => a.date.localeCompare(b.date));
       if (!cancelled) setChartData(newChartRows);
-      if (showSumLine && selectedAccounts.length > 0) {
-        const sumRows = newChartRows.map(row => {
-          let sum = selectedAccounts.reduce((acc, acct) => acc + (row[acct] || 0), 0);
-          return { date: row.date, __sum__: sum };
-        });
-        if (!cancelled) setSumData(sumRows);
-      } else {
-        if (!cancelled) setSumData([]);
+   if (showSumLine && selectedAccounts.length > 0) {
+     const sumRows = newChartRows.map(row => {
+       let sum = selectedAccounts.reduce((acc, acct) => acc + (row[acct] || 0), 0);
+       return { date: row.date, __sum__: sum };
+     });
+     if (!cancelled) setSumData(sumRows);
+   } else {
+     if (!cancelled) setSumData([]);
+   }
+  
+  // VELOCITY CALCULATION:
+  let velocityData = [];
+  for (let i = 1; i < newChartRows.length; i++) {
+    const currentDate = newChartRows[i].date;
+    const previousDate = newChartRows[i-1].date;
+    let sumDiff = 0;
+    
+    // Calculate the net change from day to day across all selected accounts
+    selectedAccounts.forEach(acct => {
+      if (typeof newChartRows[i][acct] === 'number' && typeof newChartRows[i-1][acct] === 'number') {
+        const change = newChartRows[i][acct] - newChartRows[i-1][acct];
+        sumDiff += change;
       }
+    });
+    
+    // We use the date of the second point (i) as the date marker for the velocity point
+    velocityData.push({ date: currentDate, velocity: sumDiff });
+  }
     };
     fetchData();
     return () => { cancelled = true; };

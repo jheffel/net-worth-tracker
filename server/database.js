@@ -314,9 +314,15 @@ class Database {
       if (from === to) return 1;
       const key = `${from}|${to}|${date}`;
       if (fxRateCache.has(key)) return fxRateCache.get(key);
-      const rate = await convertBalance({ balance: 1, currency: from, date }, to);
-      fxRateCache.set(key, rate);
-      return rate;
+      try {
+        const rate = await convertBalance({ balance: 1, currency: from, date }, to);
+        fxRateCache.set(key, rate);
+        return rate;
+      } catch (e) {
+        console.error(`[fx] Error converting ${from}->${to} on ${date}:`, e.message);
+        fxRateCache.set(key, null);
+        return null;
+      }
     };
 
     // Load all prices for a ticker once, then binary search the last known <= date (strictly previous)

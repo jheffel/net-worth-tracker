@@ -3,8 +3,28 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = path.join(__dirname, '../db/exchange_rates.db');
+
+// Initialize the database table at module load
+(function initDb() {
+  const dir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const db = new sqlite3.Database(DB_PATH);
+  db.run(`CREATE TABLE IF NOT EXISTS exchange_rates (
+    date TEXT,
+    base_currency TEXT,
+    target_currency TEXT,
+    rate REAL,
+    PRIMARY KEY (date, base_currency, target_currency)
+  )`, (err) => {
+    if (err) console.error('[fx] Error creating exchange_rates table:', err.message);
+    db.close();
+  });
+})();
 
 
 async function getRate(date, base, target) {
