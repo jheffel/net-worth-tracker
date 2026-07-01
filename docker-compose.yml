@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ghcr.io/jheffel/net-worth-tracker:latest
     build:
       context: .
       dockerfile: Dockerfile.backend

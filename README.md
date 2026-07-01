@@ -24,32 +24,31 @@ A comprehensive financial tracking application for monitoring net worth, investm
 - **Equity**: Mortgages, property values
 - **Summary**: Overall portfolio distribution
 
-## Python Version (PyQt6)
+## Quick Start (Docker — No Code Download)
 
-### Requirements
-- Python 3.8+
-- PyQt6
-- pandas
-- matplotlib
-- sqlite3
-
-### Installation
 ```bash
-# Install dependencies
-pip install PyQt6 pandas matplotlib
-
-# Run the application
-python main.py
+curl -O https://raw.githubusercontent.com/jheffel/net-worth-tracker/main/docker-compose.yml
+docker compose up -d
 ```
 
-### Features
-- Desktop application with native UI
-- Interactive matplotlib charts
-- SQLite database storage
-- Excel/ODS file import
-- Real-time data processing
-- Currency conversion and ticker pricing
-- Interpolated/fill logic for missing dates
+Opens at **http://localhost:5000/**.
+
+That's it. No Node.js, no Python, no cloning the repo. The pre-built image is pulled from GitHub Container Registry.
+
+### How It Works
+
+- **Single container**: The image serves both the React frontend and the Express API from port 5000.
+- **Data persists** across restarts via the `db_data` volume mounted at `/app/db/`.
+- **No cron jobs**: Market data (stock prices, crypto rates, FX) is fetched lazily on-demand when you view your portfolio and cached in SQLite.
+- **No API keys**: Uses Yahoo Finance for stocks & crypto, Frankfurter for FX rates.
+- **Auto-detection**: Stock vs crypto is automatic — no hardcoded lists needed.
+
+### Updating
+
+```bash
+docker compose pull
+docker compose up -d
+```
 
 ## Web Version (React + Node.js)
 
@@ -57,7 +56,7 @@ python main.py
 - Node.js 16+ (for development)
 - Docker & Docker Compose (for containerized deployment)
 
-### Docker (Recommended)
+### Docker (for development / local building)
 
 ```bash
 docker compose up -d --build
@@ -65,11 +64,6 @@ docker compose up -d --build
 
 Opens at **http://localhost:5000/**.
 
-- **Single container**: The backend builds the React app in a multi-stage Dockerfile and serves both the API and static files from port 5000.
-- **Data persists** across restarts via the `db_data` volume mounted at `/app/db/` (contains `finance.db`, `stock.db`, `exchange_rates.db`).
-- **No cron jobs**: Market data (stock prices, crypto prices, FX rates) is fetched lazily on-demand when you view your portfolio. Results are cached in SQLite.
-- **Free APIs** (no API keys required): Yahoo Finance for stocks & crypto, Frankfurter for FX rates.
-- **Auto-detection**: Stock vs crypto detection is automatic — no hardcoded ticker lists. Accounts with exchange suffixes (`.TO`, `.L`, `.DE`, etc.) skip the crypto fallback.
 - **Data loss on rebuild**: The volume path was previously incorrect. If you still have the old setup, remove the old volume: `docker compose down -v && docker compose up -d --build`.
 
 ### Local Development
