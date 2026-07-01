@@ -2,7 +2,54 @@
 
 ![Net Worth Tracker Screenshot](images/finance_tracker.png)
 
-A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Python (PyQt6) and Web (React + Node.js) versions.
+A comprehensive financial tracking application for monitoring net worth, investments, and financial portfolios. Available in both Web (React + Node.js) and Python (PyQt6) versions.
+
+## Quick Start
+
+<table>
+<tr>
+<th width="50%">🐳 Docker (Recommended)</th>
+<th width="50%">💻 Local Development</th>
+</tr>
+<tr>
+<td>
+
+No code download required.
+
+```bash
+curl -O https://raw.githubusercontent.com/jheffel/net-worth-tracker/main/docker-compose.yml
+docker compose up -d
+```
+
+Opens at **http://localhost:5000/**.
+
+**Update:** `docker compose pull && docker compose up -d`
+
+</td>
+<td>
+
+Requires Node.js 16+.
+
+```bash
+npm run install-all
+npm run dev
+```
+
+Opens at **http://localhost:3000/** (backend proxied).
+
+**Build for production:** `npm run build && npm start`
+
+</td>
+</tr>
+</table>
+
+### How It Works
+
+- **Single container**: The Docker image serves both the React frontend and the Express API from port 5000.
+- **Data persists** across restarts via the `db_data` volume mounted at `/app/db/`.
+- **No cron jobs**: Market data (stock prices, crypto rates, FX) is fetched lazily on-demand when you view your portfolio and cached in SQLite.
+- **No API keys**: Uses Yahoo Finance for stocks & crypto, Frankfurter for FX rates.
+- **Auto-detection**: Stock vs crypto is automatic — no hardcoded lists needed.
 
 ## Features
 
@@ -18,53 +65,17 @@ A comprehensive financial tracking application for monitoring net worth, investm
 - **Caching**: Fast repeated queries with automatic cache invalidation on data import
 
 ### Account Types
-- **Operating**: Checking, savings, credit cards
-- **Investing**: RRSP, margin accounts
-- **Crypto**: Bitcoin, Ethereum, and other cryptocurrencies
-- **Equity**: Mortgages, property values
-- **Summary**: Overall portfolio distribution
 
-## Quick Start (Docker — No Code Download)
+You can create any account types you want. Each account holds a balance with a **currency** (e.g. CAD, USD, BTC) and optionally a **ticker** for stocks/ETFs (e.g. AAPL, VEQT.TO). The system automatically looks up market prices for any currency or ticker you add.
 
-```bash
-curl -O https://raw.githubusercontent.com/jheffel/net-worth-tracker/main/docker-compose.yml
-docker compose up -d
-```
+The examples below are just sample groupings — your actual accounts depend on what you track:
 
-Opens at **http://localhost:5000/**.
-
-That's it. No Node.js, no Python, no cloning the repo. The pre-built image is pulled from GitHub Container Registry.
-
-### How It Works
-
-- **Single container**: The image serves both the React frontend and the Express API from port 5000.
-- **Data persists** across restarts via the `db_data` volume mounted at `/app/db/`.
-- **No cron jobs**: Market data (stock prices, crypto rates, FX) is fetched lazily on-demand when you view your portfolio and cached in SQLite.
-- **No API keys**: Uses Yahoo Finance for stocks & crypto, Frankfurter for FX rates.
-- **Auto-detection**: Stock vs crypto is automatic — no hardcoded lists needed.
-
-### Updating
-
-```bash
-docker compose pull
-docker compose up -d
-```
+- **Operating**: Checking, savings, credit cards (currency: CAD/USD, no ticker)
+- **Investing**: RRSP, margin accounts (currency: any, with stock/ETF tickers)
+- **Crypto**: Bitcoin, Ethereum, altcoins (currency: BTC/ETH/etc., no ticker)
+- **Equity**: Mortgages, property values (currency: CAD, no ticker)
 
 ## Web Version (React + Node.js)
-
-### Requirements
-- Node.js 16+ (for development)
-- Docker & Docker Compose (for containerized deployment)
-
-### Docker (for development / local building)
-
-```bash
-docker compose up -d --build
-```
-
-Opens at **http://localhost:5000/**.
-
-- **Data loss on rebuild**: The volume path was previously incorrect. If you still have the old setup, remove the old volume: `docker compose down -v && docker compose up -d --build`.
 
 ### Local Development
 
