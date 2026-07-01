@@ -209,7 +209,9 @@ function Dashboard() {
     };
 
     const handleSelectAll = () => {
-        setSelectedAccounts(accounts);
+        const groupNames = Object.keys(groupMap);
+        const pureAccounts = accounts.filter(a => !groupNames.includes(a));
+        setSelectedAccounts(pureAccounts);
         if (isMobile) setSidebarOpen(false);
     };
 

@@ -240,7 +240,7 @@ const AccountSelector = ({ accounts, selectedAccounts, onAccountToggle, onSelect
           color: 'var(--text-secondary)',
           border: '1px solid var(--control-border)'
         }}>
-          {selectedAccounts.length} of {accounts.length} accounts selected
+          {selectedAccounts.length} of {pureAccounts.length} accounts selected
         </div>
       )}
 

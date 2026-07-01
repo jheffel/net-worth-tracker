@@ -327,9 +327,9 @@ class Database {
     };
 
     // Load all prices for a ticker once, then binary search the last known <= date (strictly previous)
-    const tickerCache = new Map(); // ticker => { dates: string[], prices: number[] }
+    const tickerCache = new Map(); // ticker => { dates: string[], prices: number[], currencies: string[] }
     const getTickerRatePrev = async (ticker, date) => {
-      if (!ticker) return 1;
+      if (!ticker) return { rate: 1, currency: null };
       if (!tickerCache.has(ticker)) {
         const rows = await getAllPricesForSymbol(ticker);
         const sorted = (rows || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
@@ -337,20 +337,21 @@ class Database {
           ticker,
           {
             dates: sorted.map(r => String(r.date)),
-            prices: sorted.map(r => Number(r.price))
+            prices: sorted.map(r => Number(r.price)),
+            currencies: sorted.map(r => r.currency || 'USD')
           }
         );
       }
-      const { dates, prices } = tickerCache.get(ticker);
-      if (!dates.length) return 1;
+      const { dates, prices, currencies } = tickerCache.get(ticker);
+      if (!dates.length) return { rate: 1, currency: null };
       // binary search for last index <= date
       let lo = 0, hi = dates.length - 1, ans = -1;
       while (lo <= hi) {
         const mid = (lo + hi) >> 1;
         if (dates[mid] <= date) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
       }
-      if (ans < 0) return 1; // no previous price exists; avoid future lookahead
-      return prices[ans];
+      if (ans < 0) return { rate: 1, currency: null }; // no previous price exists; avoid future lookahead
+      return { rate: prices[ans], currency: currencies[ans] };
     };
 
     return new Promise((resolve, reject) => {
@@ -439,6 +440,7 @@ class Database {
             tasks.push(() => ensureFxRates(base, target, neededDates));
           }
         }
+        if (uniqueTickers.length > 0) tasks.push(() => ensureFxRates('USD', 'CAD', neededDates));
         try {
           await runBatch(tasks, 3);
         } catch (err) {
@@ -497,18 +499,20 @@ class Database {
             if (d < firstKnown) continue;
 
             // Apply ticker price if present
-            const tickerRate = ticker ? await getTickerRatePrev(ticker, d) : 1;
+            const tickerResult = ticker ? await getTickerRatePrev(ticker, d) : null;
+            const tickerRate = tickerResult ? tickerResult.rate : 1;
             let converted = balance * tickerRate;
 
             // Convert to target currency with memoized FX
-            if (currency !== targetCurrency) {
-              const toCad = await getFxRate(currency, 'CAD', d);
+            const fxCurrency = tickerResult?.currency || currency;
+            if (fxCurrency !== targetCurrency) {
+              const toCad = await getFxRate(fxCurrency, 'CAD', d);
               const cadToTarget = await getFxRate('CAD', targetCurrency, d);
               if (toCad != null && cadToTarget != null) {
                 converted = converted * toCad * cadToTarget;
               } else if (toCad != null && targetCurrency === 'CAD') {
                 converted = converted * toCad;
-              } else if (cadToTarget != null && currency === 'CAD') {
+              } else if (cadToTarget != null && fxCurrency === 'CAD') {
                 converted = converted * cadToTarget;
               } // else leave as-is (best-effort fallback)
             }

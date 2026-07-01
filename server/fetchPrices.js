@@ -163,14 +163,15 @@ async function fetchYahooPrices(ticker, startDate, endDate) {
   const period1 = Math.floor(new Date(startDate).getTime() / 1000);
   const period2 = Math.floor(new Date(endDate).getTime() / 1000) + 86400;
 
+  if (!isExchangeTicker(ticker)) {
+    const cryptoPair = `${ticker.toUpperCase()}-USD`;
+    const prices = await tryFetch(cryptoPair, ticker, period1, period2);
+    if (prices.length > 0) return prices;
+  }
+
   const prices = await tryFetch(ticker.toUpperCase(), ticker, period1, period2);
   if (prices.length > 0) return prices;
 
-  if (!isExchangeTicker(ticker)) {
-    const cryptoFallback = `${ticker.toUpperCase()}-USD`;
-    console.log(`[fetchPrices] No data for ${ticker}, trying as crypto: ${cryptoFallback}`);
-    return await tryFetch(cryptoFallback, ticker, period1, period2);
-  }
   return [];
 }
 

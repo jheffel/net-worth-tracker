@@ -46,7 +46,7 @@ function getAllPricesForSymbol(symbol) {
     return new Promise((resolve, reject) => {
         const db = openDb();
         db.all(
-            'SELECT date, price FROM stock_prices WHERE symbol = ? ORDER BY date ASC',
+            'SELECT date, price, currency FROM stock_prices WHERE symbol = ? ORDER BY date ASC',
             [symbol],
             (err, rows) => {
                 db.close();
