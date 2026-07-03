@@ -17,6 +17,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const crypto = require('crypto');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
@@ -30,6 +31,14 @@ const Database = require('./database');
 const { authenticateToken, JWT_SECRET } = require('./middleware/auth');
 const { loadingStatus } = require('./fetchPrices');
 
+function validatePassword(password) {
+  if (password.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain a digit';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain a special character';
+  return null;
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -131,28 +140,69 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-    if (!/[A-Z]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain an uppercase letter' });
-    }
-    if (!/[a-z]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain a lowercase letter' });
-    }
-    if (!/[0-9]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain a digit' });
-    }
-    if (!/[^A-Za-z0-9]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain a special character' });
-    }
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ error: pwError });
     const existing = await db.getUserByEmail(email);
     if (existing) {
       return res.status(400).json({ error: 'Email already taken' });
     }
     const hash = await bcrypt.hash(password, 10);
-    const user = await db.createUser(email, hash);
+    await db.createUser(email, hash);
     res.status(201).json({ message: 'User created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Change password while logged in
+app.put('/api/auth/password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password required' });
+    }
+    const pwError = validatePassword(newPassword);
+    if (pwError) return res.status(400).json({ error: pwError });
+    const user = await db.getUserById(req.user.id);
+    if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      return res.status(403).json({ error: 'Current password is incorrect' });
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await db.updatePassword(req.user.id, hash);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Request password reset (generates a reset token)
+app.post('/api/auth/forgot', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const user = await db.getUserByEmail(email);
+    if (!user) return res.status(400).json({ error: 'No account found with that email' });
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    await db.setResetToken(email, token, expiry);
+    res.json({ message: 'Reset token generated', token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ error: pwError });
+    const user = await db.getUserByResetToken(req.params.token);
+    if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
+    const hash = await bcrypt.hash(password, 10);
+    await db.updatePassword(user.id, hash);
+    res.json({ message: 'Password reset successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

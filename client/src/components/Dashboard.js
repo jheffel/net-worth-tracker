@@ -64,6 +64,33 @@ function Dashboard() {
     const [showSumLine, setShowSumLine] = useState(false);
     const { logout, user } = useAuth();
 
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [passwordCurrent, setPasswordCurrent] = useState('');
+    const [passwordNew, setPasswordNew] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
+    const handlePasswordChange = async () => {
+        setPasswordError('');
+        setPasswordSuccess('');
+        setPasswordLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.put(`${API_BASE}/auth/password`,
+                { currentPassword: passwordCurrent, newPassword: passwordNew },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setPasswordSuccess(res.data.message);
+            setPasswordCurrent('');
+            setPasswordNew('');
+        } catch (err) {
+            setPasswordError(err.response?.data?.error || 'Failed to update password');
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+
     // Sidebar drawer state (slides in on desktop and mobile)
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
@@ -388,6 +415,61 @@ function Dashboard() {
                                         </>
                                     )}
                                 </button>
+                            </div>
+
+                            <div className="right-sidebar-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 12px' }}>
+                                <button
+                                    className="btn"
+                                    onClick={() => setShowPasswordForm(s => !s)}
+                                    style={{ justifyContent: 'flex-start', display: 'flex', gap: '10px' }}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    <span>Change Password</span>
+                                </button>
+                                {showPasswordForm && (
+                                    <div style={{ padding: '12px', background: 'var(--control-bg, #2a2a3e)', borderRadius: 6 }}>
+                                        <div className="form-group" style={{ marginBottom: 8 }}>
+                                            <label style={{ fontSize: 13 }}>Current Password</label>
+                                            <input
+                                                type="password"
+                                                value={passwordCurrent}
+                                                onChange={e => setPasswordCurrent(e.target.value)}
+                                                style={{ width: '100%', padding: '6px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                        <div className="form-group" style={{ marginBottom: 8 }}>
+                                            <label style={{ fontSize: 13 }}>New Password</label>
+                                            <input
+                                                type="password"
+                                                value={passwordNew}
+                                                onChange={e => setPasswordNew(e.target.value)}
+                                                style={{ width: '100%', padding: '6px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                        {passwordNew && (
+                                            <div style={{ marginBottom: 8, fontSize: 12, color: 'var(--text-secondary, #aaa)' }}>
+                                                {['At least 8 chars', 'Uppercase', 'Lowercase', 'Digit', 'Special char'].map((req, i) => {
+                                                    const tests = [/^.{8,}$/, /[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
+                                                    const pass = tests[i].test(passwordNew);
+                                                    return <div key={i} style={{ color: pass ? '#4caf50' : '#aaa' }}>{pass ? '\u2713' : '\u2717'} {req}</div>;
+                                                })}
+                                            </div>
+                                        )}
+                                        <button
+                                            className="btn"
+                                            disabled={passwordLoading}
+                                            onClick={handlePasswordChange}
+                                            style={{ width: '100%', padding: '6px 0', fontSize: 13 }}
+                                        >
+                                            {passwordLoading ? 'Updating...' : 'Update Password'}
+                                        </button>
+                                        {passwordError && <div style={{ color: '#ff6b6b', fontSize: 12, marginTop: 6 }}>{passwordError}</div>}
+                                        {passwordSuccess && <div style={{ color: '#4caf50', fontSize: 12, marginTop: 6 }}>{passwordSuccess}</div>}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Import Data/Drag-and-Drop region */}

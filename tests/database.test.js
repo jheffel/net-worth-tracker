@@ -25,7 +25,9 @@ function resetTablesInDb() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          reset_token TEXT,
+          reset_token_expiry DATETIME
         )`);
         fresh.run(`CREATE TABLE IF NOT EXISTS groups (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -20,20 +20,46 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import './Auth.css';
 
+const requirements = [
+    { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+    { label: 'An uppercase letter', test: (p) => /[A-Z]/.test(p) },
+    { label: 'A lowercase letter', test: (p) => /[a-z]/.test(p) },
+    { label: 'A digit', test: (p) => /[0-9]/.test(p) },
+    { label: 'A special character', test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
 const Register = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [passwordFocused, setPasswordFocused] = useState(false);
     const { register } = useAuth();
     const navigate = useNavigate();
+
+    const validateEmail = (value) => {
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            setEmailError('Please enter a valid email address');
+        } else {
+            setEmailError('');
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
+        if (emailError) return;
+
         if (password !== confirmPassword) {
             setError("Passwords don't match");
+            return;
+        }
+
+        const missing = requirements.find(r => !r.test(password));
+        if (missing) {
+            setError(`Password must contain: ${missing.label.toLowerCase()}`);
             return;
         }
 
@@ -56,9 +82,11 @@ const Register = () => {
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                            onBlur={(e) => validateEmail(e.target.value)}
                             required
                         />
+                        {emailError && <div className="auth-error" style={{ fontSize: 12, marginTop: 4 }}>{emailError}</div>}
                     </div>
                     <div className="form-group">
                         <label>Password</label>
@@ -66,8 +94,19 @@ const Register = () => {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onFocus={() => setPasswordFocused(true)}
+                            onBlur={() => setPasswordFocused(false)}
                             required
                         />
+                        {passwordFocused && (
+                            <div style={{ marginTop: 8, padding: 8, background: 'var(--control-bg, #2a2a3e)', borderRadius: 6, fontSize: 12 }}>
+                                {requirements.map((r, i) => (
+                                    <div key={i} style={{ color: r.test(password) ? '#4caf50' : 'var(--text-secondary, #aaa)', marginBottom: 2 }}>
+                                        {r.test(password) ? '\u2713' : '\u2717'} {r.label}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="form-group">
                         <label>Confirm Password</label>

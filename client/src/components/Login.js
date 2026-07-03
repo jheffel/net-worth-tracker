@@ -67,6 +67,9 @@ const Login = () => {
                         />
                     </div>
                     <button type="submit" className="auth-btn">Log In</button>
+                    <div style={{ textAlign: 'center', marginTop: 10 }}>
+                        <Link to="/forgot" style={{ fontSize: 13, color: 'var(--accent, #4a6cf7)' }}>Forgot Password?</Link>
+                    </div>
                 </form>
                 <p className="auth-footer">
                     Don't have an account? <Link to="/register">Register</Link>

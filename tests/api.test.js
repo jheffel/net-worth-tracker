@@ -31,7 +31,9 @@ function resetTestDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          reset_token TEXT,
+          reset_token_expiry DATETIME
         )`);
         fresh.run(`CREATE TABLE IF NOT EXISTS groups (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,6 +170,113 @@ describe('Authentication', () => {
     const res = await supertest(app)
       .post('/api/auth/login')
       .send({ email: 'nobody@test.com', password: 'Testpass123!' });
+    expect(res.status).to.equal(400);
+  });
+
+  it('should change password with correct credentials', async () => {
+    const res = await supertest(app)
+      .put('/api/auth/password')
+      .set('Authorization', `Bearer ${mainToken}`)
+      .send({ currentPassword: 'Testpass123!', newPassword: 'Newerpass123!' });
+    expect(res.status).to.equal(200);
+    expect(res.body.message).to.equal('Password updated successfully');
+
+    // verify new password works
+    const loginRes = await supertest(app)
+      .post('/api/auth/login')
+      .send({ email: 'testuser@test.com', password: 'Newerpass123!' });
+    expect(loginRes.status).to.equal(200);
+
+    // restore old password
+    await supertest(app)
+      .put('/api/auth/password')
+      .set('Authorization', `Bearer ${loginRes.body.token}`)
+      .send({ currentPassword: 'Newerpass123!', newPassword: 'Testpass123!' });
+  });
+
+  it('should reject password change with wrong current password', async () => {
+    const res = await supertest(app)
+      .put('/api/auth/password')
+      .set('Authorization', `Bearer ${mainToken}`)
+      .send({ currentPassword: 'wrongpassword', newPassword: 'Newpass123!' });
+    expect(res.status).to.equal(403);
+  });
+
+  it('should reject password change without token', async () => {
+    const res = await supertest(app)
+      .put('/api/auth/password')
+      .send({ currentPassword: 'Testpass123!', newPassword: 'Newpass123!' });
+    expect(res.status).to.equal(401);
+  });
+
+  it('should generate a reset token for existing user', async () => {
+    const res = await supertest(app)
+      .post('/api/auth/forgot')
+      .send({ email: 'testuser@test.com' });
+    expect(res.status).to.equal(200);
+    expect(res.body).to.have.property('token');
+    expect(res.body.token).to.be.a('string').with.length.greaterThan(0);
+  });
+
+  it('should reject forgot for non-existent email', async () => {
+    const res = await supertest(app)
+      .post('/api/auth/forgot')
+      .send({ email: 'nobody@nowhere.com' });
+    expect(res.status).to.equal(400);
+  });
+
+  it('should reset password with valid token', async () => {
+    // get a fresh token
+    const forgotRes = await supertest(app)
+      .post('/api/auth/forgot')
+      .send({ email: 'other@test.com' });
+    const token = forgotRes.body.token;
+
+    const res = await supertest(app)
+      .post(`/api/auth/reset/${token}`)
+      .send({ password: 'ResetPass123!' });
+    expect(res.status).to.equal(200);
+    expect(res.body.message).to.equal('Password reset successfully');
+
+    // verify new password works
+    const loginRes = await supertest(app)
+      .post('/api/auth/login')
+      .send({ email: 'other@test.com', password: 'ResetPass123!' });
+    expect(loginRes.status).to.equal(200);
+
+    // restore original password
+    const token2 = (await supertest(app)
+      .post('/api/auth/forgot')
+      .send({ email: 'other@test.com' })).body.token;
+    await supertest(app)
+      .post(`/api/auth/reset/${token2}`)
+      .send({ password: 'Password456!' });
+  });
+
+  it('should reject reset with invalid token', async () => {
+    const res = await supertest(app)
+      .post('/api/auth/reset/invalidtoken123')
+      .send({ password: 'Newpass123!' });
+    expect(res.status).to.equal(400);
+  });
+
+  it('should reject weak password on password change', async () => {
+    const res = await supertest(app)
+      .put('/api/auth/password')
+      .set('Authorization', `Bearer ${mainToken}`)
+      .send({ currentPassword: 'Testpass123!', newPassword: 'weak' });
+    expect(res.status).to.equal(400);
+  });
+
+  it('should reject weak password on reset', async () => {
+    const forgotRes = await supertest(app)
+      .post('/api/auth/forgot')
+      .send({ email: 'testuser@test.com' });
+    const token = forgotRes.body.token;
+
+    const res = await supertest(app)
+      .post(`/api/auth/reset/${token}`)
+      .send({ password: 'weak' });
     expect(res.status).to.equal(400);
   });
 });

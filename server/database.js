@@ -88,7 +88,9 @@ class Database {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          reset_token TEXT,
+          reset_token_expiry DATETIME
         )
       `);
 
@@ -178,11 +180,12 @@ class Database {
   }
 
   checkAndMigrateSchema() {
-    // Check if email column exists (migration from username)
     this.db.all("PRAGMA table_info(users)", (err, columns) => {
       if (err) return console.error('Error checking users schema:', err);
       const hasEmail = columns.some(c => c.name === 'email');
       const hasUsername = columns.some(c => c.name === 'username');
+      const hasResetToken = columns.some(c => c.name === 'reset_token');
+      const hasResetExpiry = columns.some(c => c.name === 'reset_token_expiry');
 
       if (!hasEmail && hasUsername) {
         console.log('Migrating users table: Renaming username to email...');
@@ -190,9 +193,22 @@ class Database {
           if (renameErr) console.error('Error renaming username to email:', renameErr);
         });
       }
+
+      if (!hasResetToken) {
+        console.log('Migrating users table: Adding reset_token column...');
+        this.db.run("ALTER TABLE users ADD COLUMN reset_token TEXT", (alterErr) => {
+          if (alterErr) console.error('Error adding reset_token:', alterErr);
+        });
+      }
+
+      if (!hasResetExpiry) {
+        console.log('Migrating users table: Adding reset_token_expiry column...');
+        this.db.run("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME", (alterErr) => {
+          if (alterErr) console.error('Error adding reset_token_expiry:', alterErr);
+        });
+      }
     });
 
-    // Check if user_id column exists
     this.db.all("PRAGMA table_info(account_balances)", async (err, rows) => {
       if (err) return console.error('Error checking schema:', err);
 
@@ -205,7 +221,6 @@ class Database {
           await this.migrateOrphanData();
         });
       } else {
-        // Even if column exists, check for NULL user_ids
         await this.migrateOrphanData();
       }
     });
@@ -267,7 +282,34 @@ class Database {
 
   async getUserById(id) {
     return new Promise((resolve, reject) => {
-      this.db.get('SELECT id, email, created_at FROM users WHERE id = ?', [id], (err, row) => {
+      this.db.get('SELECT id, email, created_at, password_hash FROM users WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
+
+  async updatePassword(id, passwordHash) {
+    return new Promise((resolve, reject) => {
+      this.db.run('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?', [passwordHash, id], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  async setResetToken(email, token, expiry) {
+    return new Promise((resolve, reject) => {
+      this.db.run('UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?', [token, expiry, email], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  async getUserByResetToken(token) {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT id, email FROM users WHERE reset_token = ? AND reset_token_expiry > datetime(\'now\')', [token], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
