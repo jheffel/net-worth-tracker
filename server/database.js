@@ -699,11 +699,8 @@ class Database {
     let all = [];
     for (const file of currencyFiles) {
       try {
-        // console.log('[getAvailableCurrencies] Reading:', file);
         const txt = await fsPromises.readFile(file, 'utf8');
-        // console.log(`[getAvailableCurrencies] Content of ${file}:`, JSON.stringify(txt));
         const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        // console.log(`[getAvailableCurrencies] Parsed lines:`, lines);
         all = all.concat(lines);
       } catch (e) {
         console.error(`[getAvailableCurrencies] Error reading ${file}:`, e.message);
@@ -711,7 +708,6 @@ class Database {
     }
     // Remove duplicates and empty
     const result = Array.from(new Set(all)).filter(Boolean);
-    // console.log('[getAvailableCurrencies] Final result:', result);
     return result;
   }
 

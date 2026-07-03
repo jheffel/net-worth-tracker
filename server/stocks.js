@@ -125,4 +125,4 @@ return new Promise((resolve, reject) => {
 }
 
 
-module.exports = { getPrice, addPrice, getPrice, getNearestPrice, getAllPricesForSymbol };
+module.exports = { getPrice, addPrice, getNearestPrice, getAllPricesForSymbol };

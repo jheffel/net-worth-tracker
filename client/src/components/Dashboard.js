@@ -201,7 +201,6 @@ function Dashboard() {
                 accounts: accounts, // use the full accounts list
                 currency: currencyOverride || mainCurrency
             };
-            // console.log('Requesting balances with params:', params);
             const response = await axios.get(`${API_BASE}/balances`, { params });
             setBalances(response.data);
         } catch (err) {

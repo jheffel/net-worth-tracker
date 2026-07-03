@@ -29,35 +29,6 @@ const PieCharts = ({ balances, groupMap, selectedDate, mainCurrency, theme, comp
   const colorsLight = ['#3557b7','#1f8f5f','#c28a00','#d45800','#b83232','#2b9b2b','#2e5fa8','#d1a500','#a93ba9','#2796a9'];
   const colors = theme === 'light' ? colorsLight : colorsDark;
 
-/*
-  // Helper: interpolate value for a given date from accountData
-  const interpolateValue = (accountData, date) => {
-    if (!accountData) return 0;
-    const dates = Object.keys(accountData).sort();
-    if (dates.length === 0) return 0;
-    if (accountData[date]) return accountData[date].balance;
-    let prev = null, next = null;
-    for (let i = 0; i < dates.length; i++) {
-      if (dates[i] < date) prev = dates[i];
-      if (dates[i] > date) { next = dates[i]; break; }
-      if (dates[i] === date) { prev = dates[i]; next = dates[i]; break; }
-    }
-    if (prev && next && prev !== next) {
-      const prevTime = moment(prev).valueOf();
-      const nextTime = moment(next).valueOf();
-      const currentTime = moment(date).valueOf();
-      const ratio = (currentTime - prevTime) / (nextTime - prevTime);
-      return accountData[prev].balance + (accountData[next].balance - accountData[prev].balance) * ratio;
-    } else if (prev && !next) {
-      return accountData[prev].balance;
-    } else if (!prev && next) {
-      // Do not extend backward
-      return 0;
-    }
-    return 0;
-  };
-*/
-
   // Build pie data for each group in groupMap, sorted alphabetically
   const groupNames = Object.keys(groupMap).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const groupPieData = groupNames.map(groupName => {
