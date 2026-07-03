@@ -559,42 +559,35 @@ class Database {
   }
 
   async getPieChartData(userId, type, date) {
-    return new Promise((resolve, reject) => {
-      // Get account groups based on type
-      // Use an internal promise wrapper since getAccountGroups is async
-      this.getAccountGroups(userId).then(groups => {
-        const accountGroups = groups[type] || [];
+    try {
+      const groups = await this.getAccountGroups(userId);
+      const accountGroups = groups[type] || [];
 
-        if (!accountGroups || accountGroups.length === 0) {
-          resolve({ labels: [], data: [], total: 0 });
-          return;
+      if (!accountGroups || accountGroups.length === 0) {
+        return { labels: [], data: [], total: 0 };
+      }
+
+      const targetCurrency = await this.getMainCurrency();
+      const balances = await this.getAccountBalances(userId, date, date, accountGroups, targetCurrency);
+
+      const labels = [];
+      const data = [];
+      let signedTotal = 0;
+
+      for (const account of accountGroups) {
+        const value = balances[account] ? balances[account][date] : undefined;
+        if (typeof value === 'number' && value !== 0) {
+          labels.push(account);
+          data.push(Math.abs(value));
+          signedTotal += value;
         }
+      }
 
-        const placeholders = accountGroups.map(() => '?').join(',');
-        const query = `
-              SELECT account_name, balance, currency 
-              FROM account_balances 
-              WHERE account_name IN (${placeholders}) 
-              AND date = ?
-              AND balance != 0
-              AND user_id = ?
-            `;
-
-        // Add date and user_id to params
-        const params = [...accountGroups, date, userId];
-
-        this.db.all(query, params, (err, rows) => {
-          if (err) reject(err);
-          else {
-            const labels = rows.map(row => row.account_name);
-            const data = rows.map(row => Math.abs(row.balance));
-            const total = data.reduce((sum, val) => sum + val, 0);
-
-            resolve({ labels, data, total });
-          }
-        });
-      }).catch(reject);
-    });
+      const total = data.reduce((sum, v) => sum + v, 0);
+      return { labels, data, total };
+    } catch (err) {
+      throw err;
+    }
   }
 
   getAccountGroupsByType(type) {
