@@ -396,7 +396,7 @@ app.get('/api/net-worth', authenticateToken, async (req, res) => {
 
 // Serve React app for any other routes (only in production)
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.get('{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build/index.html'));
   });
 }

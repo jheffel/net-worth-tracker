@@ -274,7 +274,7 @@ describe('Account Groups API', () => {
 describe('Balances API', () => {
   it('should return balances for selected accounts', async () => {
     const res = await supertest(app)
-      .get('/api/balances?accounts[]=Chequing&startDate=2024-01-01&endDate=2024-03-01')
+      .get('/api/balances?accounts=Chequing&accounts=Savings&startDate=2024-01-01&endDate=2024-03-01')
       .set('Authorization', `Bearer ${mainToken}`);
     expect(res.status).to.equal(200);
     expect(res.body).to.have.property('Chequing');
@@ -282,7 +282,7 @@ describe('Balances API', () => {
 
   it('should return empty object for non-existent account', async () => {
     const res = await supertest(app)
-      .get('/api/balances?accounts[]=Nonexistent')
+      .get('/api/balances?accounts=Nonexistent&startDate=2024-01-01&endDate=2024-01-01')
       .set('Authorization', `Bearer ${mainToken}`);
     expect(res.status).to.equal(200);
     expect(res.body).to.deep.equal({});
