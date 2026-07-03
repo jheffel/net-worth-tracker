@@ -21,6 +21,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -35,6 +36,7 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -49,6 +51,7 @@ function App() {
         />
       </Routes>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

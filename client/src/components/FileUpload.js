@@ -15,12 +15,30 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const FileUpload = ({ onFileUpload }) => {
-  const onDrop = useCallback((acceptedFiles) => {
+  const [fileError, setFileError] = useState(null);
+
+  const onDrop = useCallback((acceptedFiles, fileRejections) => {
+    setFileError(null);
+    if (fileRejections.length > 0) {
+      const rejection = fileRejections[0];
+      if (rejection.errors.some(e => e.code === 'file-too-large')) {
+        setFileError('File is too large. Maximum size is 10 MB.');
+      } else {
+        setFileError('Invalid file type.');
+      }
+      return;
+    }
     if (acceptedFiles.length > 0) {
+      if (acceptedFiles[0].size > MAX_FILE_SIZE) {
+        setFileError('File is too large. Maximum size is 10 MB.');
+        return;
+      }
       onFileUpload(acceptedFiles[0]);
     }
   }, [onFileUpload]);
@@ -33,7 +51,8 @@ const FileUpload = ({ onFileUpload }) => {
       'application/vnd.oasis.opendocument.spreadsheet': ['.ods'],
       'text/csv': ['.csv']
     },
-    multiple: false
+    multiple: false,
+    maxSize: MAX_FILE_SIZE
   });
 
   return (
@@ -57,7 +76,7 @@ const FileUpload = ({ onFileUpload }) => {
               Drag and drop an Excel/ODS file here, or click to select
             </p>
             <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
-              Supported formats: .xlsx, .xls, .ods, .csv
+              Supported formats: .xlsx, .xls, .ods, .csv (max 10 MB)
             </p>
             <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#888' }}>
               Each sheet should contain: Account, Date, Balance, Currency, Ticker
@@ -65,6 +84,11 @@ const FileUpload = ({ onFileUpload }) => {
           </div>
         )}
       </div>
+      {fileError && (
+        <p style={{ margin: '10px 0 0 0', fontSize: '13px', color: '#ff6b6b' }}>
+          {fileError}
+        </p>
+      )}
     </div>
   );
 };

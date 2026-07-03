@@ -82,8 +82,8 @@ before(async function () {
   await resetTestDatabase();
   const db = testDb();
 
-  const hash1 = await bcrypt.hash('testpass123', 10);
-  const hash2 = await bcrypt.hash('password456', 10);
+  const hash1 = await bcrypt.hash('Testpass123!', 10);
+  const hash2 = await bcrypt.hash('Password456!', 10);
 
   const user1 = await db.createUser('testuser@test.com', hash1);
   await db.createUser('other@test.com', hash2);
@@ -108,7 +108,7 @@ before(async function () {
 
   const loginRes = await supertest(app)
     .post('/api/auth/login')
-    .send({ email: 'testuser@test.com', password: 'testpass123' });
+    .send({ email: 'testuser@test.com', password: 'Testpass123!' });
   mainToken = loginRes.body.token;
 });
 
@@ -120,7 +120,7 @@ describe('Authentication', () => {
   it('should register a new user', async () => {
     const res = await supertest(app)
       .post('/api/auth/register')
-      .send({ email: 'newuser@test.com', password: 'newpass123' });
+      .send({ email: 'newuser@test.com', password: 'Newpass123!' });
     expect(res.status).to.equal(201);
     expect(res.body.message).to.equal('User created');
   });
@@ -128,7 +128,7 @@ describe('Authentication', () => {
   it('should reject duplicate email registration', async () => {
     const res = await supertest(app)
       .post('/api/auth/register')
-      .send({ email: 'testuser@test.com', password: 'testpass123' });
+      .send({ email: 'testuser@test.com', password: 'Testpass123!' });
     expect(res.status).to.equal(400);
     expect(res.body).to.have.property('error');
   });
@@ -150,7 +150,7 @@ describe('Authentication', () => {
   it('should login with correct credentials', async () => {
     const res = await supertest(app)
       .post('/api/auth/login')
-      .send({ email: 'testuser@test.com', password: 'testpass123' });
+      .send({ email: 'testuser@test.com', password: 'Testpass123!' });
     expect(res.status).to.equal(200);
     expect(res.body).to.have.property('token');
     expect(res.body.email).to.equal('testuser@test.com');
@@ -167,7 +167,7 @@ describe('Authentication', () => {
   it('should reject login with non-existent user', async () => {
     const res = await supertest(app)
       .post('/api/auth/login')
-      .send({ email: 'nobody@test.com', password: 'testpass123' });
+      .send({ email: 'nobody@test.com', password: 'Testpass123!' });
     expect(res.status).to.equal(400);
   });
 });
@@ -218,12 +218,12 @@ describe('Accounts API', () => {
   it('should return empty array for user with no data', async () => {
     const registerRes = await supertest(app)
       .post('/api/auth/register')
-      .send({ email: 'empty@test.com', password: 'emptypass123' });
+      .send({ email: 'empty@test.com', password: 'Emptypass123!' });
     expect(registerRes.status).to.equal(201);
 
     const loginRes = await supertest(app)
       .post('/api/auth/login')
-      .send({ email: 'empty@test.com', password: 'emptypass123' });
+      .send({ email: 'empty@test.com', password: 'Emptypass123!' });
 
     const res = await supertest(app)
       .get('/api/accounts')

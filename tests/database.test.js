@@ -73,7 +73,7 @@ before(async function () {
   this.timeout(30000);
   await resetTablesInDb();
   db = new Database();
-  const hash = await bcrypt.hash('testpass', 10);
+  const hash = await bcrypt.hash('Testpass1!', 10);
   const user = await db.createUser('pietest@test.com', hash);
   userId = user.id;
 
