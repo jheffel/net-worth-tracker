@@ -20,7 +20,7 @@
 // Small helper: wait a bit then open the dev app at the correct path
 const { exec } = require('child_process');
 
-const url = process.env.DEV_URL || 'http://localhost:3000/net-worth-tracker';
+const url = process.env.DEV_URL || 'http://localhost:3000';
 const delay = parseInt(process.env.DEV_OPEN_DELAY || '2500', 10);
 
 setTimeout(() => {

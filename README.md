@@ -104,17 +104,17 @@ npm run client    # Frontend on port 3000
 ```
 
 Notes about `npm run dev`:
-- The root `dev` script runs the server and client concurrently and now attempts to open your browser at the app path `/net-worth-tracker` (e.g. http://localhost:3000/net-worth-tracker). This is handled by a small helper script and uses a short delay to let the client compile.
-- If the browser opens too early or you want a different path, set these environment variables prior to running `npm run dev`:
+- The root `dev` script runs the server and client concurrently and opens your browser at `http://localhost:3000`.
+- If the browser opens too early, set `DEV_OPEN_DELAY` before running:
 
 PowerShell example:
 ```powershell
-$env:DEV_OPEN_DELAY=6000; $env:DEV_URL='http://localhost:3000/net-worth-tracker'; npm run dev
+$env:DEV_OPEN_DELAY=6000; npm run dev
 ```
 
 On macOS / Linux:
 ```bash
-DEV_OPEN_DELAY=6000 DEV_URL='http://localhost:3000/net-worth-tracker' npm run dev
+DEV_OPEN_DELAY=6000 npm run dev
 ```
 
 3. **Build for production:**
@@ -221,14 +221,22 @@ net-worth-tracker/
 │   ├── database.js         # Database operations
 │   ├── fetchPrices.js      # Lazy on-demand price fetcher (Yahoo, Frankfurter)
 │   ├── fx.js               # FX rate handling with caching
-│   └── stocks.js           # Stock price handling with caching
+│   ├── stocks.js           # Stock price handling with caching
+│   └── middleware/
+│       └── auth.js         # JWT authentication middleware
 ├── client/
 │   ├── package.json        # React dependencies
 │   ├── public/
 │   └── src/
 │       ├── App.js          # Main React component
+│       ├── index.js        # React entry point
+│       ├── context/
+│       │   └── AuthContext.js  # Authentication context
+│       ├── utils/
+│       │   └── fx.js       # Client-side FX utilities
 │       ├── components/     # React components
 │       └── index.css       # Styling
+├── scripts/                # Utility scripts
 └── config/                 # Configuration files
 ```
 
@@ -242,4 +250,8 @@ net-worth-tracker/
 
 ## License
 
-MIT License - see LICENSE file for details.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+**Commercial use:** If you wish to use this software in a proprietary commercial product or hosted service without complying with the AGPL's source-code disclosure requirements, a commercial license is available. Contact the author for details.
+
+See the [LICENSE](LICENSE) file for the full AGPLv3 text.
