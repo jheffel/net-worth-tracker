@@ -33,6 +33,7 @@ const [velocityData, setVelocityData] = useState([]);
    const [hoveredYs, setHoveredYs] = useState([]);
    const [showVelocity, setShowVelocity] = useState(false);
    const [velocityWindow, setVelocityWindow] = useState(1);
+   const [showOnlyVelocity, setShowOnlyVelocity] = useState(false);
    const containerRef = useRef(null);
 
   // Utility: get x position from event (mouse or touch)
@@ -219,15 +220,17 @@ const [velocityData, setVelocityData] = useState([]);
       timeframe,
       selectedAccounts
     );
-    data.forEach(row => {
-      selectedAccounts.forEach(acct => {
-        if (typeof row[acct] === 'number') {
-          if (row[acct] < min) min = row[acct];
-          if (row[acct] > max) max = row[acct];
-        }
+    if (!showOnlyVelocity && !showOnlySum) {
+      data.forEach(row => {
+        selectedAccounts.forEach(acct => {
+          if (typeof row[acct] === 'number') {
+            if (row[acct] < min) min = row[acct];
+            if (row[acct] > max) max = row[acct];
+          }
+        });
       });
-    });
-    if (showSumLine && sumData.length > 0) {
+    }
+    if (showSumLine && sumData.length > 0 && !showOnlyVelocity) {
       const sumRows = clipChartData(sumData, timeframe, ['__sum__']);
       sumRows.forEach(row => {
         if (typeof row.__sum__ === 'number') {
@@ -236,7 +239,7 @@ const [velocityData, setVelocityData] = useState([]);
         }
       });
     }
-    if (showVelocity && velocityData.length > 0) {
+    if (showVelocity && velocityData.length > 0 && !showOnlySum) {
       const vRows = clipChartData(velocityData, timeframe, ['velocity']);
       vRows.forEach(row => {
         if (typeof row.velocity === 'number') {
@@ -333,20 +336,24 @@ const [velocityData, setVelocityData] = useState([]);
     >
       {/* Toggle for plotting sum of selected accounts and show only sum */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, justifyContent: 'flex-end' }}>
-        <input
-          type="checkbox"
-          id="show-sum-line"
-          checked={!!showSumLine}
-          onChange={e => {
-            setShowSumLine?.(e.target.checked);
-            if (!e.target.checked) setShowOnlySum?.(false);
-          }}
-          style={{ width: 18, height: 18 }}
-        />
-        <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
-          Plot sum of selected accounts
-        </label>
-        {showSumLine && typeof showOnlySum !== 'undefined' && typeof setShowOnlySum === 'function' && (
+        {!showOnlyVelocity && (
+          <input
+            type="checkbox"
+            id="show-sum-line"
+            checked={!!showSumLine}
+            onChange={e => {
+              setShowSumLine?.(e.target.checked);
+              if (!e.target.checked) setShowOnlySum?.(false);
+            }}
+            style={{ width: 18, height: 18 }}
+          />
+        )}
+        {!showOnlyVelocity && (
+          <label htmlFor="show-sum-line" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
+            Plot sum of selected accounts
+          </label>
+        )}
+        {showSumLine && typeof showOnlySum !== 'undefined' && typeof setShowOnlySum === 'function' && !showOnlyVelocity && (
           <>
             <input
               type="checkbox"
@@ -360,18 +367,35 @@ const [velocityData, setVelocityData] = useState([]);
             </label>
           </>
         )}
-        <input
-          type="checkbox"
-          id="show-velocity"
-          checked={showVelocity}
-          onChange={e => setShowVelocity(e.target.checked)}
-          style={{ width: 18, height: 18 }}
-        />
-        <label htmlFor="show-velocity" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none' }}>
-          Velocity
-        </label>
-        {showVelocity && (
+        {!showOnlySum && (
           <>
+            <input
+              type="checkbox"
+              id="show-velocity"
+              checked={showVelocity}
+              onChange={e => {
+                setShowVelocity(e.target.checked);
+                if (!e.target.checked) setShowOnlyVelocity(false);
+              }}
+              style={{ width: 18, height: 18 }}
+            />
+            <label htmlFor="show-velocity" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none' }}>
+              Velocity
+            </label>
+          </>
+        )}
+        {showVelocity && !showOnlySum && (
+          <>
+            <input
+              type="checkbox"
+              id="show-only-velocity"
+              checked={showOnlyVelocity}
+              onChange={e => setShowOnlyVelocity(e.target.checked)}
+              style={{ width: 18, height: 18, marginLeft: 8 }}
+            />
+            <label htmlFor="show-only-velocity" style={{ fontSize: 14, color: 'var(--text-primary)', userSelect: 'none', marginRight: 8 }}>
+              Show only velocity
+            </label>
             <input
               type="range"
               min="1"
@@ -425,7 +449,7 @@ const [velocityData, setVelocityData] = useState([]);
                 if (sumMap[row.date] !== undefined) row.__sum__ = sumMap[row.date];
               });
             }
-            if (showVelocity && velocityData.length > 0) {
+if (showVelocity && velocityData.length > 0 && !showOnlySum) {
               const vMap = {};
               velocityData.forEach(vr => { vMap[vr.date] = vr.velocity; });
               rows.forEach(row => {
@@ -491,7 +515,7 @@ const [velocityData, setVelocityData] = useState([]);
 
           <Tooltip content={<CustomTooltip />} wrapperStyle={compact ? { fontSize: '0.85em', padding: 2 } : {}} />
           <Legend wrapperStyle={{ color: 'var(--text-primary)', fontSize: compact ? '0.85em' : undefined }} />
-          {!showOnlySum && selectedAccounts.map((acct, idx) => (
+          {!showOnlySum && !showOnlyVelocity && selectedAccounts.map((acct, idx) => (
             <Line
               key={acct}
               type="monotone"
@@ -504,7 +528,7 @@ const [velocityData, setVelocityData] = useState([]);
               activeDot={{ r: compact ? 4 : 6 }}
             />
           ))}
-          {showSumLine && sumData.length > 0 && (
+          {showSumLine && sumData.length > 0 && !showOnlyVelocity && (
             <Line
               type="monotone"
               dataKey="__sum__"
@@ -517,7 +541,7 @@ const [velocityData, setVelocityData] = useState([]);
               isAnimationActive={false}
             />
           )}
-          {showVelocity && velocityData.length > 0 && (
+          {showVelocity && velocityData.length > 0 && !showOnlySum && (
             <Line
               type="monotone"
               dataKey="velocity"
