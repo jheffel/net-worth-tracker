@@ -108,10 +108,6 @@ app.delete('/api/account-groups/:type', authenticateToken, async (req, res) => {
   }
 });
 
-// Serve config directory statically for all environments (if public config needed)
-// Note: Config files might contain sensitive info? Assuming public lists like currency lists are fine.
-app.use('/config', express.static(path.join(__dirname, '../config')));
-
 // Only serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));

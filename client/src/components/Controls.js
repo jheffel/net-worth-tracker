@@ -68,7 +68,7 @@ const Controls = ({
                 newStart = moment().subtract(1, 'month').format('YYYY-MM-DD');
                 newEnd = moment().format('YYYY-MM-DD');
               } else if (value === 'All Data') {
-                newStart = '2020-01-01';
+                newStart = '1970-01-01';
                 newEnd = moment().format('YYYY-MM-DD');
               }
               if (value !== 'Custom') {

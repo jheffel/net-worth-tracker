@@ -193,6 +193,18 @@ describe('Protected Routes', () => {
   });
 });
 
+describe('Security', () => {
+  it('should not expose config directory publicly', async () => {
+    const res = await supertest(app).get('/config/operating.txt');
+    expect(res.status).to.be.oneOf([404, 301, 302]);
+  });
+
+  it('should not expose config directory listing', async () => {
+    const res = await supertest(app).get('/config');
+    expect(res.status).to.be.oneOf([404, 301, 302]);
+  });
+});
+
 describe('Accounts API', () => {
   it('should return accounts for authenticated user', async () => {
     const res = await supertest(app)

@@ -112,7 +112,7 @@ class stockTicker:
 
 
     def loadStockList(self):
-        fpath = "config/stock.txt"
+        fpath = "config/available_stock.txt"
         if os.path.exists(fpath):
             stockList = []
             with open(fpath, "r") as file:
