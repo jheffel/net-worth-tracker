@@ -9,3 +9,4 @@ example_data
 node_modules/
 client/node_modules/
 TODO.md
+.env

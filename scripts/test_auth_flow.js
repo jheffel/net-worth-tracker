@@ -23,13 +23,13 @@ const API_URL = 'http://localhost:5000/api';
 async function testAuth() {
     console.log('Starting Auth Test...');
 
-    const username = `testuser_${Date.now()}`;
+    const email = `testuser_${Date.now()}@test.com`;
     const password = 'password123';
 
     // 1. Register
     try {
         console.log('1. Testing Registration...');
-        const regRes = await axios.post(`${API_URL}/auth/register`, { username, password });
+        const regRes = await axios.post(`${API_URL}/auth/register`, { email, password });
         assert.strictEqual(regRes.status, 201, 'Registration should return 201');
         console.log('   Registration successful.');
     } catch (err) {
@@ -41,7 +41,7 @@ async function testAuth() {
     let token;
     try {
         console.log('2. Testing Login...');
-        const loginRes = await axios.post(`${API_URL}/auth/login`, { username, password });
+        const loginRes = await axios.post(`${API_URL}/auth/login`, { email, password });
         assert.strictEqual(loginRes.status, 200, 'Login should return 200');
         assert.ok(loginRes.data.token, 'Login should return a token');
         token = loginRes.data.token;

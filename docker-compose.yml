@@ -8,8 +8,11 @@ services:
       - "5000:5000"
     environment:
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5000}
     volumes:
       - db_data:/app/db/
+    restart: unless-stopped
 
 volumes:
   db_data:

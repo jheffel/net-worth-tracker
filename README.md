@@ -18,6 +18,9 @@ No code download required.
 
 ```bash
 curl -O https://raw.githubusercontent.com/jheffel/net-worth-tracker/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/jheffel/net-worth-tracker/main/.env.example
+cp .env.example .env
+# Edit .env and set a strong JWT_SECRET (e.g., openssl rand -hex 32)
 docker compose up -d
 ```
 

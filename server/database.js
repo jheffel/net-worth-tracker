@@ -60,7 +60,7 @@ class Database {
   }
   constructor() {
     this._accountBalancesCache = new Map();
-    this.dbPath = path.join(__dirname, '../db/finance.db');
+    this.dbPath = process.env.TEST_DB_PATH || path.join(__dirname, '../db/finance.db');
     this.ensureDataDirectory();
     this.init();
   }

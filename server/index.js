@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -23,6 +24,7 @@ const xlsx = require('xlsx');
 const moment = require('moment');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const Database = require('./database');
 const { authenticateToken, JWT_SECRET } = require('./middleware/auth');
@@ -32,9 +34,40 @@ const { loadingStatus } = require('./fetchPrices');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS middleware (must be before all routes)
+// Trust proxy for correct client IP behind reverse proxy (Docker, nginx, etc.)
+app.set('trust proxy', 1);
+
+// Global rate limiter: 100 requests per minute per IP
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+// Auth-specific rate limiters
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many registration attempts. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// CORS middleware
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
@@ -96,7 +129,7 @@ const upload = multer({ storage: storage });
 
 // --- Auth Routes ---
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -114,7 +147,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await db.getUserByEmail(email);
@@ -207,13 +240,15 @@ app.get('/api/accounts', authenticateToken, async (req, res) => {
 // Get account balances for a specific date range
 app.get('/api/balances', authenticateToken, async (req, res) => {
   try {
-    const { startDate, endDate, accounts, currency } = req.query;
+    let { startDate, endDate, accounts, currency } = req.query;
+    // Normalize accounts to array (Express can return string for single-value queries)
+    if (accounts && !Array.isArray(accounts)) {
+      accounts = [accounts];
+    }
     let targetCurrency = currency;
     if (!targetCurrency) {
-      // If not specified, get main currency from DB
       targetCurrency = await db.getMainCurrency();
     }
-    // Pass user ID
     const balances = await db.getAccountBalances(req.user.id, startDate, endDate, accounts, targetCurrency);
     res.json(balances);
   } catch (error) {
@@ -352,7 +387,10 @@ app.put('/api/currency', authenticateToken, async (req, res) => {
 // Get net worth summary
 app.get('/api/net-worth', authenticateToken, async (req, res) => {
   try {
-    const { startDate, endDate, accounts } = req.query;
+    let { startDate, endDate, accounts } = req.query;
+    if (accounts && !Array.isArray(accounts)) {
+      accounts = [accounts];
+    }
     const summary = await db.getNetWorthSummary(req.user.id, startDate, endDate, accounts);
     res.json(summary);
   } catch (error) {
@@ -367,6 +405,10 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
